@@ -36,13 +36,10 @@ jobs:
       - name: 서버 재시작
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_KEY }}
-          script: |
-            export RDS_ENDPOINT=${{ secrets.RDS_ENDPOINT }}
-            export RDS_PASSWORD=${{ secrets.RDS_PASSWORD }}
-            export RDS_USERNAME=${{ secrets.RDS_USERNAME }}
-            export REDIS_HOST=${{ secrets.REDIS_HOST }}
-            mv /home/ec2-user/app/*.jar /home/ec2-user/app/tamagotchi.jar 2>/dev/null || true
-            sh /home/ec2-user/app/deploy.sh
+            host: ${{ secrets.EC2_HOST }}
+            username: ec2-user
+            key: ${{ secrets.EC2_KEY }}
+            request_pty: false
+            script: |
+              mv /home/ec2-user/app/*.jar /home/ec2-user/app/tamagotchi.jar 2>/dev/null || true
+              sh /home/ec2-user/app/deploy.sh
