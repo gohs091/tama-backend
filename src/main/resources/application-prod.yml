@@ -12,7 +12,7 @@ spring:
 
   data:
     redis:
-      host: ${RE  DIS_HOST}
+      host: ${REDIS_HOST}
       port: 6379
 
 tamagotchi:
