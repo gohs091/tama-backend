@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3307/tamagotchi?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: tamagotchi
+    password: tamagotchi1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+tamagotchi:
+  hunger:
+    increase-threshold-minutes: 1  # 테스트용 1분, 운영은 30분
+    increase-amount: 10
