@@ -13,6 +13,9 @@ public class TamagotchiResponse {
     private String name;
     private String evolutionStage;
     private int hunger;
+    private int strength;
+    private int poopCount;
+    private boolean sleeping;
     private int feedCount;
     private LocalDateTime lastFedAt;
 
@@ -22,6 +25,9 @@ public class TamagotchiResponse {
                 .name(tamagotchi.getName())
                 .evolutionStage(tamagotchi.getEvolutionStage().name())
                 .hunger(tamagotchi.getHunger())
+                .strength(tamagotchi.getStrength())
+                .poopCount(tamagotchi.getPoopCount())
+                .sleeping(tamagotchi.isSleeping())
                 .feedCount(tamagotchi.getFeedCount())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .build();
