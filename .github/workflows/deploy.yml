@@ -42,7 +42,7 @@ jobs:
           script: |
             export RDS_ENDPOINT=${{ secrets.RDS_ENDPOINT }}
             export RDS_PASSWORD=${{ secrets.RDS_PASSWORD }}
-            export RDS_USERNAME=${{ secrets.RDS_USERNAME}}
+            export RDS_USERNAME=${{ secrets.RDS_USERNAME }}
             export REDIS_HOST=${{ secrets.REDIS_HOST }}
             mv /home/ec2-user/app/*.jar /home/ec2-user/app/tamagotchi.jar 2>/dev/null || true
             sh /home/ec2-user/app/deploy.sh
