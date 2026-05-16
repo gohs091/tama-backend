@@ -19,3 +19,6 @@ tamagotchi:
   hunger:
     increase-threshold-minutes: 30
     increase-amount: 10
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY}

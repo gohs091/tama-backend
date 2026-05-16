@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface TamagotchiRepository extends JpaRepository<Tamagotchi, Long> {
     Optional<Tamagotchi> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }

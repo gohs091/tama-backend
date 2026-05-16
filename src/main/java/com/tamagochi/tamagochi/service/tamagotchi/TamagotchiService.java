@@ -52,6 +52,12 @@ public class TamagotchiService {
     }
 
     @Transactional
+    public Tamagotchi reset(User user) {
+        tamagotchiRepository.deleteByUserId(user.getId());
+        return create(user, "끄적이");
+    }
+
+    @Transactional
     public Tamagotchi create(User user, String name) {
         Tamagotchi tamagotchi = Tamagotchi.builder()
                 .user(user)

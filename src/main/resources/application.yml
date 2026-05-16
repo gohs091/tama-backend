@@ -22,3 +22,6 @@ tamagotchi:
   hunger:
     increase-threshold-minutes: 1  # 테스트용 1분, 운영은 30분
     increase-amount: 10
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}

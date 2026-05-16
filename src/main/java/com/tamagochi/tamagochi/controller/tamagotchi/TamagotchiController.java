@@ -18,6 +18,14 @@ public class TamagotchiController {
     private final TamagotchiService tamagotchiService;
     private final UserRepository userRepository;
 
+    @PostMapping("/reset")
+    public ResponseEntity<?> reset(@RequestBody CreateTamagotchiRequest request) {
+        User user = userRepository.findByTossUserId(request.getTossUserId())
+                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        Tamagotchi tamagotchi = tamagotchiService.reset(user);
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
     @PostMapping("/create")
     public ResponseEntity<?> create(@RequestBody CreateTamagotchiRequest request) {
         User user = userRepository.findByTossUserId(request.getTossUserId())
