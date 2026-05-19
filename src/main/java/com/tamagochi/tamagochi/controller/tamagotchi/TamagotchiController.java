@@ -35,6 +35,16 @@ public class TamagotchiController {
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 
+    @PostMapping("/hatch")
+    public ResponseEntity<?> hatch(@RequestBody FeedRequest request) {
+        User user = userRepository.findByTossUserId(request.getTossUserId())
+                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+
+        tamagotchiService.hatch(user, request.getIdempotencyKey());
+        Tamagotchi tamagotchi = tamagotchiService.getByUserId(user.getId());
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
     @PostMapping("/feed")
     public ResponseEntity<?> feed(@RequestBody FeedRequest request) {
         User user = userRepository.findByTossUserId(request.getTossUserId())

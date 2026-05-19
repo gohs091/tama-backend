@@ -35,13 +35,14 @@ public class TamagotchiService {
         checkEvolution(tamagotchi);
     }
 
+    // EGG: 10번 두드리면 부화 / BABY→CHILD: 25번 / CHILD→ADULT: 45번
     private void checkEvolution(Tamagotchi tamagotchi) {
         EvolutionStage currentStage = tamagotchi.getEvolutionStage();
 
         EvolutionStage nextStage = switch (currentStage) {
-            case EGG -> tamagotchi.getFeedCount() >= 5 ? EvolutionStage.BABY : null;
-            case BABY -> tamagotchi.getFeedCount() >= 15 ? EvolutionStage.CHILD : null;
-            case CHILD -> tamagotchi.getFeedCount() >= 30 ? EvolutionStage.ADULT : null;
+            case EGG   -> tamagotchi.getFeedCount() >= 10 ? EvolutionStage.BABY  : null;
+            case BABY  -> tamagotchi.getFeedCount() >= 25 ? EvolutionStage.CHILD : null;
+            case CHILD -> tamagotchi.getFeedCount() >= 45 ? EvolutionStage.ADULT : null;
             case ADULT -> null;
         };
 
@@ -49,6 +50,23 @@ public class TamagotchiService {
             tamagotchi.evolve(nextStage);
             log.info("진화! {} -> {}", currentStage, nextStage);
         }
+    }
+
+    @Transactional
+    public void hatch(User user, String idempotencyKey) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+
+        if (tamagotchi.getEvolutionStage() != EvolutionStage.EGG) {
+            throw new IllegalStateException("알 상태가 아닙니다.");
+        }
+        if (tamagotchi.isDead()) {
+            throw new IllegalStateException("다마고치가 죽었어요.");
+        }
+
+        tamagotchi.feed(); // feedCount++ (포인트 차감 없음)
+        checkEvolution(tamagotchi);
+        log.info("알 두드리기 - feedCount: {}", tamagotchi.getFeedCount());
     }
 
     @Transactional
