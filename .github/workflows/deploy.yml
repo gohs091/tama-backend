@@ -46,5 +46,6 @@ jobs:
               export RDS_USERNAME=${{ secrets.RDS_USERNAME }}
               export RDS_PASSWORD=${{ secrets.RDS_PASSWORD }}
               export REDIS_HOST=${{ secrets.REDIS_HOST }}
+              export STABILITY_API_KEY=${{ secrets.STABILITY_API_KEY }}
               ENVEOF
               sh /home/ec2-user/app/deploy.sh

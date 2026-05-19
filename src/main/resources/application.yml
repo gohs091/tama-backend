@@ -25,3 +25,6 @@ tamagotchi:
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
+
+stability:
+  api-key: ${STABILITY_API_KEY:}
