@@ -71,21 +71,31 @@ public class TamagotchiService {
 
     @Transactional
     public Tamagotchi reset(User user) {
+        Tamagotchi existing = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        String faction = existing != null ? existing.getFaction() : null;
         tamagotchiRepository.deleteByUserId(user.getId());
-        return create(user, "끄적이");
+        return create(user, "끄적이", faction);
     }
 
     @Transactional
-    public Tamagotchi create(User user, String name) {
+    public Tamagotchi create(User user, String name, String faction) {
         Tamagotchi tamagotchi = Tamagotchi.builder()
                 .user(user)
                 .name(name)
+                .faction(faction)
                 .evolutionStage(EvolutionStage.EGG)
                 .hunger(50)
                 .feedCount(0)
                 .build();
 
         return tamagotchiRepository.save(tamagotchi);
+    }
+
+    @Transactional
+    public void saveImage(User user, String stage, String imageBase64) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        tamagotchi.saveStageImage(stage, imageBase64);
     }
 
     @Transactional()
@@ -164,6 +174,9 @@ public class TamagotchiService {
         // 클릭 수 10번당 1포인트 추가
         int bonusReward = clickCount / 10;
         int totalReward = baseReward + bonusReward;
+
+        // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)
+        pointService.earnPoint(user, totalReward, idempotencyKey + "-earn");
 
         log.info("트레이닝 완료 - tamagotchi: {}, clickCount: {}, reward: {}",
                 tamagotchi.getName(), clickCount, totalReward);

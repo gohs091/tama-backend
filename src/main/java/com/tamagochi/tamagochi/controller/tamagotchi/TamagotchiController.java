@@ -31,8 +31,16 @@ public class TamagotchiController {
         User user = userRepository.findByTossUserId(request.getTossUserId())
                 .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
 
-        Tamagotchi tamagotchi = tamagotchiService.create(user, request.getName());
+        Tamagotchi tamagotchi = tamagotchiService.create(user, request.getName(), request.getFaction());
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
+    @PostMapping("/image")
+    public ResponseEntity<?> saveImage(@RequestBody SaveImageRequest request) {
+        User user = userRepository.findByTossUserId(request.getTossUserId())
+                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        tamagotchiService.saveImage(user, request.getStage(), request.getImageBase64());
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/hatch")

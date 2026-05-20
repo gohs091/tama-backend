@@ -5,8 +5,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class CreateTamagotchiRequest {
+public class SaveImageRequest {
     private String tossUserId;
-    private String name;
-    private String faction;
+    /** baby | child | adult */
+    private String stage;
+    private String imageBase64;
 }

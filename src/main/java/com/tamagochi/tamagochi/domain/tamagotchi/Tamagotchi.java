@@ -50,8 +50,48 @@ public class Tamagotchi {
     @Column(nullable = false)
     private boolean sleeping;
 
+    @Column(length = 50)
+    private String faction;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String babyImageBase64;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String childImageBase64;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String adultImageBase64;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    public void saveFaction(String faction) {
+        this.faction = faction;
+    }
+
+    public void saveStageImage(String stage, String imageBase64) {
+        switch (stage) {
+            case "baby"  -> this.babyImageBase64  = imageBase64;
+            case "child" -> this.childImageBase64 = imageBase64;
+            case "adult" -> this.adultImageBase64 = imageBase64;
+        }
+    }
+
+    /** 현재 진화 단계에 해당하는 이미지 반환 */
+    public String getCurrentImageBase64() {
+        return switch (this.evolutionStage) {
+            case EGG, BABY -> babyImageBase64;
+            case CHILD     -> childImageBase64;
+            case ADULT     -> adultImageBase64;
+        };
+    }
+
+    public boolean isDead() {
+        if (this.poopCount >= 5) return true;
+        if (this.hungryStartedAt != null &&
+                this.hungryStartedAt.isBefore(LocalDateTime.now().minusHours(7))) return true;
+        return false;
+    }
 
     public void feed() {
         this.hunger = Math.max(0, this.hunger - 20);
@@ -109,14 +149,6 @@ public class Tamagotchi {
         this.hunger = Math.min(100, this.hunger + amount);
     }
 
-    public boolean isDead() {
-        // 똥이 5개 이상이면 사망
-        if (this.poopCount >= 5) return true;
-        // 배고픈 상태(hunger 100)에서 7시간 지나면 사망
-        if (this.hungryStartedAt != null &&
-                this.hungryStartedAt.isBefore(LocalDateTime.now().minusHours(7))) return true;
-        return false;
-    }
 
     public void reset() {
         this.evolutionStage = EvolutionStage.EGG;
