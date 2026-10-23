@@ -31,7 +31,7 @@ anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
 
 image:
-  provider: ${IMAGE_PROVIDER:stability}  # stability | openai
+  provider: ${IMAGE_PROVIDER:openai}  # openai | stability(롤백용)
   quota-enabled: true         # false면 생성 횟수 제한을 끈다 (로컬 개발 전용)
   daily-limit-per-user: 8     # 유저당 하루 이미지 생성 한도 (유체+성체+완전체 = 3회)
   daily-limit-global: 2000    # 서비스 전체 하루 한도 (비용 폭주 방지 최후 장치)

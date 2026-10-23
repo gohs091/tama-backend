@@ -29,3 +29,9 @@ anthropic:
 
 stability:
   api-key: ${STABILITY_API_KEY}
+
+image:
+  provider: ${IMAGE_PROVIDER:openai}
+
+openai:
+  api-key: ${OPENAI_API_KEY}
