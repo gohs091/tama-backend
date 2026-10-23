@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,6 +15,9 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 public class Tamagotchi {
+
+    public static final int INITIAL_HUNGER = 50;
+    public static final int INITIAL_STRENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,20 +35,25 @@ public class Tamagotchi {
     private EvolutionStage evolutionStage;
 
     @Column(nullable = false)
-    private int hunger; // 0~100 (100이면 사망)
+    private int hunger; // 0~100 (0=포만감 최대, 100=굶주림. 포만감 = 100 - hunger)
 
     @Column(nullable = false)
     private int strength; // 0~100 (트레이닝 가능 조건)
 
     @Column(nullable = false)
-    private int poopCount; // 0~5 (5이면 사망)
+    private int poopCount; // VitalsRule.maxPoop 이상이면 사망
 
     @Column(nullable = false)
     private int feedCount;
 
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
-    private LocalDateTime hungryStartedAt; // 배고픔 시작 시간 (7시간 체크용)
+    private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
+    private LocalDateTime strengthEmptySince; // 파워가 0이 된 시각 (사망 판정용)
+    private LocalDateTime lastHungerTickAt; // 포만감 감소 기준 시각
+    private LocalDateTime lastStrengthTickAt; // 파워 감소 기준 시각
+    private LocalDateTime deadAt; // 사망 시각 (null이면 생존)
+    private LocalDateTime lastVitalsTickAt; // 마지막으로 시간 경과를 반영한 시각 (서버 중단 감지용)
     private LocalDateTime sleptAt; // 마지막 수면 시간 (6시간 체크용)
 
     @Column(nullable = false)
@@ -87,21 +96,19 @@ public class Tamagotchi {
     }
 
     public boolean isDead() {
-        if (this.poopCount >= 5) return true;
-        if (this.hungryStartedAt != null &&
-                this.hungryStartedAt.isBefore(LocalDateTime.now().minusHours(7))) return true;
-        return false;
+        return this.deadAt != null;
     }
 
     public void feed() {
         this.hunger = Math.max(0, this.hunger - 20);
         this.feedCount++;
         this.lastFedAt = LocalDateTime.now();
-        this.hungryStartedAt = null; // 배고픔 해소
+        this.hungryStartedAt = null; // 굶주림 해소
     }
 
     public void addStrength(int amount) {
         this.strength = Math.min(100, this.strength + amount);
+        if (this.strength > 0) this.strengthEmptySince = null;
     }
 
     public void consumeForTraining(int hungerCost, int strengthCost) {
@@ -115,13 +122,9 @@ public class Tamagotchi {
         this.strength = Math.max(0, this.strength - strengthCost);
     }
 
-    public void poop() {
-        this.poopCount++;
-        this.lastPoopAt = LocalDateTime.now();
-    }
-
     public void cleanPoop() {
         this.poopCount = 0;
+        this.lastPoopAt = LocalDateTime.now(); // 청소 직후 바로 또 싸지 않도록 간격 재시작
     }
 
     public void sleep() {
@@ -141,24 +144,127 @@ public class Tamagotchi {
         this.evolutionStage = nextStage;
     }
 
-    public void increaseHunger(int amount) {
-        if (this.sleeping) return; // 수면 중엔 배고픔 증가 안함
-        if (this.hunger == 0 && this.hungryStartedAt == null) {
-            this.hungryStartedAt = LocalDateTime.now();
+    /**
+     * 시간 경과 반영: 포만감·파워 감소, 똥 증가, 사망 판정.
+     * 알은 대상이 아니고, 수면 중에는 감소/증가 기준 시각만 앞으로 당긴다(수면 중 소진 없음).
+     * 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 사망한다.
+     */
+    public void applyTime(LocalDateTime now, VitalsRule rule) {
+        if (isDead() || this.evolutionStage == EvolutionStage.EGG) return;
+
+        absorbDowntime(now, rule);
+
+        if (this.sleeping) {
+            this.lastHungerTickAt = now;
+            this.lastStrengthTickAt = now;
+            this.lastPoopAt = now;
+        } else {
+            decayHunger(now, rule);
+            decayStrength(now, rule);
+            growPoop(now, rule);
         }
-        this.hunger = Math.min(100, this.hunger + amount);
+        syncEmptyMarkers(now);
+        checkDeath(now, rule);
+        this.lastVitalsTickAt = now;
     }
 
+    /**
+     * 서버가 꺼져 있던 시간은 다마고치에게 흐르지 않은 것으로 본다.
+     * 틱 간격이 maxTickGap을 넘으면 모든 기준 시각과 사망 타이머를 그 간격만큼 뒤로 민다.
+     * (재시작 직후 밀린 시간이 한꺼번에 반영되어 죽는 일을 막는다)
+     */
+    private void absorbDowntime(LocalDateTime now, VitalsRule rule) {
+        if (this.lastVitalsTickAt == null) return;
+        Duration gap = Duration.between(this.lastVitalsTickAt, now);
+        if (gap.compareTo(rule.maxTickGap()) <= 0) return;
+
+        this.lastHungerTickAt = shift(this.lastHungerTickAt, gap);
+        this.lastStrengthTickAt = shift(this.lastStrengthTickAt, gap);
+        this.lastPoopAt = shift(this.lastPoopAt, gap);
+        this.hungryStartedAt = shift(this.hungryStartedAt, gap);
+        this.strengthEmptySince = shift(this.strengthEmptySince, gap);
+    }
+
+    private static LocalDateTime shift(LocalDateTime t, Duration d) {
+        return t == null ? null : t.plus(d);
+    }
+
+    private void decayHunger(LocalDateTime now, VitalsRule rule) {
+        if (this.lastHungerTickAt == null) {
+            this.lastHungerTickAt = now;
+            return;
+        }
+        long points = Duration.between(this.lastHungerTickAt, now).toMinutes() / rule.satietyMinutesPerPoint();
+        if (points <= 0) return;
+        this.lastHungerTickAt = this.lastHungerTickAt.plusMinutes(points * rule.satietyMinutesPerPoint());
+        this.hunger = (int) Math.min(100, this.hunger + points);
+    }
+
+    private void decayStrength(LocalDateTime now, VitalsRule rule) {
+        if (this.lastStrengthTickAt == null) {
+            this.lastStrengthTickAt = now;
+            return;
+        }
+        long points = Duration.between(this.lastStrengthTickAt, now).toMinutes() / rule.strengthMinutesPerPoint();
+        if (points <= 0) return;
+        this.lastStrengthTickAt = this.lastStrengthTickAt.plusMinutes(points * rule.strengthMinutesPerPoint());
+        this.strength = (int) Math.max(0, this.strength - points);
+    }
+
+    private void growPoop(LocalDateTime now, VitalsRule rule) {
+        if (this.lastPoopAt == null) {
+            this.lastPoopAt = now;
+            return;
+        }
+        long count = Duration.between(this.lastPoopAt, now).toMinutes() / rule.poopIntervalMinutes();
+        if (count <= 0) return;
+        this.lastPoopAt = this.lastPoopAt.plusMinutes(count * rule.poopIntervalMinutes());
+        this.poopCount = (int) Math.min(rule.maxPoop(), this.poopCount + count);
+    }
+
+    /** 0 상태가 시작된 시각을 기록/해제 */
+    private void syncEmptyMarkers(LocalDateTime now) {
+        if (this.hunger >= 100) {
+            if (this.hungryStartedAt == null) this.hungryStartedAt = now;
+        } else {
+            this.hungryStartedAt = null;
+        }
+        if (this.strength <= 0) {
+            if (this.strengthEmptySince == null) this.strengthEmptySince = now;
+        } else {
+            this.strengthEmptySince = null;
+        }
+    }
+
+    private void checkDeath(LocalDateTime now, VitalsRule rule) {
+        LocalDateTime limit = now.minus(rule.deathAfterEmpty());
+        boolean starved = this.hungryStartedAt != null && !this.hungryStartedAt.isAfter(limit);
+        boolean exhausted = this.strengthEmptySince != null && !this.strengthEmptySince.isAfter(limit);
+        boolean poopFull = this.poopCount >= rule.maxPoop();
+        if (starved || exhausted || poopFull) {
+            this.deadAt = now;
+        }
+    }
 
     public void reset() {
         this.evolutionStage = EvolutionStage.EGG;
         this.hunger = 50;
-        this.strength = 0;
+        this.strength = INITIAL_STRENGTH;
         this.poopCount = 0;
         this.feedCount = 0;
         this.lastFedAt = null;
         this.lastPoopAt = null;
         this.hungryStartedAt = null;
+        this.strengthEmptySince = null;
+        this.lastHungerTickAt = null;
+        this.lastStrengthTickAt = null;
+        this.lastVitalsTickAt = null;
+        this.deadAt = null;
         this.sleeping = false;
+        this.sleptAt = null;
+        // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
+        this.babyImageBase64 = null;
+        this.childImageBase64 = null;
+        this.adultImageBase64 = null;
     }
 }

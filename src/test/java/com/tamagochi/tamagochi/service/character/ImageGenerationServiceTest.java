@@ -91,7 +91,8 @@ class ImageGenerationServiceTest {
 
         ImageJobResult result = service.getJob(jobId);
         assertThat(result.getStatus()).isEqualTo("DONE");
-        assertThat(result.getImageDataUrl()).startsWith("data:image/jpeg;base64,");
+        // 결과는 항상 투명 배경 PNG (배경 제거/알파 처리 후)
+        assertThat(result.getImageDataUrl()).startsWith("data:image/png;base64,");
     }
 
     // ----------------------------------------------------------------

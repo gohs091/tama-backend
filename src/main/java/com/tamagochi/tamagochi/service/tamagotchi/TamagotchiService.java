@@ -25,6 +25,10 @@ public class TamagotchiService {
         Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
+        if (tamagotchi.isDead()) {
+            throw new IllegalStateException("다마고치가 죽었어요.");
+        }
+
         // 1. 포인트 차감 (멱등성 처리 포함)
         pointService.usePoint(user, 10, idempotencyKey);
 
@@ -69,12 +73,18 @@ public class TamagotchiService {
         log.info("알 두드리기 - feedCount: {}", tamagotchi.getFeedCount());
     }
 
+    /**
+     * 새 알로 다시 시작. 기존 행을 삭제 후 삽입하면 같은 트랜잭션에서 insert가 delete보다 먼저 flush되어
+     * 유저당 1개 유니크 제약에 걸리므로, 기존 행을 제자리에서 초기화한다. (팩션은 유지)
+     */
     @Transactional
     public Tamagotchi reset(User user) {
         Tamagotchi existing = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
-        String faction = existing != null ? existing.getFaction() : null;
-        tamagotchiRepository.deleteByUserId(user.getId());
-        return create(user, "끄적이", faction);
+        if (existing == null) {
+            return create(user, "끄적이", null);
+        }
+        existing.reset();
+        return existing;
     }
 
     @Transactional
@@ -84,11 +94,30 @@ public class TamagotchiService {
                 .name(name)
                 .faction(faction)
                 .evolutionStage(EvolutionStage.EGG)
-                .hunger(50)
+                .hunger(Tamagotchi.INITIAL_HUNGER)
+                .strength(Tamagotchi.INITIAL_STRENGTH)
                 .feedCount(0)
                 .build();
 
         return tamagotchiRepository.save(tamagotchi);
+    }
+
+    /** 테스트 전용: 피드 횟수 없이 다음 진화 단계로 즉시 이동 */
+    @Transactional
+    public Tamagotchi forceEvolve(User user) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+
+        EvolutionStage next = switch (tamagotchi.getEvolutionStage()) {
+            case EGG   -> EvolutionStage.BABY;
+            case BABY  -> EvolutionStage.CHILD;
+            case CHILD -> EvolutionStage.ADULT;
+            case ADULT -> throw new IllegalStateException("이미 완전체입니다.");
+        };
+
+        tamagotchi.evolve(next);
+        log.info("[TEST] 강제 진화: {} -> {}", tamagotchi.getEvolutionStage(), next);
+        return tamagotchi;
     }
 
     @Transactional
@@ -128,6 +157,9 @@ public class TamagotchiService {
         Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
+        if (tamagotchi.isDead()) {
+            throw new IllegalStateException("다마고치가 죽었어요.");
+        }
         if (tamagotchi.getPoopCount() == 0) {
             throw new IllegalStateException("치울 똥이 없어요.");
         }

@@ -8,8 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -18,62 +18,40 @@ public class TamagotchiScheduler {
 
     private final TamagotchiRepository tamagotchiRepository;
 
-    @Value("${tamagotchi.hunger.increase-threshold-minutes}")
-    private int increaseThresholdMinutes;
+    @Value("${tamagotchi.vitals.satiety-minutes-per-point:6}")
+    private int satietyMinutesPerPoint;
 
-    @Value("${tamagotchi.hunger.increase-amount}")
-    private int increaseAmount;
+    @Value("${tamagotchi.vitals.strength-minutes-per-point:12}")
+    private int strengthMinutesPerPoint;
 
-    // 1분마다 배고픔 증가 체크
+    @Value("${tamagotchi.vitals.death-after-empty-hours:4}")
+    private int deathAfterEmptyHours;
+
+    @Value("${tamagotchi.vitals.poop-interval-minutes:60}")
+    private int poopIntervalMinutes;
+
+    @Value("${tamagotchi.vitals.max-poop:8}")
+    private int maxPoop;
+
+    @Value("${tamagotchi.vitals.max-tick-gap-minutes:5}")
+    private int maxTickGapMinutes;
+
+    // 1분마다 포만감·파워 소진, 똥 증가, 사망 판정
     @Scheduled(fixedDelay = 60000)
     @Transactional
-    public void increaseHunger() {
-        List<Tamagotchi> list = tamagotchiRepository.findAll();
+    public void tick() {
+        VitalsRule rule = new VitalsRule(satietyMinutesPerPoint, strengthMinutesPerPoint,
+                Duration.ofHours(deathAfterEmptyHours), poopIntervalMinutes, maxPoop,
+                Duration.ofMinutes(maxTickGapMinutes));
+        LocalDateTime now = LocalDateTime.now();
 
-        for (Tamagotchi tamagotchi : list) {
-            if (tamagotchi.isDead()) continue;
-            if (tamagotchi.isSleeping()) continue;
-
-            if (tamagotchi.getLastFedAt() == null ||
-                    tamagotchi.getLastFedAt()
-                            .isBefore(LocalDateTime.now().minusMinutes(increaseThresholdMinutes))) {
-                tamagotchi.increaseHunger(increaseAmount);
-                log.info("배고픔 증가 - tamagotchi: {}, hunger: {}",
-                        tamagotchi.getName(), tamagotchi.getHunger());
-            }
-
-            // 사망 체크
-            if (tamagotchi.isDead()) {
-                tamagotchi.reset();
-                log.info("사망 및 리셋 - tamagotchi: {}", tamagotchi.getName());
-            }
-        }
-    }
-
-    // 30분마다 똥 생성 체크
-    @Scheduled(fixedDelay = 1800000)
-    @Transactional
-    public void generatePoop() {
-        List<Tamagotchi> list = tamagotchiRepository.findAll();
-
-        for (Tamagotchi tamagotchi : list) {
-            if (tamagotchi.isDead()) continue;
-            if (tamagotchi.isSleeping()) continue;
-            if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) continue;
-
-            // 마지막 먹이 준 지 30분 지나면 똥 생성
-            if (tamagotchi.getLastFedAt() != null &&
-                    tamagotchi.getLastFedAt()
-                            .isBefore(LocalDateTime.now().minusMinutes(30))) {
-                tamagotchi.poop();
-                log.info("똥 생성 - tamagotchi: {}, poopCount: {}",
-                        tamagotchi.getName(), tamagotchi.getPoopCount());
-            }
-
-            // 사망 체크
-            if (tamagotchi.isDead()) {
-                tamagotchi.reset();
-                log.info("똥 가득 - 사망 및 리셋 - tamagotchi: {}", tamagotchi.getName());
+        for (Tamagotchi tamagotchi : tamagotchiRepository.findAll()) {
+            boolean wasDead = tamagotchi.isDead();
+            tamagotchi.applyTime(now, rule);
+            if (!wasDead && tamagotchi.isDead()) {
+                log.info("사망 - tamagotchi: {}, hunger: {}, strength: {}, poop: {}",
+                        tamagotchi.getName(), tamagotchi.getHunger(),
+                        tamagotchi.getStrength(), tamagotchi.getPoopCount());
             }
         }
     }
