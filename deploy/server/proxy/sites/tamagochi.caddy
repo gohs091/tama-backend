@@ -1,0 +1,4 @@
+{$TAMA_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy tamagochi:8080
+}

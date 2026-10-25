@@ -1,0 +1,19 @@
+name: tamagochi
+services:
+  app:
+    # 새 버전은 GitHub Actions가 이미지를 올린 뒤 `docker compose pull && up -d` 로 반영한다
+    image: ${APP_IMAGE:-ghcr.io/gohs091/tama-backend:latest}
+    container_name: tamagochi   # Caddy가 이 이름으로 접속한다
+    restart: always
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      TZ: Asia/Seoul
+    networks: [edge, backend]
+    mem_limit: 768m
+
+networks:
+  edge:
+    external: true
+  backend:
+    external: true

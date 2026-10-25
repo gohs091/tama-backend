@@ -1,3 +1,8 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+
+# Windows 에서 작업해도 서버(Linux)에서 실행되는 파일의 줄바꿈이 깨지지 않게 LF 로 고정
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf

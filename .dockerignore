@@ -1,0 +1,13 @@
+.git
+.gradle
+build
+.idea
+**/.DS_Store
+*.md
+docker-compose.yml
+deploy
+
+# 비밀 값이 들어 있는 로컬 설정이 이미지에 들어가지 않게 한다
+src/main/resources/application-local.yml
+**/.env
+**/.env.*

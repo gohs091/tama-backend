@@ -1,0 +1,6 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# 앱마다 sites/ 아래에 파일을 하나씩 두면 된다
+import /etc/caddy/sites/*.caddy

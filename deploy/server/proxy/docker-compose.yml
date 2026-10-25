@@ -1,0 +1,27 @@
+# 모든 도메인의 80/443을 받아서 각 Java 앱으로 연결한다 (HTTPS 인증서는 Caddy가 자동 발급/갱신)
+name: proxy
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: always
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+    mem_limit: 128m
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  edge:
+    external: true

@@ -1,0 +1,21 @@
+# 이 파일을 application-local.yml 로 복사해서 값을 채운다 (application-local.yml 은 .gitignore 대상 — 커밋 금지)
+#   Windows: copy application-local.yml.example application-local.yml
+# 실행: ./gradlew bootRun --args="--spring.profiles.active=local"
+
+stability:
+  api-key:            # 쓰지 않으면 비워 둔다 (image.provider=openai)
+
+image:
+  provider: openai
+  quota-enabled: false   # 로컬 테스트용: 이미지 생성 횟수 제한 없음
+
+openai:
+  api-key: sk-...        # 이미지 생성 + 손그림 분석(비전)에 사용
+
+# 로컬 개발용: 시간 경과 규칙을 빠르게 보고 싶을 때 주석을 풀어서 쓴다 (운영 값은 application.yml)
+# tamagotchi:
+#   vitals:
+#     poop-interval-minutes: 1
+#     satiety-minutes-per-point: 1
+#     strength-minutes-per-point: 1
+#     death-after-empty-hours: 1
