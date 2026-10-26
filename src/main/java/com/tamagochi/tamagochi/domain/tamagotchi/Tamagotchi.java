@@ -18,6 +18,8 @@ public class Tamagotchi {
 
     public static final int INITIAL_HUNGER = 50;
     public static final int INITIAL_STRENGTH = 50;
+    public static final int FEED_AMOUNT = 1;  // 고기 1회 포만감 회복량
+    public static final int PILL_AMOUNT = 1;  // 알약 1회 파워 회복량
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -100,7 +102,7 @@ public class Tamagotchi {
     }
 
     public void feed() {
-        this.hunger = Math.max(0, this.hunger - 20);
+        this.hunger = Math.max(0, this.hunger - FEED_AMOUNT);
         this.feedCount++;
         this.lastFedAt = LocalDateTime.now();
         this.hungryStartedAt = null; // 굶주림 해소

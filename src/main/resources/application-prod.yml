@@ -17,12 +17,17 @@ spring:
 
 tamagotchi:
   vitals:
-    satiety-minutes-per-point: 6    # 포만감 1 감소에 걸리는 분 (6분 → 약 10시간에 100→0)
-    strength-minutes-per-point: 12  # 파워 1 감소에 걸리는 분 (12분 → 약 20시간에 100→0)
-    death-after-empty-hours: 4      # 포만감/파워가 0인 채 이 시간이 지나면 사망
+    satiety-minutes-per-point: 4    # 포만감 1 감소에 걸리는 분 (4분 → 약 6.7시간에 100→0)
+    strength-minutes-per-point: 8   # 파워 1 감소에 걸리는 분 (8분 → 약 13시간에 100→0)
+    death-after-empty-hours: 6      # 포만감/파워가 0인 채 이 시간이 지나면 사망
     poop-interval-minutes: 60       # 똥이 1개 늘어나는 간격
     max-poop: 8                     # 이 개수 이상이면 사망
     max-tick-gap-minutes: 5         # 틱 간격이 이보다 길면 서버 중단으로 보고 그 시간은 반영하지 않음
+  iap:
+    verify: toss                    # 토스 서버에 주문 결제 여부를 확인(mTLS 인증서 필요)
+    keystore-path: ${IAP_KEYSTORE_PATH:}
+    keystore-password: ${IAP_KEYSTORE_PASSWORD:}
+    keystore-type: PKCS12
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
