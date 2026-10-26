@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class TamagotchiService {
     private static final int ITEM_COST = 2; // 고기·알약 1회 가격(포인트)
+    private static final int MAX_TRAINING_CLICKS = 120; // 10초 트레이닝에서 사람이 칠 수 있는 상한(클라이언트 값은 신뢰하지 않음)
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
@@ -205,7 +206,7 @@ public class TamagotchiService {
         };
 
         // 클릭 수 10번당 1포인트 추가
-        int bonusReward = clickCount / 10;
+        int bonusReward = Math.min(clickCount, MAX_TRAINING_CLICKS) / 10;
         int totalReward = baseReward + bonusReward;
 
         // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)

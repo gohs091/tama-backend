@@ -25,9 +25,8 @@ public class PointController {
         User user = userRepository.findByTossUserId(request.getTossUserId())
                 .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
 
-        PointTransaction transaction = pointService.earnPoint(
+        PointTransaction transaction = pointService.earnAdReward(
                 user,
-                request.getAmount(),
                 request.getIdempotencyKey()
         );
         return ResponseEntity.ok(PointTransactionResponse.from(transaction));
