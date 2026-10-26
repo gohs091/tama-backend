@@ -33,6 +33,8 @@ tamagotchi:
   promotion:
     mode: record                    # off: 판정 안 함 / record: 대상 여부를 판정해 기록만 함 / grant: 기록하고 토스 포인트를 실제로 지급(code 필요)
     code: ${PROMOTION_CODE:}             # 콘솔에서 만든 프로모션 코드. 테스트는 앞에 TEST_ 가 붙은 코드(지급·차감 없이 API만 확인)
+  admin:
+    key: ${ADMIN_KEY:}                 # 비우면 관리자 API(/api/admin/**)가 아예 만들어지지 않는다
   dev-tools: true                 # 로컬 개발 전용 엔드포인트(/api/dev/*)
   iap:
     verify: skip                    # 로컬 개발 전용: 주문 검증을 건너뜀. 운영은 toss

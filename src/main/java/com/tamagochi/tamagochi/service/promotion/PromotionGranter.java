@@ -51,6 +51,11 @@ public class PromotionGranter {
         return !promotionCode.isBlank();
     }
 
+    /** 테스트 프로모션 코드(TEST_ 로 시작)이면 실제 포인트 지급·차감 없이 API만 확인된다. */
+    public boolean isTestCode() {
+        return promotionCode.startsWith("TEST_");
+    }
+
     /** 새로 기록된(또는 재시도할) 한 건을 지급한다. 이미 다른 곳에서 처리 중이면 아무것도 하지 않는다. */
     public void grant(Long grantId) {
         if (!isConfigured()) {

@@ -19,6 +19,7 @@ services:
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-}
       PROMOTION_MODE: ${PROMOTION_MODE:-off}
       PROMOTION_CODE: ${PROMOTION_CODE:-}
+      ADMIN_KEY: ${ADMIN_KEY:-}
     volumes:
       - ./certs/iap-client.p12:/certs/iap-client.p12:ro   # 토스 IAP mTLS 인증서 (서버에만 두고 저장소/이미지에 넣지 않는다)
     depends_on:

@@ -49,6 +49,16 @@ public class PromotionService {
         return mode != Mode.OFF;
     }
 
+    /** 하루 상한에 세지 않도록 먼 과거 날짜를 쓰는 관리자 테스트 지급용 날짜 */
+    static final LocalDate TEST_GRANT_DATE = LocalDate.of(1970, 1, 1);
+
+    /** 관리자 테스트 지급 한 건을 기록한다 (트레이닝과 무관, 하루 상한에 세지 않음). 지급은 호출한 쪽이 시작한다. */
+    @Transactional
+    public PromotionGrant recordTest(User user, int amount) {
+        return repository.save(new PromotionGrant(user, "admin-test-" + java.util.UUID.randomUUID(),
+                TEST_GRANT_DATE, 0, 0, amount));
+    }
+
     /** 트레이닝 화면에 보여줄 프로모션 안내: 구간표와 오늘 남은 횟수 */
     public PromotionInfo info(User user) {
         int remaining = 0;

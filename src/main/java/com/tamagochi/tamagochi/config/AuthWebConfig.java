@@ -15,6 +15,6 @@ public class AuthWebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**");
+                .excludePathPatterns("/api/auth/**", "/api/admin/**"); // 관리자 API는 자체 관리자 키로 확인한다
     }
 }
