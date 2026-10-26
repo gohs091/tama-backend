@@ -224,9 +224,9 @@ public class TamagotchiService {
         // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)
         pointService.earnPoint(user, totalReward, idempotencyKey + "-earn");
 
-        // 진화 게이지: 탭 수로 서버가 정한다 (진화할 수 없는 단계에서는 0)
-        int evoGain = EvolutionRules.gaugeMax(tamagotchi.getEvolutionStage()) == 0 ? 0 : EvolutionRules.gainForTaps(taps);
-        tamagotchi.addEvoGauge(evoGain);
+        // 진화 게이지: 탭 수로 받을 양을 서버가 정하되, 바로 오르지 않고 광고를 본 뒤 claim으로 오른다
+        tamagotchi.offerEvoGain(EvolutionRules.gainForTaps(taps));
+        int evoGain = tamagotchi.getPendingEvoGain();
 
         // 완전체의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
         PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT

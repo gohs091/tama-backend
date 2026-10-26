@@ -155,26 +155,50 @@ class TrainingFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("광고를 보고 진화 게이지를 받는다 (유체이면 +3, 토큰 필요, 남의 ID는 403)")
-    void evoGaugeByAd() throws Exception {
+    @DisplayName("훈련하면 게이지가 바로 오르지 않고 대기하며, 광고를 본 뒤 받아야 오르고, 광고 보너스는 더 없고, 한 번만 받는다")
+    void evoGaugeIsClaimedAfterAd() throws Exception {
         // 이 테스트의 캐릭터를 유체로 만든다 (기본 setUp은 완전체)
-        var user = userService.createUser("toss_ad_" + System.nanoTime(), "ad");
+        var user = userService.createUser("toss_claim_" + System.nanoTime(), "claim");
         tamagotchiRepository.save(Tamagotchi.builder().user(user).name("끄적이")
                 .evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).build());
-        String adBearer = "Bearer " + tokens.issue(user.getTossUserId());
-        String body = "{\"tossUserId\":\"" + user.getTossUserId() + "\"}";
+        String tossId = user.getTossUserId();
+        String claimBearer = "Bearer " + tokens.issue(tossId);
+        String body = "{\"tossUserId\":\"" + tossId + "\"}";
 
-        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").contentType(MediaType.APPLICATION_JSON).content(body))
+        // 훈련 한 판 (탭 90번 = 3칸): 응답은 "받을 수 있는 게이지 3"이고 게이지는 아직 0
+        String sessionId = objectMapper.readTree(mvc.perform(post("/api/tamagotchi/training/start")
+                        .header("Authorization", claimBearer).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("sessionId").asText();
+        clock.now = clock.now.plusSeconds(11);
+        mvc.perform(post("/api/tamagotchi/training").header("Authorization", claimBearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tossUserId\":\"" + tossId + "\",\"sessionId\":\"" + sessionId
+                                + "\",\"clickCount\":90,\"idempotencyKey\":\"k-" + System.nanoTime() + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evoGain").value(3))
+                .andExpect(jsonPath("$.evoGauge").value(0));
+        mvc.perform(get("/api/tamagotchi/" + tossId).header("Authorization", claimBearer))
+                .andExpect(jsonPath("$.evoGauge").value(0))
+                .andExpect(jsonPath("$.pendingEvoGain").value(3));
+
+        // 받기: 토큰 필요, 남의 ID는 403
+        mvc.perform(post("/api/tamagotchi/evo-gauge/claim").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").header("Authorization", adBearer)
+        mvc.perform(post("/api/tamagotchi/evo-gauge/claim").header("Authorization", claimBearer)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"tossUserId\":\"toss_someone_else\"}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").header("Authorization", adBearer)
+
+        // 받으면 훈련이 정한 3칸만 오른다 (광고를 봤다고 더 얹어 주지 않는다)
+        mvc.perform(post("/api/tamagotchi/evo-gauge/claim").header("Authorization", claimBearer)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evoGauge").value(3))
-                .andExpect(jsonPath("$.evoGaugeMax").value(10))
-                .andExpect(jsonPath("$.evoAdGauge").value(3));
+                .andExpect(jsonPath("$.pendingEvoGain").value(0));
+
+        // 같은 훈련의 게이지는 두 번 받을 수 없다
+        mvc.perform(post("/api/tamagotchi/evo-gauge/claim").header("Authorization", claimBearer)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -51,6 +51,9 @@ public class Tamagotchi {
     @Column(nullable = false, columnDefinition = "integer default 0")
     private int evoGauge; // 다음 진화를 향해 쌓은 게이지. 가득 찬 값은 EvolutionRules.gaugeMax(단계)
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int pendingEvoGain; // 마지막 훈련으로 받을 수 있게 된 진화 게이지. 광고를 봐야 evoGauge에 더해진다
+
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
     private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
@@ -148,6 +151,7 @@ public class Tamagotchi {
     public void evolve(EvolutionStage nextStage) {
         this.evolutionStage = nextStage;
         this.evoGauge = 0;
+        this.pendingEvoGain = 0;
     }
 
     /** 알 → 유체. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
@@ -158,7 +162,25 @@ public class Tamagotchi {
         evolve(EvolutionStage.BABY);
     }
 
-    /** 트레이닝 결과로 진화 게이지를 올린다. 진화할 수 없는 단계(알·완전체)에서는 무시한다. */
+    /**
+     * 훈련 결과로 받을 수 있는 진화 게이지를 대기시킨다. 게이지는 바로 오르지 않고 광고를 본 뒤 claimEvoGain()으로 오른다.
+     * 새 훈련을 하면 아직 받지 않은 이전 대기분은 사라진다(훈련 1번 = 광고 1번).
+     * 진화할 수 없는 단계(알·완전체)이거나 게이지가 이미 가득 차 있으면 받을 것이 없다.
+     */
+    public void offerEvoGain(int gain) {
+        int max = EvolutionRules.gaugeMax(this.evolutionStage);
+        this.pendingEvoGain = (max == 0 || this.evoGauge >= max) ? 0 : gain;
+    }
+
+    /** 대기 중인 진화 게이지를 게이지에 더한다(최대 칸 수까지). 실제로 오른 칸 수를 돌려준다. */
+    public int claimEvoGain() {
+        int before = this.evoGauge;
+        addEvoGauge(this.pendingEvoGain);
+        this.pendingEvoGain = 0;
+        return this.evoGauge - before;
+    }
+
+    /** 게이지를 직접 올린다. 진화할 수 없는 단계(알·완전체)에서는 무시한다. */
     public void addEvoGauge(int gain) {
         int max = EvolutionRules.gaugeMax(this.evolutionStage);
         if (max == 0) return;
@@ -292,6 +314,7 @@ public class Tamagotchi {
         this.poopCount = 0;
         this.feedCount = 0;
         this.evoGauge = 0;
+        this.pendingEvoGain = 0;
         this.lastFedAt = null;
         this.lastPoopAt = null;
         this.hungryStartedAt = null;

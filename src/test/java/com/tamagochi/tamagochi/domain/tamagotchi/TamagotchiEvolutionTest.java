@@ -131,6 +131,84 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
+    @DisplayName("훈련으로 받을 게이지는 대기만 하고, 받기 전에는 게이지가 오르지 않는다")
+    void offerDoesNotRaiseGauge() {
+        Tamagotchi p = pet(EvolutionStage.BABY, 80, 80, 0);
+        p.addEvoGauge(4);
+
+        p.offerEvoGain(2);
+
+        assertThat(p.getPendingEvoGain()).isEqualTo(2);
+        assertThat(p.getEvoGauge()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("받으면 대기한 만큼만 오르고 대기는 비워진다 (광고를 봤다고 더 얹어 주지 않는다)")
+    void claimAddsExactlyPending() {
+        Tamagotchi p = pet(EvolutionStage.BABY, 80, 80, 0);
+        p.addEvoGauge(4);
+        p.offerEvoGain(2);
+
+        int gained = p.claimEvoGain();
+
+        assertThat(gained).isEqualTo(2);
+        assertThat(p.getEvoGauge()).isEqualTo(6);
+        assertThat(p.getPendingEvoGain()).isZero();
+        assertThat(p.claimEvoGain()).isZero(); // 한 번 받으면 다시 받을 것이 없다
+        assertThat(p.getEvoGauge()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("최대 칸 수에 가까우면 실제로 오른 칸 수만 돌려준다")
+    void claimIsClamped() {
+        Tamagotchi p = pet(EvolutionStage.BABY, 80, 80, 0);
+        p.addEvoGauge(9);
+        p.offerEvoGain(3);
+
+        assertThat(p.claimEvoGain()).isEqualTo(1);
+        assertThat(p.getEvoGauge()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("새 훈련을 하면 받지 않은 이전 대기분은 사라진다 (훈련 1번 = 광고 1번)")
+    void newTrainingReplacesPending() {
+        Tamagotchi p = pet(EvolutionStage.BABY, 80, 80, 0);
+        p.offerEvoGain(3);
+        p.offerEvoGain(1);
+
+        assertThat(p.getPendingEvoGain()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("진화할 수 없는 단계이거나 게이지가 가득 차 있으면 받을 것이 없다")
+    void nothingToOfferWhenNotApplicable() {
+        Tamagotchi egg = pet(EvolutionStage.EGG, 80, 80, 0);
+        Tamagotchi adult = pet(EvolutionStage.ADULT, 80, 80, 0);
+        Tamagotchi full = full(EvolutionStage.BABY);
+
+        egg.offerEvoGain(3);
+        adult.offerEvoGain(3);
+        full.offerEvoGain(3);
+
+        assertThat(egg.getPendingEvoGain()).isZero();
+        assertThat(adult.getPendingEvoGain()).isZero();
+        assertThat(full.getPendingEvoGain()).isZero();
+    }
+
+    @Test
+    @DisplayName("진화하거나 새로 시작하면 대기 중이던 게이지도 비워진다")
+    void evolveAndResetClearPending() {
+        Tamagotchi p = full(EvolutionStage.BABY);
+        p.evolveIfReady();
+        assertThat(p.getPendingEvoGain()).isZero();
+
+        Tamagotchi q = pet(EvolutionStage.BABY, 80, 80, 0);
+        q.offerEvoGain(2);
+        q.reset();
+        assertThat(q.getPendingEvoGain()).isZero();
+    }
+
+    @Test
     @DisplayName("새로 시작하면 게이지도 비워진다")
     void resetClearsGauge() {
         Tamagotchi p = full(EvolutionStage.BABY);
