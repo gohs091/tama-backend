@@ -53,6 +53,15 @@ public class TamagotchiController {
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 
+    @PostMapping("/evolve")
+    public ResponseEntity<?> evolve(@RequestBody EvolveRequest request) {
+        User user = userRepository.findByTossUserId(request.getTossUserId())
+                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+
+        Tamagotchi tamagotchi = tamagotchiService.evolve(user);
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
     @PostMapping("/feed")
     public ResponseEntity<?> feed(@RequestBody FeedRequest request) {
         User user = userRepository.findByTossUserId(request.getTossUserId())

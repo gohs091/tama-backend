@@ -48,6 +48,9 @@ public class Tamagotchi {
     @Column(nullable = false)
     private int feedCount;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int evoGauge; // 다음 진화를 향해 쌓은 게이지. 가득 찬 값은 EvolutionRules.gaugeMax(단계)
+
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
     private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
@@ -144,6 +147,40 @@ public class Tamagotchi {
 
     public void evolve(EvolutionStage nextStage) {
         this.evolutionStage = nextStage;
+        this.evoGauge = 0;
+    }
+
+    /** 알 → 유체. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
+    public void hatch() {
+        if (this.evolutionStage != EvolutionStage.EGG) {
+            throw new IllegalStateException("알 상태가 아닙니다.");
+        }
+        evolve(EvolutionStage.BABY);
+    }
+
+    /** 트레이닝 결과로 진화 게이지를 올린다. 진화할 수 없는 단계(알·완전체)에서는 무시한다. */
+    public void addEvoGauge(int gain) {
+        int max = EvolutionRules.gaugeMax(this.evolutionStage);
+        if (max == 0) return;
+        this.evoGauge = Math.min(max, this.evoGauge + gain);
+    }
+
+    /** 게이지가 가득 차고 컨디션(포만감·파워·응가) 조건을 모두 만족하면 진화할 수 있다. */
+    public boolean isEvolutionReady() {
+        int max = EvolutionRules.gaugeMax(this.evolutionStage);
+        if (max == 0 || isDead()) return false;
+        return this.evoGauge >= max
+                && (100 - this.hunger) >= EvolutionRules.MIN_SATIATION
+                && this.strength >= EvolutionRules.MIN_STRENGTH
+                && this.poopCount <= EvolutionRules.MAX_POOP;
+    }
+
+    /** 진화 조건을 만족했을 때만 다음 단계로 올린다. */
+    public void evolveIfReady() {
+        if (!isEvolutionReady()) {
+            throw new IllegalStateException("진화 조건을 만족하지 않았어요.");
+        }
+        evolve(EvolutionRules.next(this.evolutionStage));
     }
 
     /**
@@ -254,6 +291,7 @@ public class Tamagotchi {
         this.strength = INITIAL_STRENGTH;
         this.poopCount = 0;
         this.feedCount = 0;
+        this.evoGauge = 0;
         this.lastFedAt = null;
         this.lastPoopAt = null;
         this.hungryStartedAt = null;
