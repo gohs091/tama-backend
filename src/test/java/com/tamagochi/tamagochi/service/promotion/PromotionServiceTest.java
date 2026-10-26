@@ -61,6 +61,29 @@ class PromotionServiceTest {
     }
 
     @Test
+    @DisplayName("안내: 구간표와 오늘 남은 횟수를 돌려준다")
+    void info() {
+        usedToday(1);
+
+        var info = service("record").info(me);
+
+        assertThat(info.isEnabled()).isTrue();
+        assertThat(info.getDailyLimit()).isEqualTo(PromotionRules.DAILY_LIMIT);
+        assertThat(info.getRemainingToday()).isEqualTo(PromotionRules.DAILY_LIMIT - 1);
+        assertThat(info.getMaxCountedTaps()).isEqualTo(PromotionRules.MAX_COUNTED_TAPS);
+        assertThat(info.getTiers()).extracting("minTaps", "amount").containsExactly(
+                org.assertj.core.groups.Tuple.tuple(60, 1), org.assertj.core.groups.Tuple.tuple(80, 2));
+    }
+
+    @Test
+    @DisplayName("꺼져 있으면 안내도 꺼짐으로 내려가고 남은 횟수는 0이다")
+    void infoWhenOff() {
+        var info = service("off").info(me);
+        assertThat(info.isEnabled()).isFalse();
+        assertThat(info.getRemainingToday()).isZero();
+    }
+
+    @Test
     @DisplayName("꺼져 있으면(off) 판정도 기록도 하지 않는다")
     void off() {
         assertThat(service("off").evaluate(me, "s1", 90)).isNull();

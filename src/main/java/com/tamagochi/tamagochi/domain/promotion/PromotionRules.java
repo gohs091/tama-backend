@@ -18,6 +18,14 @@ public final class PromotionRules {
     private PromotionRules() {
     }
 
+    /** 화면에 보여줄 구간표 (낮은 구간부터) */
+    public record Tier(int minTaps, int amount) {
+    }
+
+    public static java.util.List<Tier> tiers() {
+        return java.util.List.of(new Tier(TIER1_MIN_TAPS, TIER1_AMOUNT), new Tier(TIER2_MIN_TAPS, TIER2_AMOUNT));
+    }
+
     /** 탭 수 → 구간 (0: 대상 아님, 1, 2) */
     public static int tierForTaps(int taps) {
         int counted = Math.min(Math.max(taps, 0), MAX_COUNTED_TAPS);

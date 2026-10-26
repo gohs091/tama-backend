@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.service.promotion;
 
 import com.tamagochi.tamagochi.domain.promotion.PromotionGrant;
+import com.tamagochi.tamagochi.domain.promotion.PromotionInfo;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
 import com.tamagochi.tamagochi.domain.promotion.PromotionRules;
 import com.tamagochi.tamagochi.domain.user.User;
@@ -36,6 +37,22 @@ public class PromotionService {
 
     public boolean isEnabled() {
         return mode != Mode.OFF;
+    }
+
+    /** 트레이닝 화면에 보여줄 프로모션 안내: 구간표와 오늘 남은 횟수 */
+    public PromotionInfo info(User user) {
+        int remaining = 0;
+        if (isEnabled()) {
+            long used = repository.countByUserIdAndGrantDate(user.getId(), LocalDate.now(clock));
+            remaining = (int) Math.max(0, PromotionRules.DAILY_LIMIT - used);
+        }
+        return PromotionInfo.builder()
+                .enabled(isEnabled())
+                .dailyLimit(PromotionRules.DAILY_LIMIT)
+                .remainingToday(remaining)
+                .maxCountedTaps(PromotionRules.MAX_COUNTED_TAPS)
+                .tiers(PromotionRules.tiers())
+                .build();
     }
 
     /** 이번 트레이닝(세션)의 프로모션 결과를 정한다. 꺼져 있으면 null. */

@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -130,6 +131,27 @@ class TrainingFlowIntegrationTest {
                 .andExpect(jsonPath("$.evoGain").value(0)); // 완전체는 진화 게이지가 오르지 않는다
 
         submit(sessionId, 90).andExpect(status().isBadRequest()); // 같은 세션은 한 번만
+    }
+
+    @Test
+    @DisplayName("프로모션 안내는 구간표와 오늘 남은 횟수를 알려주고, 남의 ID로는 볼 수 없다")
+    void promotionInfo() throws Exception {
+        mvc.perform(get("/api/promotion/training/" + userId).header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.remainingToday").value(3))
+                .andExpect(jsonPath("$.tiers[0].minTaps").value(60))
+                .andExpect(jsonPath("$.tiers[1].amount").value(2));
+
+        // 한 번 대상이 되면 남은 횟수가 줄어든다
+        String sessionId = objectMapper.readTree(startTraining().getResponse().getContentAsString()).path("sessionId").asText();
+        clock.now = clock.now.plusSeconds(11);
+        submit(sessionId, 90).andExpect(status().isOk());
+        mvc.perform(get("/api/promotion/training/" + userId).header("Authorization", bearer))
+                .andExpect(jsonPath("$.remainingToday").value(2));
+
+        mvc.perform(get("/api/promotion/training/toss_someone_else").header("Authorization", bearer))
+                .andExpect(status().isForbidden());
     }
 
     @Test
