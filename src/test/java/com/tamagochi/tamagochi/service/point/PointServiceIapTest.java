@@ -53,9 +53,9 @@ class PointServiceIapTest {
     @Test
     @DisplayName("결제가 확인된 주문은 SKU에 정해진 포인트를 지급한다")
     void grantsPointsForPaidOrder() {
-        when(verifier.isPaid("order-1", "point_3000")).thenReturn(true);
+        when(verifier.isPaid("order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797")).thenReturn(true);
 
-        service.purchasePoint(user, "order-1", "point_3000");
+        service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797");
 
         assertThat(wallet.getBalance()).isEqualTo(2200);
     }
@@ -65,7 +65,7 @@ class PointServiceIapTest {
     void rejectsUnpaidOrder() {
         when(verifier.isPaid(anyString(), anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.purchasePoint(user, "order-1", "point_3000"))
+        assertThatThrownBy(() -> service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797"))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(wallet.getBalance()).isZero();
     }
@@ -84,7 +84,7 @@ class PointServiceIapTest {
         PointTransaction existing = PointTransaction.builder().user(user).idempotencyKey("iap-order-1").amount(2200).build();
         when(transactionRepository.findByIdempotencyKey("iap-order-1")).thenReturn(Optional.of(existing));
 
-        PointTransaction result = service.purchasePoint(user, "order-1", "point_3000");
+        PointTransaction result = service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797");
 
         assertThat(result).isSameAs(existing);
         assertThat(wallet.getBalance()).isZero();
@@ -98,14 +98,14 @@ class PointServiceIapTest {
         PointTransaction existing = PointTransaction.builder().user(other).idempotencyKey("iap-order-1").amount(2200).build();
         when(transactionRepository.findByIdempotencyKey("iap-order-1")).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> service.purchasePoint(user, "order-1", "point_3000"))
+        assertThatThrownBy(() -> service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797"))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     @DisplayName("주문 번호가 비어 있으면 거절한다")
     void rejectsBlankOrderId() {
-        assertThatThrownBy(() -> service.purchasePoint(user, " ", "point_3000"))
+        assertThatThrownBy(() -> service.purchasePoint(user, " ", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
