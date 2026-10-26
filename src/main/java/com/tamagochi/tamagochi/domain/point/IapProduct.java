@@ -10,7 +10,7 @@ import java.util.Optional;
 public enum IapProduct {
     POINT_1000("point_1000", 700),   // 1,000원
     POINT_3000("point_3000", 2200),  // 3,000원
-    POINT_5000("point_5000", 3600);  // 5,000원
+    POINT_5000("point_5000", 3800);  // 5,000원 (비쌀수록 원당 지급량이 많아야 한다: 700 / 733 / 760 per 1,000원)
 
     private final String sku;
     private final int points;

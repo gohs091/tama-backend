@@ -12,7 +12,20 @@ class IapProductTest {
     void findBySku() {
         assertThat(IapProduct.findBySku("point_1000").orElseThrow().getPoints()).isEqualTo(700);
         assertThat(IapProduct.findBySku("point_3000").orElseThrow().getPoints()).isEqualTo(2200);
-        assertThat(IapProduct.findBySku("point_5000").orElseThrow().getPoints()).isEqualTo(3600);
+        assertThat(IapProduct.findBySku("point_5000").orElseThrow().getPoints()).isEqualTo(3800);
+    }
+
+    @Test
+    @DisplayName("비싼 상품일수록 원당 받는 양이 더 많다")
+    void biggerPackIsBetterValue() {
+        int[] won = {1000, 3000, 5000};
+        String[] skus = {"point_1000", "point_3000", "point_5000"};
+        double prev = 0;
+        for (int i = 0; i < skus.length; i++) {
+            double perWon = IapProduct.findBySku(skus[i]).orElseThrow().getPoints() / (double) won[i];
+            assertThat(perWon).isGreaterThan(prev);
+            prev = perWon;
+        }
     }
 
     @Test
