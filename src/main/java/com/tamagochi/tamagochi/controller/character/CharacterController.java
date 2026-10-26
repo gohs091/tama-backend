@@ -21,6 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.tamagochi.tamagochi.service.auth.UserIdentity;
+
 import java.util.UUID;
 
 @RestController
@@ -33,6 +35,7 @@ public class CharacterController {
     private final ImageGenerationService imageGenerationService;
     private final LocalImageCompositeService localImageCompositeService;
     private final ImageQuotaService imageQuotaService;
+    private final UserIdentity userIdentity;
 
     @PostMapping("/analyze")
     public ResponseEntity<CharacterFeaturesResponse> analyze(@RequestBody AnalyzeSketchRequest request) {

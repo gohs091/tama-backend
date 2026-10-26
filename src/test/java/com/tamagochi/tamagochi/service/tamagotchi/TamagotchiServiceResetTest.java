@@ -6,6 +6,7 @@ import com.tamagochi.tamagochi.domain.tamagotchi.VitalsRule;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.point.PointService;
+import com.tamagochi.tamagochi.service.promotion.PromotionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class TamagotchiServiceResetTest {
     @BeforeEach
     void setUp() {
         repository = mock(TamagotchiRepository.class);
-        service = new TamagotchiService(repository, mock(PointService.class));
+        service = new TamagotchiService(repository, mock(PointService.class), mock(TrainingSessionService.class), mock(PromotionService.class));
         user = mock(User.class);
         when(user.getId()).thenReturn(1L);
     }

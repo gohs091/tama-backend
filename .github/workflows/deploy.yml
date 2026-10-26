@@ -52,6 +52,10 @@ jobs:
             STABILITY_API_KEY=${{ secrets.STABILITY_API_KEY }}
             CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
             IAP_KEYSTORE_PASSWORD=${{ secrets.IAP_KEYSTORE_PASSWORD }}
+            AUTH_TOKEN_SECRET=${{ secrets.AUTH_TOKEN_SECRET }}
+            PROMOTION_MODE=${{ secrets.PROMOTION_MODE }}
+            PROMOTION_CODE=${{ secrets.PROMOTION_CODE }}
+            ADMIN_KEY=${{ secrets.ADMIN_KEY }}
             ENVEOF
             chmod 600 .env
             docker compose -f docker-compose.prod.yml up -d --build

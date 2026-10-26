@@ -7,7 +7,7 @@ import com.tamagochi.tamagochi.controller.dto.PurchasePointRequest;
 import com.tamagochi.tamagochi.domain.point.PointTransaction;
 import com.tamagochi.tamagochi.domain.point.PointWallet;
 import com.tamagochi.tamagochi.domain.user.User;
-import com.tamagochi.tamagochi.repository.user.UserRepository;
+import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.point.PointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +19,11 @@ import org.springframework.web.bind.annotation.*;
 public class PointController {
 
     private final PointService pointService;
-    private final UserRepository userRepository;
+    private final UserIdentity userIdentity;
 
     @PostMapping("/earn")
     public ResponseEntity<?> earn(@RequestBody EarnPointRequest request) {
-        User user = userRepository.findByTossUserId(request.getTossUserId())
-                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        User user = userIdentity.resolve(request.getTossUserId());
 
         PointTransaction transaction = pointService.earnAdReward(
                 user,
@@ -35,8 +34,7 @@ public class PointController {
 
     @PostMapping("/purchase")
     public ResponseEntity<?> purchase(@RequestBody PurchasePointRequest request) {
-        User user = userRepository.findByTossUserId(request.getTossUserId())
-                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        User user = userIdentity.resolve(request.getTossUserId());
 
         PointTransaction transaction = pointService.purchasePoint(user, request.getOrderId(), request.getSku());
         return ResponseEntity.ok(PointTransactionResponse.from(transaction));
@@ -44,8 +42,7 @@ public class PointController {
 
     @GetMapping("/balance/{tossUserId}")
     public ResponseEntity<?> balance(@PathVariable String tossUserId) {
-        User user = userRepository.findByTossUserId(tossUserId)
-                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        User user = userIdentity.resolve(tossUserId);
 
         PointWallet wallet = pointService.getWallet(user);
         return ResponseEntity.ok(PointBalanceResponse.from(wallet));

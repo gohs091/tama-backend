@@ -1,8 +1,12 @@
 package com.tamagochi.tamagochi.service.tamagotchi;
 
+import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
+import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingResult;
+import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
+import com.tamagochi.tamagochi.service.promotion.PromotionService;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.point.PointService;
@@ -20,6 +24,8 @@ public class TamagotchiService {
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
+    private final TrainingSessionService trainingSessionService;
+    private final PromotionService promotionService;
 
     @Transactional
     public void feed(User user, String idempotencyKey) {
@@ -36,26 +42,6 @@ public class TamagotchiService {
 
         // 2. 먹이주기
         tamagotchi.feed();
-
-        // 3. 진화 조건 체크
-        checkEvolution(tamagotchi);
-    }
-
-    // EGG: 10번 두드리면 부화 / BABY→CHILD: 25번 / CHILD→ADULT: 45번
-    private void checkEvolution(Tamagotchi tamagotchi) {
-        EvolutionStage currentStage = tamagotchi.getEvolutionStage();
-
-        EvolutionStage nextStage = switch (currentStage) {
-            case EGG   -> tamagotchi.getFeedCount() >= 10 ? EvolutionStage.BABY  : null;
-            case BABY  -> tamagotchi.getFeedCount() >= 25 ? EvolutionStage.CHILD : null;
-            case CHILD -> tamagotchi.getFeedCount() >= 45 ? EvolutionStage.ADULT : null;
-            case ADULT -> null;
-        };
-
-        if (nextStage != null) {
-            tamagotchi.evolve(nextStage);
-            log.info("진화! {} -> {}", currentStage, nextStage);
-        }
     }
 
     @Transactional
@@ -70,9 +56,19 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
 
-        tamagotchi.feed(); // feedCount++ (포인트 차감 없음)
-        checkEvolution(tamagotchi);
-        log.info("알 두드리기 - feedCount: {}", tamagotchi.getFeedCount());
+        tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 유체로 올린다 (포인트 차감 없음)
+        log.info("부화 - tamagotchi: {}", tamagotchi.getName());
+    }
+
+    /** 게이지가 가득 차고 컨디션 조건을 만족했을 때만 다음 단계로 진화시킨다. 판정은 서버가 한다. */
+    @Transactional
+    public Tamagotchi evolve(User user) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        EvolutionStage from = tamagotchi.getEvolutionStage();
+        tamagotchi.evolveIfReady();
+        log.info("진화! {} -> {}", from, tamagotchi.getEvolutionStage());
+        return tamagotchi;
     }
 
     /**
@@ -173,11 +169,16 @@ public class TamagotchiService {
         log.info("청소 완료 - tamagotchi: {}", tamagotchi.getName());
     }
 
+    /** 트레이닝을 시작한다. 시작 시각은 서버가 재고, 결과는 이 세션으로만 제출할 수 있다. */
     @Transactional
-    public TrainingResult training(User user, int clickCount, String idempotencyKey) {
+    public TrainingSession startTraining(User user) {
         Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        requireTrainable(tamagotchi);
+        return trainingSessionService.start(user);
+    }
 
+    private void requireTrainable(Tamagotchi tamagotchi) {
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
@@ -193,6 +194,16 @@ public class TamagotchiService {
         if (tamagotchi.getStrength() < 20) {
             throw new IllegalStateException("스트렝스가 부족해서 트레이닝할 수 없어요.");
         }
+    }
+
+    @Transactional
+    public TrainingResult training(User user, String sessionId, int clickCount, String idempotencyKey) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+
+        requireTrainable(tamagotchi);
+        // 서버가 발급한 세션으로, 시작 후 10초가 지난 뒤에만 한 번 제출할 수 있다
+        TrainingSession session = trainingSessionService.consume(user, sessionId);
 
         // 트레이닝 소모
         tamagotchi.consumeForTraining(20, 20);
@@ -206,18 +217,31 @@ public class TamagotchiService {
         };
 
         // 클릭 수 10번당 1포인트 추가
-        int bonusReward = Math.min(clickCount, MAX_TRAINING_CLICKS) / 10;
+        int taps = Math.min(Math.max(clickCount, 0), MAX_TRAINING_CLICKS);
+        int bonusReward = taps / 10;
         int totalReward = baseReward + bonusReward;
 
         // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)
         pointService.earnPoint(user, totalReward, idempotencyKey + "-earn");
 
-        log.info("트레이닝 완료 - tamagotchi: {}, clickCount: {}, reward: {}",
-                tamagotchi.getName(), clickCount, totalReward);
+        // 진화 게이지: 탭 수로 서버가 정한다 (진화할 수 없는 단계에서는 0)
+        int evoGain = EvolutionRules.gaugeMax(tamagotchi.getEvolutionStage()) == 0 ? 0 : EvolutionRules.gainForTaps(taps);
+        tamagotchi.addEvoGauge(evoGain);
+
+        // 완전체의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
+        PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT
+                ? promotionService.evaluate(user, session.getId(), taps)
+                : null;
+
+        log.info("트레이닝 완료 - tamagotchi: {}, clickCount: {}, reward: {}, evoGain: {}, evoGauge: {}",
+                tamagotchi.getName(), clickCount, totalReward, evoGain, tamagotchi.getEvoGauge());
 
         return TrainingResult.builder()
                 .clickCount(clickCount)
                 .reward(totalReward)
+                .evoGain(evoGain)
+                .evoGauge(tamagotchi.getEvoGauge())
+                .promotion(promotion)
                 .build();
     }
 

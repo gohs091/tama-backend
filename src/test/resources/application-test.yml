@@ -1,0 +1,14 @@
+# 앱 전체가 실제로 뜨는지(빈 연결, 엔티티 매핑) 확인하는 테스트용 설정. DB는 메모리 H2를 쓴다.
+spring:
+  datasource:
+    url: jdbc:h2:mem:tamagotchi;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+tamagotchi:
+  auth:
+    enabled: true
