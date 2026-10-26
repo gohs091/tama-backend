@@ -155,7 +155,7 @@ class ImageGenerationServiceOpenAiTest {
         assertThat(p).contains("riding on the drawn a sword");
         assertThat(p).contains("vehicle or mount");
         assertThat(p).contains("at least half of the sprite's size");
-        assertThat(p).contains("bird traits");
+        assertThat(p).contains("canyon and valley traits");
     }
 
     @Test
@@ -233,7 +233,7 @@ class ImageGenerationServiceOpenAiTest {
         assertThat(service.buildThemeText("deep-savers", "adult")).contains("aquatic", "fins");
         assertThat(service.buildThemeText("dragons-roar", "adult")).contains("dragon", "dinosaur");
         assertThat(service.buildThemeText("virus-busters", "adult")).contains("heroic", "justice");
-        assertThat(service.buildThemeText("nightmare-soldiers", "adult")).contains("evil", "darkness");
+        assertThat(service.buildThemeText("nightmare-soldiers", "adult")).contains("haunted house", "ghost");
         // 다크 에리어: 죽은/삭제된 데이터가 모이는 명계, 마왕형·마수형 (악한 병사 nightmare-soldiers와 구분)
         assertThat(service.buildThemeText("dark-area", "adult")).contains("demon lord", "beast-demon", "underworld", "deleted");
     }

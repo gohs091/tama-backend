@@ -27,6 +27,7 @@ public class DoodleSubjectService {
             Respond with JSON only, no markdown:
             {"subject":"<short English noun phrase, e.g. 'a sword', 'a cat', 'a bow with a string and an arrow'>",
              "kind":"<animal | creature | object | plant | person | abstract>",
+             "subjectKo":"<the single most fitting short Korean noun for the subject, e.g. '칼', '고양이', '활', '컵'>",
              "parts":"<comma-separated list of the 2-5 key parts with rough positions, e.g. 'a long curved blade on top, a horizontal crossguard in the middle, a short handle at the bottom'>"}
             If you cannot tell what it is, use subject "an abstract shape" and kind "abstract".
             """;

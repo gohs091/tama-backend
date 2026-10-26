@@ -113,13 +113,14 @@ public class ImageGenerationService {
         try {
             String mimeType = extractMimeType(imageBase64);
             byte[] imageBytes = decodeBase64Image(imageBase64);
-            byte[] responseBytes = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed);
+            Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed);
+            byte[] responseBytes = generated.bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes)));
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species()));
             log.info("Baby image generation done for job: {}", jobId);
 
         } catch (Exception e) {
@@ -165,7 +166,7 @@ public class ImageGenerationService {
             byte[] referenceBytes = hasReference ? decodeBase64Image(referenceBase64) : null;
             String referenceMime = hasReference ? extractMimeType(referenceBase64) : null;
             byte[] responseBytes = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
-                    faction, stage, controlStrength, null);
+                    faction, stage, controlStrength, null).bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
@@ -185,8 +186,11 @@ public class ImageGenerationService {
     // openai    : 편집형 모델이 낙서를 캐릭터로 재해석, 투명 배경 직접 출력 (배경 제거 호출 없음)
     // stability : sketch control + remove-background (롤백용)
     // ----------------------------------------------------------------
-    private byte[] generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
-                                 String faction, String stage, String controlStrength, Long variationSeed) {
+    /** 생성된 이미지와, 그 과정에서 분석한 손그림의 정체(한글, 없으면 null) */
+    private record Generated(byte[] bytes, String species) {}
+
+    private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
+                                    String faction, String stage, String controlStrength, Long variationSeed) {
         if ("openai".equalsIgnoreCase(provider)) {
             DoodleSubject subject = referenceBytes == null ? describeDoodle(imageBytes, mimeType) : null;
             FusionMode mode = FusionMode.SELF;
@@ -195,11 +199,12 @@ public class ImageGenerationService {
                 log.info("합체 방식 - mode: {}, subject: {}, faction: {}", mode, subject.subject(), faction);
             }
             String prompt = buildOpenAiPrompt(faction, stage, referenceBytes != null, subject, mode);
-            return binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt));
+            byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt));
+            return new Generated(image, subject == null ? null : subject.species());
         }
         byte[] bytes = callStabilitySketch(imageBytes, mimeType, buildFactionPrompt(faction, stage), controlStrength);
-        if (bytes == null || bytes.length == 0) return bytes;
-        return removeBackground(bytes);
+        if (bytes == null || bytes.length == 0) return new Generated(bytes, null);
+        return new Generated(removeBackground(bytes), null);
     }
 
     // ----------------------------------------------------------------
@@ -460,8 +465,8 @@ public class ImageGenerationService {
         return switch (faction) {
             case "nature-spirits"     -> "wild beast (canine or feline) traits: fur tufts, pointed animal ears, a bushy tail, paws and claws";
             case "deep-savers"        -> "aquatic creature traits: fins, scales, water droplets, bubbles, shell or coral parts";
-            case "nightmare-soldiers" -> "evil, corrupt darkness: small horns or bat-like wings, sharp fangs, a torn dark cape, glowing red eyes";
-            case "wind-guardians"     -> "bird traits: feathered wings, a crested head or beak-like shape, tail feathers, talons";
+            case "nightmare-soldiers" -> "haunted house traits: friendly spooky ghost wisps, a tattered sheet-like cloak, cobwebs, candle-like glow, glowing eyes, little stitched patches";
+            case "wind-guardians"     -> "canyon and valley traits: layered rock-ridge textures, small waterfalls and mist, wind-swept feathers, a bird-of-prey crest and wings";
             case "metal-empire"       -> "machine and cyborg traits: metal plating, bolts and gears, mechanical joints, antenna, a visor, robotic limbs";
             case "virus-busters"      -> "heroic justice fighter: a hero emblem, a cape or scarf, protective gear, a shield, a brave cheerful look";
             case "dragons-roar"       -> "dragon and dinosaur traits: scales, horns, spikes along the back, claws, a thick tail, small flames";
@@ -470,7 +475,14 @@ public class ImageGenerationService {
                                          "curved demon horns, dark bat-like wings, bone or skull ornaments, chains, " +
                                          "dark gothic armor, plus pale bone-white and bright violet accents so the sprite stays readable " +
                                          "on dark backgrounds. The sprite itself must stay solid, clean and fully intact";
-            case "trash"              -> "chaotic patchwork of recycled junk: bottle caps, can lids, cardboard and mismatched colorful scraps";
+            case "trash"              -> "chaotic patchwork of recycled junk from a landfill: bottle caps, can lids, cardboard and mismatched colorful scraps";
+            case "space"              -> "outer space traits: star speckles, a tiny planet ring or crescent moon, a glass helmet-like dome, comet-tail trails, glowing constellation dots";
+            case "desert"             -> "desert traits: cactus spines and flowers, sand-dune curves, a wrapped scarf, a scarab or scorpion tail, sun-baked cracked patterns";
+            case "snowfield"          -> "snowfield traits: icicles, snowflake crystals, fluffy snow fur, a knitted scarf, a frosty breath puff";
+            case "volcano"            -> "volcano traits: glowing lava cracks, small flames, obsidian rock plates, ember sparks, a steaming vent";
+            case "candy-land"         -> "candy land traits: lollipops, frosting drips, sprinkles, cookie and macaron parts, a whipped-cream swirl";
+            case "ninja"              -> "ninja traits: a headband with a flowing tail, a face wrap, shuriken, a scroll, swift shadow-like wisps";
+            case "magic-school"       -> "magic school traits: a pointed wizard hat or robe, a star-tipped wand, floating spell books, sparkling rune circles, small stars";
             default                   -> "a cute, neutral look";
         };
     }
@@ -487,6 +499,13 @@ public class ImageGenerationService {
             case "jungle-troopers"    -> "olive green and tan color scheme";
             case "dark-area"          -> "dark indigo and deep purple color scheme";
             case "trash"              -> "rainbow multicolor scheme";
+            case "space"              -> "deep navy and bright violet with star yellow color scheme";
+            case "desert"             -> "sand yellow and terracotta orange color scheme";
+            case "snowfield"          -> "ice blue and snow white color scheme";
+            case "volcano"            -> "lava red and charcoal black with ember orange color scheme";
+            case "candy-land"         -> "pastel pink, mint and cream color scheme";
+            case "ninja"              -> "charcoal black and crimson red color scheme";
+            case "magic-school"       -> "royal purple and gold color scheme";
             default                   -> "warm cream and light color scheme";
         };
     }

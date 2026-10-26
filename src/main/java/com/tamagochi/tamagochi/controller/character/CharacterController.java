@@ -116,6 +116,6 @@ public class CharacterController {
     @GetMapping("/status/{jobId}")
     public ResponseEntity<ImageStatusResponse> status(@PathVariable String jobId) {
         ImageJobResult result = imageGenerationService.getJob(jobId);
-        return ResponseEntity.ok(new ImageStatusResponse(result.getStatus(), result.getImageDataUrl(), result.getError()));
+        return ResponseEntity.ok(new ImageStatusResponse(result.getStatus(), result.getImageDataUrl(), result.getError(), result.getSpecies()));
     }
 }
