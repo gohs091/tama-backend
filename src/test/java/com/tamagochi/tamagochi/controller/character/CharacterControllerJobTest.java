@@ -3,6 +3,7 @@ package com.tamagochi.tamagochi.controller.character;
 import com.tamagochi.tamagochi.controller.dto.EvolveImageRequest;
 import com.tamagochi.tamagochi.controller.dto.GenerateImageRequest;
 import com.tamagochi.tamagochi.controller.dto.GenerateImageResponse;
+import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.character.CharacterService;
 import com.tamagochi.tamagochi.service.character.ImageGenerationService;
 import com.tamagochi.tamagochi.service.character.ImageJobResult;
@@ -34,7 +35,7 @@ class CharacterControllerJobTest {
         quota = mock(ImageQuotaService.class);
         when(quota.tryAcquire(anyString())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota);
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class));
     }
 
     private GenerateImageRequest generateRequest() {

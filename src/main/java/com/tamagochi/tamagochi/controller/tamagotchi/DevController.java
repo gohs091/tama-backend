@@ -3,7 +3,7 @@ package com.tamagochi.tamagochi.controller.tamagotchi;
 import com.tamagochi.tamagochi.controller.dto.EvolveRequest;
 import com.tamagochi.tamagochi.controller.dto.TamagotchiResponse;
 import com.tamagochi.tamagochi.domain.user.User;
-import com.tamagochi.tamagochi.repository.user.UserRepository;
+import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.tamagotchi.TamagotchiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,13 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class DevController {
 
     private final TamagotchiService tamagotchiService;
-    private final UserRepository userRepository;
+    private final UserIdentity userIdentity;
 
     /** 게이지·컨디션과 무관하게 다음 단계로 올린다. */
     @PostMapping("/evolve")
     public ResponseEntity<?> evolve(@RequestBody EvolveRequest request) {
-        User user = userRepository.findByTossUserId(request.getTossUserId())
-                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+        User user = userIdentity.resolve(request.getTossUserId());
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.forceEvolve(user)));
     }
 }
