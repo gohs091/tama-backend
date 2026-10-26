@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TrainingRequest {
     private String tossUserId;
+    private String sessionId; // POST /training/start 로 받은 트레이닝 세션
     private int clickCount;
     private String idempotencyKey;
 }

@@ -3,6 +3,7 @@ package com.tamagochi.tamagochi.controller.tamagotchi;
 import com.tamagochi.tamagochi.controller.dto.*;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingResult;
+import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.tamagotchi.TamagotchiService;
@@ -98,12 +99,20 @@ public class TamagotchiController {
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 
+    @PostMapping("/training/start")
+    public ResponseEntity<?> trainingStart(@RequestBody TrainingStartRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        TrainingSession session = tamagotchiService.startTraining(user);
+        return ResponseEntity.ok(TrainingStartResponse.of(session));
+    }
+
     @PostMapping("/training")
     public ResponseEntity<?> training(@RequestBody TrainingRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
 
         TrainingResult result = tamagotchiService.training(
                 user,
+                request.getSessionId(),
                 request.getClickCount(),
                 request.getIdempotencyKey()
         );
