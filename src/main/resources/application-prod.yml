@@ -23,6 +23,11 @@ tamagotchi:
     poop-interval-minutes: 60       # 똥이 1개 늘어나는 간격
     max-poop: 8                     # 이 개수 이상이면 사망
     max-tick-gap-minutes: 5         # 틱 간격이 이보다 길면 서버 중단으로 보고 그 시간은 반영하지 않음
+  iap:
+    verify: toss                    # 토스 서버에 주문 결제 여부를 확인(mTLS 인증서 필요)
+    keystore-path: ${IAP_KEYSTORE_PATH:}
+    keystore-password: ${IAP_KEYSTORE_PASSWORD:}
+    keystore-type: PKCS12
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}

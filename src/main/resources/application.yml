@@ -26,6 +26,8 @@ tamagotchi:
     poop-interval-minutes: 60       # 똥이 1개 늘어나는 간격
     max-poop: 8                     # 이 개수 이상이면 사망
     max-tick-gap-minutes: 5         # 틱 간격이 이보다 길면 서버 중단으로 보고 그 시간은 반영하지 않음
+  iap:
+    verify: skip                    # 로컬 개발 전용: 주문 검증을 건너뜀. 운영은 toss
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}

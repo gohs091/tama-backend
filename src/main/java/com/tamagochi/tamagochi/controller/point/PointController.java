@@ -3,6 +3,7 @@ package com.tamagochi.tamagochi.controller.point;
 import com.tamagochi.tamagochi.controller.dto.EarnPointRequest;
 import com.tamagochi.tamagochi.controller.dto.PointBalanceResponse;
 import com.tamagochi.tamagochi.controller.dto.PointTransactionResponse;
+import com.tamagochi.tamagochi.controller.dto.PurchasePointRequest;
 import com.tamagochi.tamagochi.domain.point.PointTransaction;
 import com.tamagochi.tamagochi.domain.point.PointWallet;
 import com.tamagochi.tamagochi.domain.user.User;
@@ -29,6 +30,15 @@ public class PointController {
                 user,
                 request.getIdempotencyKey()
         );
+        return ResponseEntity.ok(PointTransactionResponse.from(transaction));
+    }
+
+    @PostMapping("/purchase")
+    public ResponseEntity<?> purchase(@RequestBody PurchasePointRequest request) {
+        User user = userRepository.findByTossUserId(request.getTossUserId())
+                .orElseThrow(() -> new IllegalStateException("유저가 존재하지 않습니다."));
+
+        PointTransaction transaction = pointService.purchasePoint(user, request.getOrderId(), request.getSku());
         return ResponseEntity.ok(PointTransactionResponse.from(transaction));
     }
 
