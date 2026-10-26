@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.KeyStore;
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * 앱인토스 파트너 서버 API 호출(mTLS). 클라이언트 인증서가 필요하다.
@@ -41,12 +42,18 @@ public class TossPartnerApiClient {
 
     /** JSON 본문을 POST하고 응답 JSON을 돌려준다. HTTP 200이 아니면 예외. */
     public JsonNode post(String path, Object body) {
+        return post(path, body, Map.of());
+    }
+
+    /** 헤더(예: x-anon-key)를 함께 실어 POST한다. */
+    public JsonNode post(String path, Object body, Map<String, String> headers) {
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
                     .timeout(Duration.ofSeconds(5))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+            headers.forEach(builder::header);
+            HttpRequest request = builder.build();
             HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 log.warn("토스 파트너 API 실패 - path: {}, http: {}", path, response.statusCode());

@@ -17,6 +17,8 @@ services:
       IAP_KEYSTORE_PATH: /certs/iap-client.p12
       IAP_KEYSTORE_PASSWORD: ${IAP_KEYSTORE_PASSWORD}
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-}
+      PROMOTION_MODE: ${PROMOTION_MODE:-off}
+      PROMOTION_CODE: ${PROMOTION_CODE:-}
     volumes:
       - ./certs/iap-client.p12:/certs/iap-client.p12:ro   # 토스 IAP mTLS 인증서 (서버에만 두고 저장소/이미지에 넣지 않는다)
     depends_on:

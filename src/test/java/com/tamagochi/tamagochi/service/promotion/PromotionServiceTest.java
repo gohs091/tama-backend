@@ -1,6 +1,8 @@
 package com.tamagochi.tamagochi.service.promotion;
 
 import com.tamagochi.tamagochi.domain.promotion.PromotionGrant;
+import com.tamagochi.tamagochi.domain.promotion.PromotionGrantStatus;
+import com.tamagochi.tamagochi.domain.promotion.PromotionRecordedEvent;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
 import com.tamagochi.tamagochi.domain.promotion.PromotionRules;
 import com.tamagochi.tamagochi.domain.user.User;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -28,21 +31,25 @@ class PromotionServiceTest {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private PromotionGrantRepository repository;
+    private ApplicationEventPublisher events;
     private User me;
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-26T01:00:00Z"), KST);
 
     @BeforeEach
     void setUp() {
         repository = mock(PromotionGrantRepository.class);
+        events = mock(ApplicationEventPublisher.class);
+        when(repository.save(any(PromotionGrant.class))).thenAnswer(i -> i.getArgument(0));
         me = User.builder().id(1L).tossUserId("toss_me").nickname("me").build();
     }
 
     private PromotionService service(String mode) {
-        return new PromotionService(repository, clock, mode);
+        return new PromotionService(repository, clock, events, mode);
     }
 
     private void usedToday(long count) {
-        when(repository.countByUserIdAndGrantDate(anyLong(), any(LocalDate.class))).thenReturn(count);
+        when(repository.countByUserIdAndGrantDateAndStatusNot(anyLong(), any(LocalDate.class), any(PromotionGrantStatus.class)))
+                .thenReturn(count);
     }
 
     @Test
@@ -107,6 +114,32 @@ class PromotionServiceTest {
         assertThat(saved.getValue().getTrainingSessionId()).isEqualTo("s1");
         assertThat(saved.getValue().getGrantDate()).isEqualTo(LocalDate.of(2026, 10, 26)); // KST 기준 날짜
         assertThat(saved.getValue().getClickCount()).isEqualTo(85);
+    }
+
+    @Test
+    @DisplayName("record 모드에서는 기록만 하고 지급 신호는 보내지 않는다")
+    void recordModeDoesNotPublish() {
+        usedToday(0);
+        service("record").evaluate(me, "s1", 85);
+        verify(events, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("grant 모드에서는 기록한 뒤 지급 신호를 보낸다")
+    void grantModePublishesEvent() {
+        usedToday(0);
+        service("grant").evaluate(me, "s1", 85);
+        verify(events).publishEvent(any(PromotionRecordedEvent.class));
+    }
+
+    @Test
+    @DisplayName("대상이 아니거나 상한이면 grant 모드여도 지급 신호를 보내지 않는다")
+    void noEventWhenNotEligible() {
+        usedToday(0);
+        service("grant").evaluate(me, "s1", 10);
+        usedToday(PromotionRules.DAILY_LIMIT);
+        service("grant").evaluate(me, "s2", 95);
+        verify(events, never()).publishEvent(any(Object.class));
     }
 
     @Test

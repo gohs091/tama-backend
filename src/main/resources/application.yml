@@ -31,7 +31,8 @@ tamagotchi:
     token-secret: ${AUTH_TOKEN_SECRET:}   # 비우면 서버가 켜질 때마다 임시 키를 만든다 (재시작 시 앱이 자동 재로그인)
     token-ttl-seconds: 43200        # 토큰 유효 시간(12시간)
   promotion:
-    mode: record                    # off: 프로모션 판정 안 함 / record: 대상 여부를 판정해 기록만 함(실제 지급 연동 전)
+    mode: record                    # off: 판정 안 함 / record: 대상 여부를 판정해 기록만 함 / grant: 기록하고 토스 포인트를 실제로 지급(code 필요)
+    code: ${PROMOTION_CODE:}             # 콘솔에서 만든 프로모션 코드. 테스트는 앞에 TEST_ 가 붙은 코드(지급·차감 없이 API만 확인)
   dev-tools: true                 # 로컬 개발 전용 엔드포인트(/api/dev/*)
   iap:
     verify: skip                    # 로컬 개발 전용: 주문 검증을 건너뜀. 운영은 toss

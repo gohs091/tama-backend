@@ -1,6 +1,8 @@
 package com.tamagochi.tamagochi.service.promotion;
 
 import com.tamagochi.tamagochi.domain.promotion.PromotionGrant;
+import com.tamagochi.tamagochi.domain.promotion.PromotionGrantStatus;
+import com.tamagochi.tamagochi.domain.promotion.PromotionRecordedEvent;
 import com.tamagochi.tamagochi.domain.promotion.PromotionInfo;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
 import com.tamagochi.tamagochi.domain.promotion.PromotionRules;
@@ -9,6 +11,7 @@ import com.tamagochi.tamagochi.repository.promotion.PromotionGrantRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -22,17 +25,24 @@ import java.time.LocalDate;
 @Slf4j
 public class PromotionService {
 
-    public enum Mode { OFF, RECORD }
+    /** off: 판정 안 함 / record: 대상 여부를 판정해 기록만 함 / grant: 기록하고 토스 포인트를 실제로 지급 */
+    public enum Mode { OFF, RECORD, GRANT }
 
     private final PromotionGrantRepository repository;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
     private final Mode mode;
 
-    public PromotionService(PromotionGrantRepository repository, Clock clock,
+    public PromotionService(PromotionGrantRepository repository, Clock clock, ApplicationEventPublisher events,
                             @Value("${tamagotchi.promotion.mode:off}") String mode) {
         this.repository = repository;
         this.clock = clock;
-        this.mode = "record".equalsIgnoreCase(mode) ? Mode.RECORD : Mode.OFF;
+        this.events = events;
+        this.mode = switch (mode == null ? "" : mode.trim().toLowerCase()) {
+            case "record" -> Mode.RECORD;
+            case "grant" -> Mode.GRANT;
+            default -> Mode.OFF;
+        };
     }
 
     public boolean isEnabled() {
@@ -43,7 +53,7 @@ public class PromotionService {
     public PromotionInfo info(User user) {
         int remaining = 0;
         if (isEnabled()) {
-            long used = repository.countByUserIdAndGrantDate(user.getId(), LocalDate.now(clock));
+            long used = repository.countByUserIdAndGrantDateAndStatusNot(user.getId(), LocalDate.now(clock), PromotionGrantStatus.FAILED);
             remaining = (int) Math.max(0, PromotionRules.DAILY_LIMIT - used);
         }
         return PromotionInfo.builder()
@@ -61,7 +71,7 @@ public class PromotionService {
         if (!isEnabled()) return null;
 
         LocalDate today = LocalDate.now(clock);
-        long usedToday = repository.countByUserIdAndGrantDate(user.getId(), today);
+        long usedToday = repository.countByUserIdAndGrantDateAndStatusNot(user.getId(), today, PromotionGrantStatus.FAILED);
         int remaining = (int) Math.max(0, PromotionRules.DAILY_LIMIT - usedToday);
 
         int tier = PromotionRules.tierForTaps(clickCount);
@@ -73,7 +83,10 @@ public class PromotionService {
         }
 
         int amount = PromotionRules.amountForTier(tier);
-        repository.save(new PromotionGrant(user, trainingSessionId, today, clickCount, tier, amount));
+        PromotionGrant grant = repository.save(new PromotionGrant(user, trainingSessionId, today, clickCount, tier, amount));
+        if (mode == Mode.GRANT) {
+            events.publishEvent(new PromotionRecordedEvent(grant.getId())); // 커밋된 뒤 지급을 시작한다
+        }
         log.info("프로모션 대상 기록 - userId: {}, taps: {}, tier: {}, amount: {}", user.getId(), clickCount, tier, amount);
         return outcome(PromotionOutcome.Result.RECORDED, tier, amount, remaining - 1);
     }

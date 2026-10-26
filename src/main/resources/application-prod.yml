@@ -28,7 +28,8 @@ tamagotchi:
     token-secret: ${AUTH_TOKEN_SECRET:}   # 비우면 서버가 켜질 때마다 임시 키를 만든다 (재시작 시 앱이 자동 재로그인)
     token-ttl-seconds: 43200        # 토큰 유효 시간(12시간)
   promotion:
-    mode: off                       # 운영: 실제 토스 포인트 지급을 연동하기 전까지 끈다 (켜 두면 화면이 "받아요"라고 안내하는데 지급되지 않는다). 연동 후 record 또는 grant
+    mode: ${PROMOTION_MODE:off}     # off(기본) / record / grant. 콘솔에서 프로모션 승인과 지급 테스트를 마치기 전까지 off (켜 두면 화면이 "지급돼요"라고 안내하는데 지급되지 않는다)
+    code: ${PROMOTION_CODE:}             # 콘솔에서 만든 프로모션 코드. 테스트는 앞에 TEST_ 가 붙은 코드(지급·차감 없이 API만 확인)
   dev-tools: false                 # 운영에서는 반드시 false
   iap:
     verify: toss                    # 토스 서버에 주문 결제 여부를 확인(mTLS 인증서 필요)
