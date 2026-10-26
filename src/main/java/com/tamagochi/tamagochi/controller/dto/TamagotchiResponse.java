@@ -2,6 +2,7 @@ package com.tamagochi.tamagochi.controller.dto;
 
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
+import com.tamagochi.tamagochi.service.tamagotchi.EvolutionAdBonusService;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,6 +23,7 @@ public class TamagotchiResponse {
     private int feedCount;
     private int evoGauge;
     private int evoGaugeMax;       // 0이면 진화할 수 없는 단계(알·완전체)
+    private int evoAdGauge;          // 광고 1번으로 받는 진화 게이지 (화면의 버튼 문구용)
     private boolean evolutionReady; // 게이지가 가득 차고 컨디션 조건을 만족해 지금 진화할 수 있음
     private LocalDateTime lastFedAt;
     private String currentImageBase64;
@@ -40,6 +42,7 @@ public class TamagotchiResponse {
                 .feedCount(tamagotchi.getFeedCount())
                 .evoGauge(tamagotchi.getEvoGauge())
                 .evoGaugeMax(EvolutionRules.gaugeMax(tamagotchi.getEvolutionStage()))
+                .evoAdGauge(EvolutionAdBonusService.GAUGE_PER_AD)
                 .evolutionReady(tamagotchi.isEvolutionReady())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
