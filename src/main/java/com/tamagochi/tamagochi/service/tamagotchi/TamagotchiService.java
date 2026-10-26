@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class TamagotchiService {
+    private static final int ITEM_COST = 2; // 고기·알약 1회 가격(포인트)
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
@@ -30,7 +31,7 @@ public class TamagotchiService {
         }
 
         // 1. 포인트 차감 (멱등성 처리 포함)
-        pointService.usePoint(user, 10, idempotencyKey);
+        pointService.usePoint(user, ITEM_COST, idempotencyKey);
 
         // 2. 먹이주기
         tamagotchi.feed();
@@ -235,10 +236,10 @@ public class TamagotchiService {
         }
 
         // 포인트 차감
-        pointService.usePoint(user, 10, idempotencyKey);
+        pointService.usePoint(user, ITEM_COST, idempotencyKey);
 
         // 스트렝스 증가
-        tamagotchi.addStrength(20);
+        tamagotchi.addStrength(Tamagotchi.PILL_AMOUNT);
 
         log.info("알약 먹기 완료 - tamagotchi: {}, strength: {}",
                 tamagotchi.getName(), tamagotchi.getStrength());

@@ -18,13 +18,13 @@ public class TamagotchiScheduler {
 
     private final TamagotchiRepository tamagotchiRepository;
 
-    @Value("${tamagotchi.vitals.satiety-minutes-per-point:6}")
+    @Value("${tamagotchi.vitals.satiety-minutes-per-point:4}")
     private int satietyMinutesPerPoint;
 
-    @Value("${tamagotchi.vitals.strength-minutes-per-point:12}")
+    @Value("${tamagotchi.vitals.strength-minutes-per-point:8}")
     private int strengthMinutesPerPoint;
 
-    @Value("${tamagotchi.vitals.death-after-empty-hours:4}")
+    @Value("${tamagotchi.vitals.death-after-empty-hours:6}")
     private int deathAfterEmptyHours;
 
     @Value("${tamagotchi.vitals.poop-interval-minutes:60}")
