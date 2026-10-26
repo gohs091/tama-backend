@@ -38,3 +38,11 @@ out/
 
 ### Local secrets ###
 src/main/resources/application-local.yml
+
+### mTLS / 인증서 (절대 커밋 금지) ###
+*.key
+*.crt
+*.p12
+*.pfx
+*.pem
+*.jks
