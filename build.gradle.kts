@@ -25,6 +25,7 @@ dependencies {
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testRuntimeOnly("com.h2database:h2")
+	developmentOnly("com.h2database:h2") // 로컬 개발(localdev 프로필)용 메모리 DB. 운영 jar에는 들어가지 않는다
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testCompileOnly("org.projectlombok:lombok")

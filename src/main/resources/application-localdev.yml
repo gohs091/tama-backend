@@ -1,0 +1,15 @@
+# 로컬 개발용 프로필: MySQL·Redis 없이 앱을 띄운다 (메모리 DB + 메모리 Redis).
+# 실행: ./gradlew bootRun --args='--spring.profiles.active=localdev'   (재시작하면 데이터가 초기화된다)
+spring:
+  datasource:
+    url: jdbc:h2:mem:tamagotchi_dev;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+image:
+  quota-enabled: false   # 이미지 생성 횟수 제한을 끈다 (실제 이미지 생성은 API 키가 있어야 동작한다)
