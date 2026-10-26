@@ -155,6 +155,29 @@ class TrainingFlowIntegrationTest {
     }
 
     @Test
+    @DisplayName("광고를 보고 진화 게이지를 받는다 (유체이면 +3, 토큰 필요, 남의 ID는 403)")
+    void evoGaugeByAd() throws Exception {
+        // 이 테스트의 캐릭터를 유체로 만든다 (기본 setUp은 완전체)
+        var user = userService.createUser("toss_ad_" + System.nanoTime(), "ad");
+        tamagotchiRepository.save(Tamagotchi.builder().user(user).name("끄적이")
+                .evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).build());
+        String adBearer = "Bearer " + tokens.issue(user.getTossUserId());
+        String body = "{\"tossUserId\":\"" + user.getTossUserId() + "\"}";
+
+        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").header("Authorization", adBearer)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tossUserId\":\"toss_someone_else\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/tamagotchi/evo-gauge/ad").header("Authorization", adBearer)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evoGauge").value(3))
+                .andExpect(jsonPath("$.evoGaugeMax").value(10))
+                .andExpect(jsonPath("$.evoAdGauge").value(3));
+    }
+
+    @Test
     @DisplayName("세션 없이 낸 결과는 거절한다")
     void withoutSession() throws Exception {
         submit("", 90).andExpect(status().isBadRequest());

@@ -6,6 +6,7 @@ import com.tamagochi.tamagochi.domain.tamagotchi.TrainingResult;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
+import com.tamagochi.tamagochi.service.tamagotchi.EvolutionAdBonusService;
 import com.tamagochi.tamagochi.service.tamagotchi.TamagotchiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class TamagotchiController {
 
     private final TamagotchiService tamagotchiService;
+    private final EvolutionAdBonusService evolutionAdBonusService;
     private final UserIdentity userIdentity;
 
     @PostMapping("/reset")
@@ -56,6 +58,13 @@ public class TamagotchiController {
 
         Tamagotchi tamagotchi = tamagotchiService.evolve(user);
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
+    /** 광고를 보고 진화 게이지를 받는다 (광고 1번 = 게이지 EvolutionAdBonusService.GAUGE_PER_AD칸, 하루 횟수 제한) */
+    @PostMapping("/evo-gauge/ad")
+    public ResponseEntity<?> evoGaugeByAd(@RequestBody EvolveRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        return ResponseEntity.ok(TamagotchiResponse.from(evolutionAdBonusService.grant(user)));
     }
 
     @PostMapping("/feed")
