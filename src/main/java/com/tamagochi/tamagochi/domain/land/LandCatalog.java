@@ -62,6 +62,34 @@ public final class LandCatalog {
         return Optional.ofNullable(key == null ? null : FAMILIES.get(key));
     }
 
+    /**
+     * 대표 잉크를 진화 이미지 프롬프트 문장으로 만든다. 문구는 모두 서버가 가진 고정 문구다.
+     * 특정 잉크는 몸 전체에 확실히 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
+     * 고른 잉크가 하나도 없으면 null.
+     */
+    public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
+        Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
+        List<String> families = familyIds == null ? List.of() : familyIds.stream()
+                .map(LandCatalog::ink).flatMap(Optional::stream)
+                .filter(i -> i.grade() == Grade.FAMILY).map(Ink::prompt).distinct().toList();
+        if (main == null && families.isEmpty()) return null;
+
+        StringBuilder sb = new StringBuilder("Absorbed ink data chosen by the player: ");
+        if (main != null) {
+            String strength = "adult".equals(stage)
+                    ? "prominent and a core part of its iconic final look"
+                    : "clearly visible";
+            sb.append("the creature truly takes on ").append(main.prompt())
+              .append(", expressed on its own body (").append(strength).append("). ");
+        }
+        if (!families.isEmpty()) {
+            sb.append("Its surface texture, colors and mood also carry ").append(String.join(" and ", families))
+              .append("; use these only as texture, pattern and mood, not as extra body parts. ");
+        }
+        sb.append("Keep the doodle's identity and the faction theme.");
+        return sb.toString();
+    }
+
     private static void family(String key, String name, String prompt) {
         FAMILIES.put(key, new Family(key, name, prompt));
     }

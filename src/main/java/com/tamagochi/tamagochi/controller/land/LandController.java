@@ -2,9 +2,11 @@ package com.tamagochi.tamagochi.controller.land;
 
 import com.tamagochi.tamagochi.controller.dto.AdventureStartRequest;
 import com.tamagochi.tamagochi.controller.dto.AdventureStopRequest;
+import com.tamagochi.tamagochi.controller.dto.InkLoadoutRequest;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.land.AdventureService;
+import com.tamagochi.tamagochi.service.land.InkLoadoutService;
 import com.tamagochi.tamagochi.service.land.LandService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** 끄적랜드: 지도(구역 목록), 구역 정보, 보관함, 모험 시작·상태·멈추기 */
+/** 끄적랜드: 지도(구역 목록), 구역 정보, 보관함, 대표 잉크, 모험 시작·상태·멈추기 */
 @RestController
 @RequestMapping("/api/land")
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class LandController {
     private final UserIdentity userIdentity;
     private final LandService landService;
     private final AdventureService adventureService;
+    private final InkLoadoutService inkLoadoutService;
 
     public record Overview(List<LandService.RegionView> regions, AdventureService.Status adventure) {}
 
@@ -55,5 +58,16 @@ public class LandController {
     @PostMapping("/adventure/stop")
     public ResponseEntity<?> stop(@RequestBody AdventureStopRequest request) {
         return ResponseEntity.ok(adventureService.stop(userIdentity.resolve(request.getTossUserId())));
+    }
+
+    @GetMapping("/{tossUserId}/loadout")
+    public ResponseEntity<?> loadout(@PathVariable String tossUserId) {
+        return ResponseEntity.ok(inkLoadoutService.get(userIdentity.resolve(tossUserId)));
+    }
+
+    @PostMapping("/loadout")
+    public ResponseEntity<?> setLoadout(@RequestBody InkLoadoutRequest request) {
+        return ResponseEntity.ok(inkLoadoutService.set(userIdentity.resolve(request.getTossUserId()),
+                request.getMainInkId(), request.getFamilyInkIds()));
     }
 }

@@ -113,7 +113,7 @@ public class ImageGenerationService {
         try {
             String mimeType = extractMimeType(imageBase64);
             byte[] imageBytes = decodeBase64Image(imageBase64);
-            Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed);
+            Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed, null);
             byte[] responseBytes = generated.bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
@@ -138,10 +138,16 @@ public class ImageGenerationService {
         generateEvolvedAsync(jobId, imageUrl, imageBase64, faction, stage, null);
     }
 
-    // referenceBase64: 성장 전 단계의 캐릭터 이미지 (있으면 같은 캐릭터로 진화, OpenAI 경로에서만 사용)
-    @Async("imageExecutor")
     public void generateEvolvedAsync(String jobId, String imageUrl, String imageBase64,
                                      String faction, String stage, String referenceBase64) {
+        generateEvolvedAsync(jobId, imageUrl, imageBase64, faction, stage, referenceBase64, null);
+    }
+
+    // referenceBase64: 성장 전 단계의 캐릭터 이미지 (있으면 같은 캐릭터로 진화, OpenAI 경로에서만 사용)
+    // absorbedInk: 끄적랜드에서 고른 대표 잉크 문장 (서버 고정 문구, 없으면 null)
+    @Async("imageExecutor")
+    public void generateEvolvedAsync(String jobId, String imageUrl, String imageBase64,
+                                     String faction, String stage, String referenceBase64, String absorbedInk) {
         jobStore.put(jobId, ImageJobResult.pending());
         try {
             byte[] imageBytes;
@@ -166,7 +172,7 @@ public class ImageGenerationService {
             byte[] referenceBytes = hasReference ? decodeBase64Image(referenceBase64) : null;
             String referenceMime = hasReference ? extractMimeType(referenceBase64) : null;
             byte[] responseBytes = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
-                    faction, stage, controlStrength, null).bytes();
+                    faction, stage, controlStrength, null, absorbedInk).bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
@@ -190,7 +196,9 @@ public class ImageGenerationService {
     private record Generated(byte[] bytes, String species) {}
 
     private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
-                                    String faction, String stage, String controlStrength, Long variationSeed) {
+                                    String faction, String stage, String controlStrength, Long variationSeed,
+                                    String absorbedInk) {
+        String ink = absorbedInk == null || absorbedInk.isBlank() ? "" : " " + absorbedInk;
         if ("openai".equalsIgnoreCase(provider)) {
             DoodleSubject subject = referenceBytes == null ? describeDoodle(imageBytes, mimeType) : null;
             FusionMode mode = FusionMode.SELF;
@@ -198,11 +206,11 @@ public class ImageGenerationService {
                 mode = FusionMode.pick(variationSeed, isAnimalLike(subject));
                 log.info("합체 방식 - mode: {}, subject: {}, faction: {}", mode, subject.subject(), faction);
             }
-            String prompt = buildOpenAiPrompt(faction, stage, referenceBytes != null, subject, mode);
+            String prompt = buildOpenAiPrompt(faction, stage, referenceBytes != null, subject, mode) + ink;
             byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt));
             return new Generated(image, subject == null ? null : subject.species());
         }
-        byte[] bytes = callStabilitySketch(imageBytes, mimeType, buildFactionPrompt(faction, stage), controlStrength);
+        byte[] bytes = callStabilitySketch(imageBytes, mimeType, buildFactionPrompt(faction, stage) + ink, controlStrength);
         if (bytes == null || bytes.length == 0) return new Generated(bytes, null);
         return new Generated(removeBackground(bytes), null);
     }
