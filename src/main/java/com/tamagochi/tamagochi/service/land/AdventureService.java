@@ -118,6 +118,17 @@ public class AdventureService {
         return idle(user, adventure, true);
     }
 
+    /** 로컬 개발 전용: 잉크를 쓰지 않고 구역을 minutes분 탐험한 것으로 치고 그만큼 발견한다 */
+    @Transactional
+    public void devExplore(User user, String regionId, int minutes) {
+        LandCatalog.Region region = LandCatalog.region(regionId)
+                .filter(LandCatalog.Region::open)
+                .orElseThrow(() -> new IllegalArgumentException("열린 구역이 아니에요."));
+        LandProgress progress = progress(user, regionId);
+        progress.explore(Math.min(minutes, region.totalMinutes() - progress.getExploredMinutes()));
+        discover(user, region, progress.getExploredMinutes());
+    }
+
     /** 지금 시각 기준으로 계산한 이번 모험 (아직 저장하지 않은 값) */
     private record Live(int seconds, AdventureRules.Progress progress, int spent, int picked, int balanceBefore) {
         int net() { return picked - spent; }
