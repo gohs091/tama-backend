@@ -85,9 +85,14 @@ public class PromotionGrant {
         return g;
     }
 
+    /** 이 사용자의 이 단계 보상 키 앞부분 (달과 상관없이 모두) */
+    public static String evolutionUserPrefix(String stage, Long userId) {
+        return "evolution-" + stage + "-" + userId + "-";
+    }
+
     /** 이번 달 이 단계 보상 키의 앞부분. 달이 바뀌면 다시 1번부터 센다 */
     public static String evolutionMonthPrefix(String stage, Long userId, LocalDate date) {
-        return "evolution-" + stage + "-" + userId + "-" + String.format("%d%02d", date.getYear(), date.getMonthValue()) + "-";
+        return evolutionUserPrefix(stage, userId) + String.format("%d%02d", date.getYear(), date.getMonthValue()) + "-";
     }
 
     @CreationTimestamp

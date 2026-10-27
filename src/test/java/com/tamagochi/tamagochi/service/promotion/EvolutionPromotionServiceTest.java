@@ -61,31 +61,47 @@ class EvolutionPromotionServiceTest {
         assertThat(saved.get("evolution-ADULT-7-202610-1").getAmount()).isEqualTo(50);
         assertThat(saved.get("evolution-ADULT-7-202610-1").isEvolution()).isTrue();
         verify(events, times(2)).publishEvent(any(PromotionRecordedEvent.class));
-        assertThat(s.info(user).rewards()).allMatch(r -> r.remainingThisMonth() == 3);
+        // 성체는 처음 한 번뿐이라 더 없고, 완전체는 이번 달 3번 남는다
+        assertThat(s.info(user).rewards().get(0).remaining()).isZero();
+        assertThat(s.info(user).rewards().get(0).firstOnly()).isTrue();
+        assertThat(s.info(user).rewards().get(1).remaining()).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("다시 키워 또 진화하면 또 주되, 단계마다 한 달에 4번까지다")
-    void fourTimesPerMonth() {
+    @DisplayName("성체 보상은 다시 키워도, 달이 바뀌어도 처음 한 번만 준다")
+    void childOnlyFirstTime() {
+        EvolutionPromotionService october = service("grant", "2026-10-28T03:00:00Z");
+        october.onEvolved(user, EvolutionStage.CHILD);
+        october.onEvolved(user, EvolutionStage.CHILD);
+
+        EvolutionPromotionService november = service("grant", "2026-11-15T03:00:00Z");
+        november.onEvolved(user, EvolutionStage.CHILD);
+
+        assertThat(saved).containsOnlyKeys("evolution-CHILD-7-202610-1");
+    }
+
+    @Test
+    @DisplayName("완전체는 다시 키워 또 진화하면 또 주되, 한 달에 4번까지다")
+    void adultFourTimesPerMonth() {
         EvolutionPromotionService s = service("grant", "2026-10-28T03:00:00Z");
 
         for (int i = 0; i < 6; i++) s.onEvolved(user, EvolutionStage.ADULT);
 
         assertThat(saved).hasSize(4).containsKey("evolution-ADULT-7-202610-4");
-        assertThat(s.info(user).rewards().get(1).remainingThisMonth()).isZero();
+        assertThat(s.info(user).rewards().get(1).remaining()).isZero();
     }
 
     @Test
-    @DisplayName("달이 바뀌면 다시 4번 받을 수 있다 (KST 기준)")
-    void resetsNextMonth() {
+    @DisplayName("완전체는 달이 바뀌면 다시 4번 받을 수 있다 (KST 기준)")
+    void adultResetsNextMonth() {
         EvolutionPromotionService october = service("grant", "2026-10-28T03:00:00Z");
-        for (int i = 0; i < 4; i++) october.onEvolved(user, EvolutionStage.CHILD);
+        for (int i = 0; i < 4; i++) october.onEvolved(user, EvolutionStage.ADULT);
 
         // 10/31 15:00 UTC = 11/1 00:00 KST
         EvolutionPromotionService november = service("grant", "2026-10-31T15:00:00Z");
-        november.onEvolved(user, EvolutionStage.CHILD);
+        november.onEvolved(user, EvolutionStage.ADULT);
 
-        assertThat(saved).containsKey("evolution-CHILD-7-202611-1");
+        assertThat(saved).containsKey("evolution-ADULT-7-202611-1");
     }
 
     @Test
@@ -95,10 +111,10 @@ class EvolutionPromotionServiceTest {
         s.onEvolved(user, EvolutionStage.CHILD);
         saved.get("evolution-CHILD-7-202610-1").markFailed("test");
 
-        s.onEvolved(user, EvolutionStage.CHILD);
+        s.onEvolved(user, EvolutionStage.CHILD); // 첫 성체 보상이 실패했으니 다시 받을 수 있다
 
         assertThat(saved).containsKey("evolution-CHILD-7-202610-2");
-        assertThat(s.info(user).rewards().get(0).remainingThisMonth()).isEqualTo(3);
+        assertThat(s.info(user).rewards().get(0).remaining()).isZero();
     }
 
     @Test
