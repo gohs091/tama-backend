@@ -7,6 +7,7 @@ import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.tamagotchi.EvolutionGaugeClaimService;
+import com.tamagochi.tamagochi.service.tamagotchi.RedrawService;
 import com.tamagochi.tamagochi.service.tamagotchi.TamagotchiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,25 @@ public class TamagotchiController {
     private final TamagotchiService tamagotchiService;
     private final EvolutionGaugeClaimService evolutionGaugeClaimService;
     private final UserIdentity userIdentity;
+    private final RedrawService redrawService;
 
     @PostMapping("/reset")
     public ResponseEntity<?> reset(@RequestBody CreateTamagotchiRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
         Tamagotchi tamagotchi = tamagotchiService.reset(user);
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
+    }
+
+    /** 오늘 남은 다시 그리기 횟수 */
+    @GetMapping("/redraw/{tossUserId}")
+    public ResponseEntity<?> redrawStatus(@PathVariable String tossUserId) {
+        return ResponseEntity.ok(redrawService.status(userIdentity.resolve(tossUserId)));
+    }
+
+    /** 갓 태어난 끄적이가 마음에 안 들면 알로 되돌린다 (하루 2번). 응답은 남은 횟수 */
+    @PostMapping("/redraw")
+    public ResponseEntity<?> redraw(@RequestBody EvolveRequest request) {
+        return ResponseEntity.ok(redrawService.redraw(userIdentity.resolve(request.getTossUserId())));
     }
 
     @PostMapping("/create")
