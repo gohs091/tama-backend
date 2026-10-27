@@ -25,8 +25,10 @@ public interface PromotionGrantRepository extends JpaRepository<PromotionGrant, 
     long countByUserIdAndGrantDateAndStatusNot(@Param("userId") Long userId, @Param("grantDate") LocalDate grantDate,
                                               @Param("status") PromotionGrantStatus status);
 
-    /** 진화 달성 보상처럼 키로 한 번만 주는 건이 이미 있는지 */
-    Optional<PromotionGrant> findByTrainingSessionId(String trainingSessionId);
+    /** 진화 달성 보상: 이번 달 이 단계 키(evolution-단계-사용자-연월-)로 시작하는 건 수. 실패 건을 셀지는 status로 고른다 */
+    long countByTrainingSessionIdStartingWith(String keyPrefix);
+
+    long countByTrainingSessionIdStartingWithAndStatusNot(String keyPrefix, PromotionGrantStatus status);
 
     /** 한 곳에서만 처리하도록 상태를 선점한다. 선점에 성공하면 1, 이미 누가 가져갔으면 0. */
     @Transactional

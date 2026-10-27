@@ -75,15 +75,19 @@ public class PromotionGrant {
         return KIND_EVOLUTION.equals(this.kind);
     }
 
-    /** 진화 달성 보상 한 건. 단계마다 사용자당 한 번이도록 키를 evolution-단계-사용자로 둔다 (유니크 제약) */
-    public static PromotionGrant evolution(User user, String stage, LocalDate date, int amount) {
-        PromotionGrant g = new PromotionGrant(user, evolutionKey(stage, user.getId()), date, 0, 0, amount);
+    /**
+     * 진화 달성 보상 한 건. 키는 evolution-단계-사용자-연월-순번 (예: evolution-ADULT-7-202610-2).
+     * 같은 진화가 두 번 기록되지 않도록 순번까지 유니크 제약을 건다
+     */
+    public static PromotionGrant evolution(User user, String stage, LocalDate date, int seq, int amount) {
+        PromotionGrant g = new PromotionGrant(user, evolutionMonthPrefix(stage, user.getId(), date) + seq, date, 0, 0, amount);
         g.kind = KIND_EVOLUTION;
         return g;
     }
 
-    public static String evolutionKey(String stage, Long userId) {
-        return "evolution-" + stage + "-" + userId;
+    /** 이번 달 이 단계 보상 키의 앞부분. 달이 바뀌면 다시 1번부터 센다 */
+    public static String evolutionMonthPrefix(String stage, Long userId, LocalDate date) {
+        return "evolution-" + stage + "-" + userId + "-" + String.format("%d%02d", date.getYear(), date.getMonthValue()) + "-";
     }
 
     @CreationTimestamp

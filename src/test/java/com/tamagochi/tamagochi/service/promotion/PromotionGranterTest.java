@@ -83,7 +83,7 @@ class PromotionGranterTest {
         PromotionGranter both = new PromotionGranter(repository, api,
                 Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "grant", CODE, "grant", "TEST_EVO");
         User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
-        PromotionGrant evo = PromotionGrant.evolution(user, "CHILD", LocalDate.of(2026, 10, 26), 10);
+        PromotionGrant evo = PromotionGrant.evolution(user, "CHILD", LocalDate.of(2026, 10, 26), 1, 10);
         when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
         when(api.getKey()).thenReturn(ok("{\"key\":\"K1\"}"));
         when(api.execute(ANON, "TEST_EVO", "K1", 10)).thenReturn(ok("{\"key\":\"K1\"}"));
@@ -99,7 +99,7 @@ class PromotionGranterTest {
     @DisplayName("진화 보상 지급이 꺼져 있으면 토스를 부르지 않고 대기로 돌려 둔다")
     void evolutionOffWaits() {
         User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
-        PromotionGrant evo = PromotionGrant.evolution(user, "ADULT", LocalDate.of(2026, 10, 26), 50);
+        PromotionGrant evo = PromotionGrant.evolution(user, "ADULT", LocalDate.of(2026, 10, 26), 1, 50);
         when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
 
         granter.grant(1L); // 트레이닝만 켜져 있는 granter
