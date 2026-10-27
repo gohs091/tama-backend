@@ -18,6 +18,7 @@ public class TamagotchiResponse {
     private int strength;
     private int poopCount;
     private boolean sleeping;
+    private boolean bathing;        // 잉크통 충전 중 (돌보기·훈련 불가)
     private boolean dead;
     private int feedCount;
     private int evoGauge;
@@ -37,6 +38,7 @@ public class TamagotchiResponse {
                 .strength(tamagotchi.getStrength())
                 .poopCount(tamagotchi.getPoopCount())
                 .sleeping(tamagotchi.isSleeping())
+                .bathing(tamagotchi.isBathing())
                 .dead(tamagotchi.isDead())
                 .feedCount(tamagotchi.getFeedCount())
                 .evoGauge(tamagotchi.getEvoGauge())

@@ -90,6 +90,18 @@ class TamagotchiVitalsTest {
     }
 
     @Test
+    @DisplayName("잉크통 충전 중에도 소진되지 않고, 나온 직후 한꺼번에 깎이지 않는다")
+    void bathing_pausesDecay() {
+        pet.setBathing(true);
+        pet.applyTime(after(300), RULE);
+        pet.setBathing(false);
+        pet.applyTime(after(301), RULE);
+        assertThat(pet.getHunger()).isEqualTo(50);
+        assertThat(pet.getStrength()).isEqualTo(50);
+        assertThat(pet.getPoopCount()).isZero();
+    }
+
+    @Test
     @DisplayName("포만감이 0이 되어도 4시간이 지나기 전엔 살아 있다")
     void starving_aliveBeforeFourHours() {
         Tamagotchi p = baby(99, 100);
