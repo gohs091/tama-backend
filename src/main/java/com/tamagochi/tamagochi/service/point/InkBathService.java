@@ -64,6 +64,7 @@ public class InkBathService {
         if (pet != null) {
             if (pet.isDead()) throw new IllegalStateException("끄적이가 죽어서 잉크통에 들어갈 수 없어요.");
             if (pet.isSleeping()) throw new IllegalStateException("자고 있을 땐 잉크통에 들어갈 수 없어요.");
+            if (pet.isAdventuring()) throw new IllegalStateException("모험 중에는 잉크통에 들어갈 수 없어요.");
             pet.setBathing(true);
         }
         wallet.startBath(today, clock.instant());

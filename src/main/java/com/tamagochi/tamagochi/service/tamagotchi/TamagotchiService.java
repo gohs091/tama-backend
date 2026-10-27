@@ -36,7 +36,7 @@ public class TamagotchiService {
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
-        requireNotBathing(tamagotchi);
+        requireHome(tamagotchi);
 
         // 1. 포인트 차감 (멱등성 처리 포함)
         pointService.usePoint(user, ITEM_COST, idempotencyKey);
@@ -179,9 +179,13 @@ public class TamagotchiService {
         return trainingSessionService.start(user);
     }
 
-    private void requireNotBathing(Tamagotchi tamagotchi) {
+    // 잉크통에 들어가 있거나 모험을 떠나 있으면 돌보기·훈련을 할 수 없다
+    private void requireHome(Tamagotchi tamagotchi) {
         if (tamagotchi.isBathing()) {
             throw new IllegalStateException("잉크통에 들어가 있어요. 꺼낸 뒤에 해 주세요.");
+        }
+        if (tamagotchi.isAdventuring()) {
+            throw new IllegalStateException("모험을 떠나 있어요. 돌아온 뒤에 해 주세요.");
         }
     }
 
@@ -189,7 +193,7 @@ public class TamagotchiService {
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
-        requireNotBathing(tamagotchi);
+        requireHome(tamagotchi);
         if (tamagotchi.isSleeping()) {
             throw new IllegalStateException("다마고치가 자고 있어요.");
         }
@@ -261,7 +265,7 @@ public class TamagotchiService {
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
-        requireNotBathing(tamagotchi);
+        requireHome(tamagotchi);
         if (tamagotchi.isSleeping()) {
             throw new IllegalStateException("다마고치가 자고 있어요.");
         }
