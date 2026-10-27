@@ -9,6 +9,7 @@ import com.tamagochi.tamagochi.service.character.ImageGenerationService;
 import com.tamagochi.tamagochi.service.character.ImageJobResult;
 import com.tamagochi.tamagochi.service.character.ImageQuotaService;
 import com.tamagochi.tamagochi.service.character.LocalImageCompositeService;
+import com.tamagochi.tamagochi.service.land.InkLoadoutService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ class CharacterControllerJobTest {
         quota = mock(ImageQuotaService.class);
         when(quota.tryAcquire(anyString())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class));
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class));
     }
 
     private GenerateImageRequest generateRequest() {
@@ -72,7 +73,7 @@ class CharacterControllerJobTest {
 
         InOrder order = inOrder(imageService);
         order.verify(imageService).storeJob(anyString(), any(ImageJobResult.class));
-        order.verify(imageService).generateEvolvedAsync(anyString(), any(), eq("AAAA"), eq("metal-empire"), eq("child"), any());
+        order.verify(imageService).generateEvolvedAsync(anyString(), any(), eq("AAAA"), eq("metal-empire"), eq("child"), any(), any());
     }
 
     @Test

@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
+import com.tamagochi.tamagochi.service.land.InkLoadoutService;
 
 import java.util.UUID;
 
@@ -36,6 +37,7 @@ public class CharacterController {
     private final LocalImageCompositeService localImageCompositeService;
     private final ImageQuotaService imageQuotaService;
     private final UserIdentity userIdentity;
+    private final InkLoadoutService inkLoadoutService;
 
     @PostMapping("/analyze")
     public ResponseEntity<CharacterFeaturesResponse> analyze(@RequestBody AnalyzeSketchRequest request) {
@@ -78,7 +80,8 @@ public class CharacterController {
                 request.getImageBase64(),
                 request.getFaction(),
                 request.getStage(),
-                request.getReferenceImageBase64()
+                request.getReferenceImageBase64(),
+                absorbedInk(request.getTossUserId(), request.getStage())
         );
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
     }
@@ -100,6 +103,15 @@ public class CharacterController {
     }
 
     /** 유저 식별자가 없으면 400, 일일 생성 한도를 넘으면 429. 통과하면 null. */
+    /** 끄적랜드에서 고른 대표 잉크 문장. 고른 게 없거나 유저를 못 찾으면 null (잉크 없이 진화) */
+    private String absorbedInk(String tossUserId, String stage) {
+        try {
+            return inkLoadoutService.promptFor(userIdentity.resolve(tossUserId), stage);
+        } catch (IllegalStateException e) {
+            return null;
+        }
+    }
+
     private ResponseEntity<GenerateImageResponse> checkQuota(String tossUserId) {
         if (tossUserId == null || tossUserId.isBlank()) {
             return ResponseEntity.badRequest().build();

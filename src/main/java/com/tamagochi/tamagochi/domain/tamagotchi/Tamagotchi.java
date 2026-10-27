@@ -79,6 +79,32 @@ public class Tamagotchi {
         this.bathing = bathing;
     }
 
+    // 끄적랜드 모험 중. 잉크통과 같이 시간이 흐르지 않고 돌보기·훈련을 할 수 없다. 기존 행은 null.
+    @Column(name = "adventuring")
+    private Boolean adventuring;
+
+    public boolean isAdventuring() {
+        return Boolean.TRUE.equals(this.adventuring);
+    }
+
+    public void setAdventuring(boolean adventuring) {
+        this.adventuring = adventuring;
+    }
+
+    // 다음 진화에 반영할 대표 잉크 (끄적랜드 보관함에서 고른다). 모두 비어 있어도 된다. 진화하면 비운다.
+    @Column(name = "ink_main", length = 40)
+    private String inkMain;      // 특정 잉크 1칸: 무엇이 되는가
+    @Column(name = "ink_family1", length = 40)
+    private String inkFamily1;   // 계열 잉크 2칸: 어떤 느낌인가
+    @Column(name = "ink_family2", length = 40)
+    private String inkFamily2;
+
+    public void setInkLoadout(String main, String family1, String family2) {
+        this.inkMain = main;
+        this.inkFamily1 = family1;
+        this.inkFamily2 = family2;
+    }
+
     @Column(length = 50)
     private String faction;
 
@@ -164,6 +190,7 @@ public class Tamagotchi {
         this.evolutionStage = nextStage;
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
+        setInkLoadout(null, null, null); // 대표 잉크는 진화마다 새로 고른다
     }
 
     /** 알 → 유체. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
@@ -227,7 +254,7 @@ public class Tamagotchi {
 
         absorbDowntime(now, rule);
 
-        if (this.sleeping || isBathing()) {
+        if (this.sleeping || isBathing() || isAdventuring()) {
             this.lastHungerTickAt = now;
             this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
@@ -337,6 +364,8 @@ public class Tamagotchi {
         this.deadAt = null;
         this.sleeping = false;
         this.bathing = false;
+        this.adventuring = false;
+        setInkLoadout(null, null, null);
         this.sleptAt = null;
         // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
         this.babyImageBase64 = null;
