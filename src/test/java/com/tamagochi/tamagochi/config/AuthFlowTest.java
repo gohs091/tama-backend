@@ -44,7 +44,7 @@ class AuthFlowTest {
 
         AuthSettings settings = new AuthSettings(true);
         UserIdentity identity = new UserIdentity(userRepository, settings);
-        mvc = MockMvcBuilders.standaloneSetup(new PointController(pointService, identity, org.mockito.Mockito.mock(com.tamagochi.tamagochi.service.point.InkBathService.class)))
+        mvc = MockMvcBuilders.standaloneSetup(new PointController(pointService, identity, org.mockito.Mockito.mock(com.tamagochi.tamagochi.service.point.InkBathService.class), org.mockito.Mockito.mock(com.tamagochi.tamagochi.service.point.VisitRewardService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .addMappedInterceptors(new String[]{"/api/**"}, new AuthInterceptor(settings, tokens))
                 .build();

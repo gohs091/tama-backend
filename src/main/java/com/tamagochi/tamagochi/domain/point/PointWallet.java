@@ -48,6 +48,14 @@ public class PointWallet {
         this.bathSettled = true;
     }
 
+    // 접속 보상: 마지막으로 받은 시각. 4시간이 지나 다시 접속하면 또 받는다. 기존 지갑에는 비어 있다(null).
+    @Column(name = "visit_reward_at")
+    private java.time.Instant visitRewardAt;
+
+    public void markVisitReward(java.time.Instant now) {
+        this.visitRewardAt = now;
+    }
+
     public void charge(int amount) {
         this.balance += amount;
     }
