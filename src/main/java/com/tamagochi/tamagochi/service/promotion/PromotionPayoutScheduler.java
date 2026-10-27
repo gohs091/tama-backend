@@ -2,7 +2,7 @@ package com.tamagochi.tamagochi.service.promotion;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@ConditionalOnProperty(name = "tamagotchi.promotion.mode", havingValue = "grant")
+// 트레이닝 보상이나 진화 달성 보상 중 하나라도 실제 지급(grant)하면 켠다
+@ConditionalOnExpression("'${tamagotchi.promotion.mode:off}' == 'grant' or '${tamagotchi.promotion.evolution.mode:off}' == 'grant'")
 public class PromotionPayoutScheduler {
 
     private final PromotionGranter granter;

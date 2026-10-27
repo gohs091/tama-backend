@@ -66,6 +66,26 @@ public class PromotionGrant {
     @Column(length = 300)
     private String lastError;
 
+    /** 진화 달성 보상이면 EVOLUTION (진화 보상용 프로모션 코드로 지급하고, 트레이닝 하루 상한에 세지 않는다). 트레이닝 보상은 null */
+    public static final String KIND_EVOLUTION = "EVOLUTION";
+    @Column(name = "kind", length = 20)
+    private String kind;
+
+    public boolean isEvolution() {
+        return KIND_EVOLUTION.equals(this.kind);
+    }
+
+    /** 진화 달성 보상 한 건. 단계마다 사용자당 한 번이도록 키를 evolution-단계-사용자로 둔다 (유니크 제약) */
+    public static PromotionGrant evolution(User user, String stage, LocalDate date, int amount) {
+        PromotionGrant g = new PromotionGrant(user, evolutionKey(stage, user.getId()), date, 0, 0, amount);
+        g.kind = KIND_EVOLUTION;
+        return g;
+    }
+
+    public static String evolutionKey(String stage, Long userId) {
+        return "evolution-" + stage + "-" + userId;
+    }
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

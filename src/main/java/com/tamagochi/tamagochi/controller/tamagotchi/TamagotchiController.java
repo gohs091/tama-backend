@@ -8,6 +8,8 @@ import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.tamagotchi.EvolutionGaugeClaimService;
 import com.tamagochi.tamagochi.service.tamagotchi.RedrawService;
+import com.tamagochi.tamagochi.service.promotion.EvolutionPromotionService;
+import lombok.extern.slf4j.Slf4j;
 import com.tamagochi.tamagochi.service.tamagotchi.TamagotchiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +18,23 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/tamagotchi")
 @RequiredArgsConstructor
+@Slf4j
 public class TamagotchiController {
 
     private final TamagotchiService tamagotchiService;
     private final EvolutionGaugeClaimService evolutionGaugeClaimService;
     private final UserIdentity userIdentity;
     private final RedrawService redrawService;
+    private final EvolutionPromotionService evolutionPromotionService;
+
+    /** 진화 달성 보상(성체 10원·완전체 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
+    private void rewardEvolution(User user, Tamagotchi tamagotchi) {
+        try {
+            evolutionPromotionService.onEvolved(user, tamagotchi.getEvolutionStage());
+        } catch (Exception e) {
+            log.warn("진화 달성 보상 기록 실패 - userId: {}", user.getId(), e);
+        }
+    }
 
     @PostMapping("/reset")
     public ResponseEntity<?> reset(@RequestBody CreateTamagotchiRequest request) {
@@ -71,6 +84,7 @@ public class TamagotchiController {
         User user = userIdentity.resolve(request.getTossUserId());
 
         Tamagotchi tamagotchi = tamagotchiService.evolve(user);
+        rewardEvolution(user, tamagotchi);
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 

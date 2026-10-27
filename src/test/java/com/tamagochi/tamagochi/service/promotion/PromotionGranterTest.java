@@ -57,7 +57,7 @@ class PromotionGranterTest {
     void setUp() {
         repository = mock(PromotionGrantRepository.class);
         api = mock(TossPromotionApi.class);
-        granter = new PromotionGranter(repository, api, Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), CODE);
+        granter = new PromotionGranter(repository, api, Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "grant", CODE, "off", "");
         grant = newGrant("toss_" + ANON);
         when(repository.claim(eq(1L), eq(PromotionGrantStatus.RECORDED), eq(PromotionGrantStatus.SENDING), any())).thenReturn(1);
         when(repository.findWithUserById(1L)).thenReturn(Optional.of(grant));
@@ -75,6 +75,37 @@ class PromotionGranterTest {
         assertThat(grant.getStatus()).isEqualTo(PromotionGrantStatus.GRANTED);
         assertThat(grant.getGrantKey()).isEqualTo("K1");
         verify(api).execute(ANON, CODE, "K1", 2);
+    }
+
+    @Test
+    @DisplayName("진화 달성 보상은 진화용 프로모션 코드로 지급한다")
+    void evolutionUsesEvolutionCode() throws Exception {
+        PromotionGranter both = new PromotionGranter(repository, api,
+                Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "grant", CODE, "grant", "TEST_EVO");
+        User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
+        PromotionGrant evo = PromotionGrant.evolution(user, "CHILD", LocalDate.of(2026, 10, 26), 10);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
+        when(api.getKey()).thenReturn(ok("{\"key\":\"K1\"}"));
+        when(api.execute(ANON, "TEST_EVO", "K1", 10)).thenReturn(ok("{\"key\":\"K1\"}"));
+        when(api.result(ANON, "TEST_EVO", "K1")).thenReturn(ok("\"SUCCESS\""));
+
+        both.grant(1L);
+
+        assertThat(evo.getStatus()).isEqualTo(PromotionGrantStatus.GRANTED);
+        verify(api, never()).execute(anyString(), eq(CODE), anyString(), anyInt());
+    }
+
+    @Test
+    @DisplayName("진화 보상 지급이 꺼져 있으면 토스를 부르지 않고 대기로 돌려 둔다")
+    void evolutionOffWaits() {
+        User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
+        PromotionGrant evo = PromotionGrant.evolution(user, "ADULT", LocalDate.of(2026, 10, 26), 50);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
+
+        granter.grant(1L); // 트레이닝만 켜져 있는 granter
+
+        verify(api, never()).getKey();
+        verify(repository).claim(eq(1L), eq(PromotionGrantStatus.SENDING), eq(PromotionGrantStatus.RECORDED), any());
     }
 
     @Test
@@ -190,7 +221,7 @@ class PromotionGranterTest {
     @Test
     @DisplayName("프로모션 코드가 없으면 지급을 시도하지 않는다")
     void noCode() {
-        PromotionGranter noCode = new PromotionGranter(repository, api, Clock.systemUTC(), " ");
+        PromotionGranter noCode = new PromotionGranter(repository, api, Clock.systemUTC(), "grant", " ", "off", "");
         noCode.grant(1L);
         noCode.sweep();
         assertThat(noCode.isConfigured()).isFalse();

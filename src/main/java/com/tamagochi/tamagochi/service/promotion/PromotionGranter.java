@@ -38,17 +38,42 @@ public class PromotionGranter {
     private final TossPromotionApi api;
     private final Clock clock;
     private final String promotionCode;
+    private final boolean trainingPays;  // 트레이닝 보상 mode=grant
+    private final String evolutionCode;  // 진화 달성 보상용 프로모션 코드 (트레이닝 보상과 따로 만든 코드)
+    private final boolean evolutionPays; // 진화 달성 보상 mode=grant
 
     public PromotionGranter(PromotionGrantRepository repository, TossPromotionApi api, Clock clock,
-                            @Value("${tamagotchi.promotion.code:}") String promotionCode) {
+                            @Value("${tamagotchi.promotion.mode:off}") String mode,
+                            @Value("${tamagotchi.promotion.code:}") String promotionCode,
+                            @Value("${tamagotchi.promotion.evolution.mode:off}") String evolutionMode,
+                            @Value("${tamagotchi.promotion.evolution.code:}") String evolutionCode) {
         this.repository = repository;
         this.api = api;
         this.clock = clock;
         this.promotionCode = promotionCode == null ? "" : promotionCode.trim();
+        this.trainingPays = "grant".equalsIgnoreCase(mode == null ? "" : mode.trim());
+        this.evolutionCode = evolutionCode == null ? "" : evolutionCode.trim();
+        this.evolutionPays = "grant".equalsIgnoreCase(evolutionMode == null ? "" : evolutionMode.trim());
     }
 
     public boolean isConfigured() {
         return !promotionCode.isBlank();
+    }
+
+    /** 트레이닝·진화 중 하나라도 실제 지급하도록 켜져 있고 코드가 있으면 지급할 수 있다 */
+    private boolean anyConfigured() {
+        return (isConfigured() && (trainingPays || isTestCode())) || (evolutionPays && !evolutionCode.isBlank());
+    }
+
+    /** 이 건을 지금 지급해도 되는지: 그 종류가 mode=grant 이고 코드가 있어야 한다 (record 로 기록만 한 건은 지급하지 않는다) */
+    private boolean payable(PromotionGrant grant) {
+        // 트레이닝: 관리자 테스트 지급(TEST_ 코드)은 mode와 상관없이 확인할 수 있게 둔다
+        return grant.isEvolution() ? evolutionPays && !evolutionCode.isBlank() : isConfigured() && (trainingPays || isTestCode());
+    }
+
+    /** 이 건을 지급할 프로모션 코드: 진화 달성 보상은 진화용 코드, 나머지는 트레이닝 코드 */
+    private String codeFor(PromotionGrant grant) {
+        return grant.isEvolution() ? evolutionCode : promotionCode;
     }
 
     /** 테스트 프로모션 코드(TEST_ 로 시작)이면 실제 포인트 지급·차감 없이 API만 확인된다. */
@@ -58,7 +83,7 @@ public class PromotionGranter {
 
     /** 새로 기록된(또는 재시도할) 한 건을 지급한다. 이미 다른 곳에서 처리 중이면 아무것도 하지 않는다. */
     public void grant(Long grantId) {
-        if (!isConfigured()) {
+        if (!anyConfigured()) {
             log.error("프로모션 코드(tamagotchi.promotion.code)가 없어 지급하지 않습니다. grantId: {}", grantId);
             return;
         }
@@ -67,6 +92,13 @@ public class PromotionGranter {
         }
         PromotionGrant grant = repository.findWithUserById(grantId).orElse(null);
         if (grant == null) return;
+        if (!payable(grant)) {
+            // 이 종류는 지급이 꺼져 있거나 코드가 없다: 실패로 끝내지 않고 대기로 돌려, 켜고 나면 지급되게 한다
+            log.warn("{} 프로모션 지급이 꺼져 있어 미룹니다. grantId: {}", grant.isEvolution() ? "진화" : "트레이닝", grantId);
+            repository.claim(grantId, PromotionGrantStatus.SENDING, PromotionGrantStatus.RECORDED, now());
+            return;
+        }
+        String code = codeFor(grant);
 
         String anonKey = anonKeyOf(grant);
         if (anonKey == null) {
@@ -85,7 +117,7 @@ public class PromotionGranter {
                 grant.saveGrantKey(key.success().path("key").asText());
                 repository.save(grant); // 키를 먼저 저장해 두어야 요청이 끊겨도 같은 키로 재시도한다
             }
-            TossPromotionApi.Response executed = api.execute(anonKey, promotionCode, grant.getGrantKey(), grant.getAmount());
+            TossPromotionApi.Response executed = api.execute(anonKey, code, grant.getGrantKey(), grant.getAmount());
             if (executed.ok() || ALREADY_GRANTED.equals(executed.errorCode())) {
                 confirm(grant, anonKey);
             } else {
@@ -100,7 +132,7 @@ public class PromotionGranter {
 
     /** 접수된 지급의 결과를 조회해 상태를 확정한다. */
     private void confirm(PromotionGrant grant, String anonKey) {
-        TossPromotionApi.Response result = api.result(anonKey, promotionCode, grant.getGrantKey());
+        TossPromotionApi.Response result = api.result(anonKey, codeFor(grant), grant.getGrantKey());
         String status = result.ok() ? result.success().asText("") : "";
         switch (status) {
             case "SUCCESS" -> {
@@ -131,7 +163,7 @@ public class PromotionGranter {
 
     /** 주기적으로 돌며 재시도 대기·접수 중·멈춘 건을 처리한다. */
     public void sweep() {
-        if (!isConfigured()) return;
+        if (!anyConfigured()) return;
         LocalDateTime now = now();
 
         // 서버가 지급 도중 멈춰 SENDING에 남은 건은 다시 대기로 돌린다 (같은 키로 재시도해서 중복 지급은 없다)
@@ -142,7 +174,7 @@ public class PromotionGranter {
 
         List<PromotionGrant> retry = repository.findTop50ByStatusAndUpdatedAtBeforeOrderByIdAsc(
                 PromotionGrantStatus.RECORDED, now.minus(RETRY_AFTER));
-        retry.forEach(g -> grant(g.getId()));
+        retry.stream().filter(this::payable).forEach(g -> grant(g.getId()));
 
         for (PromotionGrant g : repository.findTop50ByStatusAndUpdatedAtBeforeOrderByIdAsc(
                 PromotionGrantStatus.PENDING, now.minus(POLL_AFTER))) {

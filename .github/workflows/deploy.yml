@@ -55,6 +55,8 @@ jobs:
             AUTH_TOKEN_SECRET=${{ secrets.AUTH_TOKEN_SECRET }}
             PROMOTION_MODE=${{ secrets.PROMOTION_MODE }}
             PROMOTION_CODE=${{ secrets.PROMOTION_CODE }}
+            EVOLUTION_PROMOTION_MODE=${{ secrets.EVOLUTION_PROMOTION_MODE }}
+            EVOLUTION_PROMOTION_CODE=${{ secrets.EVOLUTION_PROMOTION_CODE }}
             ADMIN_KEY=${{ secrets.ADMIN_KEY }}
             ENVEOF
             chmod 600 .env
