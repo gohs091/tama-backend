@@ -17,6 +17,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PointWalletRepository pointWalletRepository;
 
+    /** 처음 시작하는 유저에게 주는 잉크 */
+    public static final int WELCOME_INK = 500;
+
     @Transactional
     public User createUser(String tossUserId, String nickname) {
 
@@ -32,7 +35,7 @@ public class UserService {
                     // 지갑 자동 생성
                     PointWallet wallet = PointWallet.builder()
                             .user(user)
-                            .balance(0)
+                            .balance(WELCOME_INK)
                             .build();
                     pointWalletRepository.save(wallet);
 
