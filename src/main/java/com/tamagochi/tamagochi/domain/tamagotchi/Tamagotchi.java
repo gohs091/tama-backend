@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -103,6 +104,30 @@ public class Tamagotchi {
         this.inkMain = main;
         this.inkFamily1 = family1;
         this.inkFamily2 = family2;
+    }
+
+    // 갓 태어난 끄적이가 마음에 안 들 때 다시 그리기. 하루 횟수를 센다 (reset으로 지우지 않는다). 기존 행은 null.
+    public static final int REDRAWS_PER_DAY = 2;
+    @Column(name = "redraw_date")
+    private LocalDate redrawDate;
+    @Column(name = "redraw_count")
+    private Integer redrawCount;
+
+    public int redrawsLeft(LocalDate today) {
+        int used = today.equals(this.redrawDate) && this.redrawCount != null ? this.redrawCount : 0;
+        return Math.max(0, REDRAWS_PER_DAY - used);
+    }
+
+    /** 유체일 때만, 하루 횟수 안에서 알로 되돌린다. 그림은 클라이언트가 다시 그린다 */
+    public void redraw(LocalDate today) {
+        if (this.evolutionStage != EvolutionStage.BABY || isDead()) {
+            throw new IllegalStateException("갓 태어난 끄적이만 다시 그릴 수 있어요.");
+        }
+        int left = redrawsLeft(today);
+        if (left <= 0) throw new IllegalStateException("오늘은 더 다시 그릴 수 없어요. 내일 다시 해 주세요.");
+        this.redrawCount = REDRAWS_PER_DAY - left + 1;
+        this.redrawDate = today;
+        reset();
     }
 
     @Column(length = 50)
