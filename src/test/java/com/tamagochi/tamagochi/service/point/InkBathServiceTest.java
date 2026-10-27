@@ -2,7 +2,10 @@ package com.tamagochi.tamagochi.service.point;
 
 import com.tamagochi.tamagochi.domain.point.PointWallet;
 import com.tamagochi.tamagochi.domain.user.User;
+import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
+import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.repository.point.PointWalletRepository;
+import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,8 +30,10 @@ class InkBathServiceTest {
 
     PointWalletRepository repo = mock(PointWalletRepository.class);
     PointService pointService = mock(PointService.class);
+    TamagotchiRepository petRepo = mock(TamagotchiRepository.class);
+    Tamagotchi pet = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(50).strength(50).build();
     MutableClock clock = new MutableClock(Instant.parse("2026-10-27T01:00:00Z")); // KST 10:00
-    InkBathService service = new InkBathService(repo, pointService, clock);
+    InkBathService service = new InkBathService(repo, pointService, petRepo, clock);
     User user = mock(User.class);
     PointWallet wallet = PointWallet.builder().balance(100).build();
 
@@ -36,6 +41,7 @@ class InkBathServiceTest {
     void setUp() {
         when(user.getId()).thenReturn(1L);
         when(repo.findByUserId(1L)).thenReturn(Optional.of(wallet));
+        when(petRepo.findByUserId(1L)).thenReturn(Optional.of(pet));
     }
 
     @Test
@@ -81,6 +87,21 @@ class InkBathServiceTest {
         verify(pointService).earnPoint(eq(user), eq(120), anyString());
         assertThat(s.canStart()).isTrue();
         assertThat(service.start(user).running()).isTrue();
+    }
+
+    @Test
+    void petIsFrozenWhileBathingAndReleasedOnStop() {
+        service.start(user);
+        assertThat(pet.isBathing()).isTrue();
+        service.stop(user);
+        assertThat(pet.isBathing()).isFalse();
+    }
+
+    @Test
+    void cannotBathWhileSleeping() {
+        pet.sleep();
+        assertThatThrownBy(() -> service.start(user)).hasMessageContaining("자고");
+        assertThat(pet.isBathing()).isFalse();
     }
 
     @Test

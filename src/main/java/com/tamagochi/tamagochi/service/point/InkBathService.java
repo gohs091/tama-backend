@@ -1,6 +1,8 @@
 package com.tamagochi.tamagochi.service.point;
 
 import com.tamagochi.tamagochi.domain.point.PointWallet;
+import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
+import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.point.PointWalletRepository;
 import jakarta.transaction.Transactional;
@@ -26,6 +28,7 @@ public class InkBathService {
 
     private final PointWalletRepository pointWalletRepository;
     private final PointService pointService;
+    private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
 
     /** 잉크통 상태. 진행 중이면 지금까지 쌓인 잉크와 남은 시간, 아니면 오늘 시작할 수 있는지 */
@@ -56,6 +59,13 @@ public class InkBathService {
         if (today.equals(wallet.getBathDate())) {
             throw new IllegalStateException("잉크통 충전은 하루에 한 번만 할 수 있어요.");
         }
+        // 잉크통에 있는 동안은 시간이 멈추고(잠잘 때처럼) 돌보기·훈련을 할 수 없다
+        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        if (pet != null) {
+            if (pet.isDead()) throw new IllegalStateException("끄적이가 죽어서 잉크통에 들어갈 수 없어요.");
+            if (pet.isSleeping()) throw new IllegalStateException("자고 있을 땐 잉크통에 들어갈 수 없어요.");
+            pet.setBathing(true);
+        }
         wallet.startBath(today, clock.instant());
         return build(wallet, 0);
     }
@@ -79,6 +89,7 @@ public class InkBathService {
         String key = "ink-bath-" + user.getId() + "-" + wallet.getBathStartedAt().toEpochMilli();
         if (ink > 0) pointService.earnPoint(user, ink, key);
         wallet.settleBath();
+        tamagotchiRepository.findByUserId(user.getId()).ifPresent(p -> p.setBathing(false));
         return ink;
     }
 

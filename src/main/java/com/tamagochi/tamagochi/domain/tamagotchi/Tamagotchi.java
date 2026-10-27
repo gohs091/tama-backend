@@ -67,6 +67,18 @@ public class Tamagotchi {
     @Column(nullable = false)
     private boolean sleeping;
 
+    // 잉크통 충전 중. 이 동안은 잠잘 때처럼 시간이 흐르지 않고 돌보기·훈련을 할 수 없다. 기존 행은 null.
+    @Column(name = "bathing")
+    private Boolean bathing;
+
+    public boolean isBathing() {
+        return Boolean.TRUE.equals(this.bathing);
+    }
+
+    public void setBathing(boolean bathing) {
+        this.bathing = bathing;
+    }
+
     @Column(length = 50)
     private String faction;
 
@@ -215,7 +227,7 @@ public class Tamagotchi {
 
         absorbDowntime(now, rule);
 
-        if (this.sleeping) {
+        if (this.sleeping || isBathing()) {
             this.lastHungerTickAt = now;
             this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
@@ -324,6 +336,7 @@ public class Tamagotchi {
         this.lastVitalsTickAt = null;
         this.deadAt = null;
         this.sleeping = false;
+        this.bathing = false;
         this.sleptAt = null;
         // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
         this.babyImageBase64 = null;
