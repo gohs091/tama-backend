@@ -43,10 +43,11 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
-    @DisplayName("완성작 + 체형 잉크(희귀): 하체 분류가 바뀌고 다리 개수를 못박는다")
+    @DisplayName("완성작 + 체형 잉크(희귀) 85%: 하체 분류가 바뀌고 다리 개수를 못박는다")
     void adult_rareInk_changesBody() {
-        String p = LandCatalog.absorbedPrompt("tank", List.of(), "adult");
+        String p = LandCatalog.absorbedPrompt("tank", familyInkIds(1), "adult");
 
+        assertThat(p).contains(LandCatalog.FULL_MARK);
         assertThat(p).doesNotContain("Replace exactly ONE body part").doesNotContain("Keep the doodle's identity");
         assertThat(p).contains(LandCatalog.ORIGIN_TOKEN);
         assertThat(p).contains("Change its lower body type to a TANK-LIKE lower body").contains("HARD RULE: ZERO legs are visible");
@@ -54,14 +55,24 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
+    @DisplayName("완성작 + 체형 잉크 60%: 체형은 그대로 두고 그 특징만 크고 뚜렷하게 한다")
+    void adult_mid_keepsBody() {
+        String p = LandCatalog.absorbedPrompt("tank", List.of(), "adult");
+
+        assertThat(p).contains("large, prominent and clearly visible").contains("a small turret cannon on the back");
+        assertThat(p).doesNotContain(LandCatalog.FULL_MARK).doesNotContain(LandCatalog.BODY_CHANGE_MARK);
+        assertThat(p).contains("Keep the doodle's identity");
+    }
+
+    @Test
     @DisplayName("체형 분류: 전설 잉크는 해당 분류로, 흔한 잉크는 체형을 바꾸지 않는다")
     void bodyClass_byGrade() {
-        assertThat(LandCatalog.absorbedPrompt("leviathan", List.of(), "adult")).contains("a LEGLESS single-trunk body").contains("ZERO");
-        assertThat(LandCatalog.absorbedPrompt("t-rex", List.of(), "adult")).contains("a BIPEDAL DINOSAUR lower body").contains("long tail behind");
-        assertThat(LandCatalog.absorbedPrompt("lion-king", List.of(), "adult")).contains("a FOUR-LEGGED lower body");
-        assertThat(LandCatalog.absorbedPrompt("rocket", List.of(), "adult")).contains("a WINGED FLYING build");
+        assertThat(LandCatalog.absorbedPrompt("leviathan", familyInkIds(1), "adult")).contains("a LEGLESS single-trunk body").contains("ZERO");
+        assertThat(LandCatalog.absorbedPrompt("t-rex", familyInkIds(1), "adult")).contains("a BIPEDAL DINOSAUR lower body").contains("long tail behind");
+        assertThat(LandCatalog.absorbedPrompt("lion-king", familyInkIds(1), "adult")).contains("a FOUR-LEGGED lower body");
+        assertThat(LandCatalog.absorbedPrompt("rocket", familyInkIds(1), "adult")).contains("a WINGED FLYING build");
         // 흔한 잉크는 체형 분류가 없다
-        assertThat(LandCatalog.absorbedPrompt("rabbit", List.of(), "adult")).doesNotContain(LandCatalog.BODY_CHANGE_MARK);
+        assertThat(LandCatalog.absorbedPrompt("rabbit", familyInkIds(1), "adult")).doesNotContain(LandCatalog.BODY_CHANGE_MARK);
         assertThat(LandCatalog.absorbedPrompt("car", familyInkIds(2), "adult")).doesNotContain(LandCatalog.BODY_CHANGE_MARK);
     }
 
@@ -94,18 +105,29 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
-    @DisplayName("합치는 방식 문장: 구간·등급별로 달라진다")
+    @DisplayName("합치는 방식 문장: 구간마다 정해져 있고, 잉크가 많을수록 강해진다 (무작위 없음)")
     void mainText_bands() {
         LandCatalog.Grade rare = LandCatalog.Grade.RARE;
-        assertThat(LandCatalog.mainText("full", "part", 10, 0, rare)).isEmpty();
-        assertThat(LandCatalog.mainText("full", "part", 20, 0, rare)).contains("Decoration only").contains("part");
-        assertThat(LandCatalog.mainText("full", "part", 40, 0, rare)).contains("Replace exactly ONE body part").contains("truly has part");
-        assertThat(LandCatalog.mainText("full", "part", 60, 0, rare)).contains("keeps the face and head of " + LandCatalog.ORIGIN_TOKEN);
-        assertThat(LandCatalog.mainText("full", "part", 60, 1, rare)).contains("feathered wings");
-        assertThat(LandCatalog.mainText("full", "part", 60, 2, rare)).contains("MUST be clearly visible");
-        assertThat(LandCatalog.mainText("full", "part", 60, 3, rare)).contains("keeps the face and head");   // 희귀 60%는 3가지 안에서만
-        assertThat(LandCatalog.mainText("full", "part", 85, 3, LandCatalog.Grade.LEGEND)).contains("chimera");
-        assertThat(LandCatalog.mainText("full", "part", 85, 3, rare)).doesNotContain("chimera");
+        assertThat(LandCatalog.mainText("full", "part", 10, rare)).isEmpty();
+        assertThat(LandCatalog.mainText("full", "part", 20, rare)).contains("Decoration only").contains("part");
+        assertThat(LandCatalog.mainText("full", "part", 40, rare)).contains("Replace exactly ONE body part").contains("truly has part");
+        String mid = LandCatalog.mainText("full", "part", 60, rare);
+        assertThat(mid).contains("large, prominent and clearly visible").contains(LandCatalog.ORIGIN_TOKEN).doesNotContain(LandCatalog.FULL_MARK);
+        // 85% 이상은 몸 전체가 바뀐다: 등급마다 한 가지로 정해진다
+        assertThat(LandCatalog.mainText("full", "part", 85, LandCatalog.Grade.COMMON)).startsWith(LandCatalog.FULL_MARK).contains("keeps the face and head");
+        assertThat(LandCatalog.mainText("full", "part", 85, rare)).startsWith(LandCatalog.FULL_MARK).contains("feathered wings");
+        assertThat(LandCatalog.mainText("full", "part", 85, LandCatalog.Grade.LEGEND)).startsWith(LandCatalog.FULL_MARK).contains("chimera");
+    }
+
+    @Test
+    @DisplayName("같은 잉크라도 개수가 늘수록 단계가 오른다: 60%는 특징만, 85%는 몸 전체")
+    void moreInk_isStronger() {
+        for (String id : List.of("rabbit", "wolf", "leviathan")) {
+            String two = LandCatalog.absorbedPrompt(id, List.of(), "adult");
+            String three = LandCatalog.absorbedPrompt(id, familyInkIds(1), "adult");
+            assertThat(two).doesNotContain(LandCatalog.FULL_MARK);
+            assertThat(three).contains(LandCatalog.FULL_MARK);
+        }
     }
 
     @Test

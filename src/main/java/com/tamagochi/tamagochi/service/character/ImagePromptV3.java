@@ -3,6 +3,7 @@ package com.tamagochi.tamagochi.service.character;
 import com.tamagochi.tamagochi.domain.land.LandCatalog;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -20,6 +21,14 @@ final class ImagePromptV3 {
 
     /** 스카프·망토는 여러 진영에 겹쳐 모든 캐릭터가 비슷해 보이게 하므로, 기사 진영에서만 모티프로 쓴다 */
     static final String KNIGHT_FACTION = "virus-busters";
+
+    /** 속이 빈 새까만 눈이 어울리는 진영: 이 진영이나 악마 잉크에서만 눈동자 없는 눈을 허용한다 */
+    static final Set<String> BLANK_EYE_FACTIONS = Set.of("dark-area", "nightmare-soldiers");
+
+    /** 진화하면서 눈동자가 사라져 섬뜩해진다는 후기가 있어, 앞 단계의 눈 모양을 유지하고 하이라이트를 꼭 넣게 한다 */
+    private static final String EYES = "Eyes: keep the exact eye design of image 1 (the same eye shape, the same whites and pupils if image 1 has them, " +
+            "the same dark dots if image 1 has dots), and make sure every eye keeps a small white highlight so it never becomes a blank solid-black oval. " +
+            "Do not make the eyes smaller, flatter or emptier than in image 1.";
 
     private static final String FRAME = "Single character centered, filling about 70% of the frame, transparent background, " +
             "no shadow, no glow, no ground, no other characters.";
@@ -92,7 +101,7 @@ final class ImagePromptV3 {
     static String evolve(String stage, DoodleSubject origin, String faction, String colors, String motifs, String absorbed) {
         boolean child = "child".equals(stage);
         boolean hasInk = !blank(absorbed);
-        boolean strong = hasInk && absorbed.contains(LandCatalog.ORIGIN_TOKEN);          // 55% 이상: 겉모습이 크게 바뀔 수 있다
+        boolean strong = hasInk && absorbed.contains(LandCatalog.FULL_MARK);                 // 85% 이상(몸 전체가 바뀜): 겉모습이 크게 바뀔 수 있다
         boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);  // 하체 분류가 바뀐다
         String fidelity = child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
         String growth = child ? CHILD_GROWTH : ADULT_GROWTH;
@@ -108,10 +117,11 @@ final class ImagePromptV3 {
                 (KNIGHT_FACTION.equals(faction) ? motifs : withoutScarves(motifs)) + ". " +
                 "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity. " +
                 "Use " + colors + " as accent colors.";
+        String eyes = blankEyesAllowed(faction, absorbed) ? "" : EYES + " ";
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
@@ -140,6 +150,12 @@ final class ImagePromptV3 {
         return Arrays.stream(motifs.split(", *"))
                 .filter(m -> !m.toLowerCase().contains("scarf") && !m.toLowerCase().contains("cape"))
                 .collect(Collectors.joining(", "));
+    }
+
+    /** 어둠·악마 계열 진영이거나 악마 잉크를 흡수했으면 눈동자 없는 눈을 허용한다 */
+    static boolean blankEyesAllowed(String faction, String absorbed) {
+        if (faction != null && BLANK_EYE_FACTIONS.contains(faction)) return true;
+        return absorbed != null && absorbed.toLowerCase().contains("demon");
     }
 
     private static boolean isLiving(DoodleSubject o) {

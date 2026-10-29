@@ -80,9 +80,18 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("강한 구간 잉크: 자리표시를 원본 이름·특징으로 채우고, 겉모습이 크게 바뀔 수 있다고 알린다")
+    @DisplayName("중간 구간(60%): 특징만 크게 하고 겉모습이 크게 바뀐다고 알리지 않는다")
+    void evolveAdult_midInkIsNotLoose() {
+        String p = evolve("adult", LandCatalog.absorbedPrompt("combining-robot", List.of(), "adult"));
+
+        assertThat(p).contains("large, prominent and clearly visible").doesNotContain("its outer design may change a lot");
+        assertThat(p).doesNotContain(LandCatalog.ORIGIN_TOKEN).contains("a person");
+    }
+
+    @Test
+    @DisplayName("강한 구간 잉크(85%): 자리표시를 원본 이름·특징으로 채우고, 겉모습이 크게 바뀔 수 있다고 알린다")
     void evolveAdult_strongInkFillsOrigin() {
-        String ink = LandCatalog.absorbedPrompt("combining-robot", List.of(), "adult");
+        String ink = LandCatalog.absorbedPrompt("combining-robot", List.of("family.steel"), "adult");
 
         String p = evolve("adult", ink);
 
@@ -94,7 +103,7 @@ class ImagePromptV3Test {
     @Test
     @DisplayName("체형을 바꾸는 잉크는 '이전 체형 유지' 문장을 빼고 하체 분류를 쓴다")
     void bodyChange_replacesKeepBodyPlan() {
-        String p = evolve("adult", LandCatalog.absorbedPrompt("tank", List.of(), "adult"));
+        String p = evolve("adult", LandCatalog.absorbedPrompt("tank", List.of("family.steel"), "adult"));
 
         assertThat(p).contains("Change its lower body type to a TANK-LIKE lower body");
         assertThat(p).contains("HARD RULE: ZERO legs are visible");
@@ -157,5 +166,22 @@ class ImagePromptV3Test {
 
         assertThat(p).contains("is NOT a weapon or object the creature holds").contains("must NOT hold the a sword in its hand");
         assertThat(ImagePromptV3.evolve("child", PERSON, "metal-empire", "silver", "plates", null)).doesNotContain("NOT a weapon");
+    }
+
+    @Test
+    @DisplayName("진화 프롬프트는 앞 단계의 눈 모양을 유지하고 하이라이트를 넣게 한다")
+    void evolve_keepsEyes() {
+        String p = ImagePromptV3.evolve("child", null, "nature-spirits", "green", "fur tufts", null);
+
+        assertThat(p).contains("keep the exact eye design of image 1").contains("small white highlight").contains("blank solid-black oval");
+    }
+
+    @Test
+    @DisplayName("어둠·악마 계열 진영과 악마 잉크에서는 눈 규칙을 넣지 않는다")
+    void evolve_darkAllowsBlankEyes() {
+        assertThat(ImagePromptV3.evolve("adult", null, "dark-area", "indigo", "horns", null)).doesNotContain("blank solid-black oval");
+        assertThat(ImagePromptV3.evolve("adult", null, "nightmare-soldiers", "purple", "ghost", null)).doesNotContain("blank solid-black oval");
+        assertThat(ImagePromptV3.evolve("adult", null, "desert", "sand", "cactus", "Absorbed ink data: a demon lord's horns")).doesNotContain("blank solid-black oval");
+        assertThat(ImagePromptV3.evolve("adult", null, "desert", "sand", "cactus", null)).contains("blank solid-black oval");
     }
 }

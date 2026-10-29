@@ -16,10 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -320,29 +316,18 @@ public class ImageGenerationService {
     }
 
     /**
-     * 픽셀 아트용 알파 이진화: 알파 128 미만은 완전 투명, 이상은 완전 불투명.
-     * 모델이 지시를 어기고 그리는 흐린 그림자/번짐과 반투명 가장자리를 제거한다. 실패하면 원본을 그대로 반환.
+     * 픽셀 아트용 알파 정리: 알파 128 미만은 투명, 이상은 불투명으로 나누고, 몸 안쪽의 투명 구멍은 채운다.
+     * 모델이 지시를 어기고 그리는 흐린 그림자/번짐과 반투명 가장자리를 없애고, 배경이 비쳐 색이 달라 보이는 것을 막는다.
+     * 실패하면 원본을 그대로 반환.
      */
     byte[] binarizeAlpha(byte[] png) {
         if (png == null || png.length == 0) return png;
-        try {
-            BufferedImage src = ImageIO.read(new ByteArrayInputStream(png));
-            if (src == null) return png;
-            BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < src.getHeight(); y++) {
-                for (int x = 0; x < src.getWidth(); x++) {
-                    int argb = src.getRGB(x, y);
-                    boolean visible = (argb >>> 24) >= 128;
-                    out.setRGB(x, y, visible ? (argb | 0xFF000000) : 0);
-                }
-            }
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ImageIO.write(out, "png", bos);
-            return bos.toByteArray();
-        } catch (Exception e) {
-            log.warn("알파 이진화 실패, 원본 사용: {}", e.getMessage());
+        byte[] cleaned = SpriteAlpha.clean(png);
+        if (cleaned == null) {
+            log.warn("알파 정리 실패, 원본 사용");
             return png;
         }
+        return cleaned;
     }
 
     private void addImagePart(MultipartBodyBuilder builder, String field, byte[] bytes, String mime, String filename) {
