@@ -33,7 +33,7 @@ tamagotchi:
   promotion:
     mode: record                    # off: 판정 안 함 / record: 대상 여부를 판정해 기록만 함 / grant: 기록하고 토스 포인트를 실제로 지급(code 필요)
     code: ${PROMOTION_CODE:}             # 콘솔에서 만든 프로모션 코드. 테스트는 앞에 TEST_ 가 붙은 코드(지급·차감 없이 API만 확인)
-    evolution:                      # 진화 달성 보상(성체 10원·완전체 50원). 트레이닝 보상과 다른 코드를 쓴다
+    evolution:                      # 진화 달성 보상(스케치 10원·완성작 50원). 트레이닝 보상과 다른 코드를 쓴다
       mode: record                  # off / record / grant
       code: ${EVOLUTION_PROMOTION_CODE:}
   admin:
@@ -49,7 +49,7 @@ image:
   prompt-version: ${IMAGE_PROMPT_VERSION:v3}  # v3(칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
   provider: ${IMAGE_PROVIDER:openai}  # openai | stability(롤백용)
   quota-enabled: true         # false면 생성 횟수 제한을 끈다 (로컬 개발 전용)
-  daily-limit-per-user: 8     # 유저당 하루 이미지 생성 한도 (유체+성체+완전체 = 3회)
+  daily-limit-per-user: 8     # 유저당 하루 이미지 생성 한도 (낙서+스케치+완성작 = 3회)
   daily-limit-global: 2000    # 서비스 전체 하루 한도 (비용 폭주 방지 최후 장치)
 
 openai:

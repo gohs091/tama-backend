@@ -66,7 +66,7 @@ public final class LandCatalog {
     /** 잉크 개수 → 흡수 비율(%). 특정(대표) 잉크는 2개, 계열 잉크는 1개로 센다 */
     static final int[] ABSORB_RATIO = {0, 35, 60, 85};
 
-    /** 단계별로 잉크가 겉모습을 바꿀 수 있는 최대 비율(%). 유체가 갑자기 다른 생물이 되지 않게 한다 */
+    /** 단계별로 잉크가 겉모습을 바꿀 수 있는 최대 비율(%). 낙서가 갑자기 다른 생물이 되지 않게 한다 */
     static int stageCap(String stage) {
         return switch (stage == null ? "" : stage) {
             case "baby" -> 15;

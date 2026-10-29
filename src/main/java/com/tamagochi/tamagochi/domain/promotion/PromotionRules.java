@@ -1,7 +1,7 @@
 package com.tamagochi.tamagochi.domain.promotion;
 
 /**
- * 완전체 트레이닝 프로모션 규칙. 랜덤 없이 탭 수 구간으로 정해진다.
+ * 완성작 트레이닝 프로모션 규칙. 랜덤 없이 탭 수 구간으로 정해진다.
  * 금액(원)과 구간은 시작값이다. 실제 탭 분포와 콘솔의 프로모션 예산·1회 지급 한도를 보고 조정한다.
  */
 public final class PromotionRules {

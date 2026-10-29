@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class EvolveImageRequest {
     private String tossUserId;
-    /** S3에 저장된 유체 이미지 URL (imageBase64가 없을 때 사용) */
+    /** S3에 저장된 낙서 이미지 URL (imageBase64가 없을 때 사용) */
     private String imageUrl;
     /** 직접 base64로 전달할 때 사용 (data: 접두사 포함/불포함 모두 허용) */
     private String imageBase64;

@@ -8,9 +8,9 @@ import java.util.stream.Collectors;
 /**
  * 이미지 프롬프트 v3: 한 덩어리 문장이 아니라 칸(슬롯)으로 나눠 조립한다.
  *   [스타일] [입력 역할] [정체] [방향] [체형] [성장 폭] [흡수한 잉크] [진영 장식] [마무리]
- * - 유체: 그림을 그대로 살린다. 사람·생물 그림도 합체(탈것·부위·들기)하지 않는다.
- * - 성체/완전체: 직전 단계 이미지(1번)와 원본 낙서(2번)를 함께 보고, 크기만 키우지 않고 방향을 정해 진화한다.
- *   완전체는 "정규 진화"처럼 더 강하고 멋있어 보이게 한다(체격·표정·디테일·대비).
+ * - 낙서: 그림을 그대로 살린다. 사람·생물 그림도 합체(탈것·부위·들기)하지 않는다.
+ * - 스케치/완성작: 직전 단계 이미지(1번)와 원본 낙서(2번)를 함께 보고, 크기만 키우지 않고 방향을 정해 진화한다.
+ *   완성작은 "정규 진화"처럼 더 강하고 멋있어 보이게 한다(체격·표정·디테일·대비).
  * - 흡수한 잉크가 있으면 그 칸에 들어간다(문장은 LandCatalog가 개수·단계 한도·등급으로 만든다). 없으면 성장만 한다.
  * 롤백: image.prompt-version=v2 로 두면 이전 프롬프트(ImageGenerationService.buildOpenAiPrompt)를 쓴다.
  */
@@ -85,7 +85,7 @@ final class ImagePromptV3 {
             "Add exactly ONE new signature feature that fits its nature (for example a crest, longer limbs, a distinctive marking or a tail), " +
             "and keep everything else recognizable.";
 
-    /** 성체 → 완전체: 정규 진화처럼 눈에 띄게 강하고 멋있어지되, 같은 생물이어야 한다 */
+    /** 스케치 → 완성작: 정규 진화처럼 눈에 띄게 강하고 멋있어지되, 같은 생물이어야 한다 */
     private static final String ADULT_GROWTH =
             "This is the FINAL, fully evolved form: a true evolution, like the grown-up upgrade of a digital monster. " +
             "It must look visibly stronger, cooler and more mature than image 1, and image 1 should look like its younger form. " +

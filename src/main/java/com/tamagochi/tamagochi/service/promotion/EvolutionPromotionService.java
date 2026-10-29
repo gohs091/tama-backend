@@ -19,9 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 진화 달성 보상: 성체가 되면 10원, 완전체가 되면 50원(토스 포인트).
- * 성체는 사용자당 처음 한 번만 준다 (첫 보상으로 "진짜 받는다"를 경험하게 하되, 성체만 노리고 다시 키우는 걸 막는다).
- * 완전체는 끄적이를 다시 키워 또 진화하면 또 주되, 한 달(KST, 매월 1일 초기화)에 4번까지다 (일주일에 한 번꼴).
+ * 진화 달성 보상: 스케치가 되면 10원, 완성작이 되면 50원(토스 포인트).
+ * 스케치는 사용자당 처음 한 번만 준다 (첫 보상으로 "진짜 받는다"를 경험하게 하되, 스케치만 노리고 다시 키우는 걸 막는다).
+ * 완성작은 끄적이를 다시 키워 또 진화하면 또 주되, 한 달(KST, 매월 1일 초기화)에 4번까지다 (일주일에 한 번꼴).
  * mode=off 이면 아무것도 하지 않고, record 이면 기록만, grant 이면 진화 보상용 코드로 실제 지급한다.
  */
 @Service
@@ -30,7 +30,7 @@ public class EvolutionPromotionService {
 
     /** 단계별 보상 금액(원) */
     public static final Map<EvolutionStage, Integer> AMOUNTS = Map.of(EvolutionStage.CHILD, 10, EvolutionStage.ADULT, 50);
-    /** 완전체 보상을 한 달에 받을 수 있는 횟수 */
+    /** 완성작 보상을 한 달에 받을 수 있는 횟수 */
     public static final int MONTHLY_LIMIT = 4;
     /** 사용자당 처음 한 번만 주는 단계 */
     private static final Set<EvolutionStage> FIRST_ONLY = Set.of(EvolutionStage.CHILD);

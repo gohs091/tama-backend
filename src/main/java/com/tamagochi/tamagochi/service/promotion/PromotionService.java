@@ -18,7 +18,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 
 /**
- * 완전체 트레이닝 결과에 따른 프로모션 대상 판정과 기록.
+ * 완성작 트레이닝 결과에 따른 프로모션 대상 판정과 기록.
  * mode=off 이면 아무것도 하지 않고, record 이면 대상 여부를 판정해 기록만 남긴다(실제 지급은 아직 연동 전).
  */
 @Service

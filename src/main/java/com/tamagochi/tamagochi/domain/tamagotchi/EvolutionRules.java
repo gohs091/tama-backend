@@ -13,7 +13,7 @@ public final class EvolutionRules {
     private EvolutionRules() {
     }
 
-    /** 다음 단계로 진화하는 데 필요한 게이지 칸 수. 완전체로 가는 길이 가장 길다. 진화할 수 없는 단계는 0. */
+    /** 다음 단계로 진화하는 데 필요한 게이지 칸 수. 완성작으로 가는 길이 가장 길다. 진화할 수 없는 단계는 0. */
     public static int gaugeMax(EvolutionStage stage) {
         return switch (stage) {
             case BABY -> 10;
