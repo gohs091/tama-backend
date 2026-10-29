@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import com.tamagochi.tamagochi.domain.land.LandCatalog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -220,7 +221,7 @@ public class ImageGenerationService {
     private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
                                     String faction, String stage, String controlStrength, Long variationSeed,
                                     String absorbedInk, String tossUserId) {
-        String ink = absorbedInk == null || absorbedInk.isBlank() ? "" : " " + absorbedInk;
+        String ink = absorbedInk == null || absorbedInk.isBlank() ? "" : " " + LandCatalog.fillOrigin(absorbedInk, null, null);
         if ("openai".equalsIgnoreCase(provider)) {
             if (!"v2".equalsIgnoreCase(promptVersion)) {
                 return generateV3(imageBytes, mimeType, referenceBytes, referenceMime, faction, stage, absorbedInk, tossUserId);
@@ -250,7 +251,7 @@ public class ImageGenerationService {
         String prompt;
         if (evolving) {
             subject = originFor(tossUserId, imageBytes, mimeType);
-            prompt = ImagePromptV3.evolve(stage, subject, colors, getFactionThemeMotifs(faction), absorbedInk);
+            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk);
         } else {
             subject = describeDoodle(imageBytes, mimeType);
             if (subject != null && !subject.isAbstract()) {

@@ -1,7 +1,10 @@
 package com.tamagochi.tamagochi.service.character;
 
+import com.tamagochi.tamagochi.domain.land.LandCatalog;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,6 +14,10 @@ class ImagePromptV3Test {
             "head, arms, legs", "사람", "zigzag arms, very large head", "biped");
     private static final String COLORS = "sand yellow and terracotta orange color scheme";
     private static final String MOTIFS = "desert traits: cactus spines";
+
+    private static String evolve(String stage, String absorbed) {
+        return ImagePromptV3.evolve(stage, PERSON, "desert", COLORS, MOTIFS, absorbed);
+    }
 
     @Test
     @DisplayName("유체: 그림의 특징·몸 구조를 살리고, 탈것·동반·두 번째 몸을 만들지 않는다")
@@ -37,7 +44,7 @@ class ImagePromptV3Test {
     @Test
     @DisplayName("성체: 직전 모습과 원본 낙서를 함께 보고, 크기만 키우지 않고 특징을 하나 더한다")
     void evolveChild_plain() {
-        String p = ImagePromptV3.evolve("child", PERSON, COLORS, MOTIFS, null);
+        String p = evolve("child", null);
 
         assertThat(p).contains("Image 1 is the CURRENT form").contains("Image 2 is the original doodle");
         assertThat(p).contains("Origin of this creature: a person").contains("zigzag arms, very large head");
@@ -47,48 +54,66 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("완전체: 영웅 포즈·위압감을 강요하지 않고 몸 구조에 맞는 포즈를 고르게 한다")
-    void evolveAdult_noGenericHeroPose() {
-        String p = ImagePromptV3.evolve("adult", PERSON, COLORS, MOTIFS, null);
+    @DisplayName("완전체: 정규 진화처럼 더 강하고 멋있게 — 체격·표정·디테일·대비가 달라지되 개성은 남긴다")
+    void evolveAdult_feelsLikeEvolution() {
+        String p = evolve("adult", null);
 
-        assertThat(p).doesNotContain("strong, heroic pose").doesNotContain("imposing");
-        assertThat(p).contains("Do NOT default to a generic standing hero pose");
+        assertThat(p).contains("a true evolution").contains("visibly stronger, cooler and more mature than image 1");
+        assertThat(p).contains("sharper face and a more confident or fierce expression").contains("strengthen the color contrast");
+        assertThat(p).contains("distinctive features listed in the origin above must still be clearly visible");
+        assertThat(p).contains("not a generic cute mascot and not a generic standing hero");
+        assertThat(p).doesNotContain("strong, heroic pose").doesNotContain("imposing, richly detailed");
         assertThat(p).contains("do not simplify or drop details");
-        assertThat(p).contains("Use at most two of these motifs");
     }
 
     @Test
-    @DisplayName("흡수한 잉크가 있는 완전체: 겉모습이 크게 달라질 수 있고 잉크 문장이 들어간다")
-    void evolveAdult_withInk() {
-        String ink = "Absorbed ink data chosen by the player: A chimera that clearly shows both.";
-        String p = ImagePromptV3.evolve("adult", PERSON, COLORS, MOTIFS, ink);
+    @DisplayName("스카프·망토는 기사 진영에서만 모티프로 쓴다")
+    void scarvesOnlyForKnightFaction() {
+        String motifs = "desert traits: cactus spines, a wrapped scarf, a scarab tail, a cape or scarf";
 
-        assertThat(p).contains(ink).contains("its outer design may change a lot");
-        assertThat(p).contains("unless the absorbed ink below says otherwise");
-    }
+        String other = ImagePromptV3.evolve("adult", PERSON, "desert", COLORS, motifs, null);
+        String knights = ImagePromptV3.evolve("adult", PERSON, "virus-busters", COLORS, motifs, null);
 
-    @Test
-    @DisplayName("흡수한 잉크가 있어도 성체는 몸 구조를 바꾸지 않는다")
-    void evolveChild_withInk_keepsBodyPlan() {
-        String p = ImagePromptV3.evolve("child", PERSON, COLORS, MOTIFS, "Absorbed ink data chosen by the player: x");
-
-        assertThat(p).doesNotContain("unless the absorbed ink below says otherwise").doesNotContain("its outer design may change a lot");
-    }
-
-    @Test
-    @DisplayName("진화 프롬프트의 진영 모티프에서 스카프·망토는 빠진다 (모든 캐릭터가 비슷해 보이는 원인)")
-    void evolve_dropsScarves() {
-        String motifs = "desert traits: cactus spines, a wrapped scarf, a scarab tail";
-        String p = ImagePromptV3.evolve("adult", PERSON, COLORS, motifs, null);
-
-        assertThat(p).contains("cactus spines").contains("a scarab tail").doesNotContain("wrapped scarf");
+        assertThat(other).contains("cactus spines").contains("a scarab tail").doesNotContain("scarf").doesNotContain("cape");
+        assertThat(knights).contains("a wrapped scarf").contains("a cape or scarf");
         assertThat(ImagePromptV3.withoutScarves("heroic: a hero emblem, a cape or scarf, a shield")).isEqualTo("heroic: a hero emblem, a shield");
+    }
+
+    @Test
+    @DisplayName("강한 구간 잉크: 자리표시를 원본 이름·특징으로 채우고, 겉모습이 크게 바뀔 수 있다고 알린다")
+    void evolveAdult_strongInkFillsOrigin() {
+        String ink = LandCatalog.absorbedPrompt("combining-robot", List.of(), "adult");
+
+        String p = evolve("adult", ink);
+
+        assertThat(ink).contains(LandCatalog.ORIGIN_TOKEN);
+        assertThat(p).doesNotContain(LandCatalog.ORIGIN_TOKEN).doesNotContain(LandCatalog.TRAITS_TOKEN);
+        assertThat(p).contains("a person").contains("its outer design may change a lot");
+    }
+
+    @Test
+    @DisplayName("체형을 바꾸는 잉크는 '이전 체형 유지' 문장을 빼고 하체 분류를 쓴다")
+    void bodyChange_replacesKeepBodyPlan() {
+        String p = evolve("adult", LandCatalog.absorbedPrompt("tank", List.of(), "adult"));
+
+        assertThat(p).contains("Change its lower body type to a TANK-LIKE lower body");
+        assertThat(p).contains("HARD RULE: ZERO legs are visible");
+        assertThat(p).doesNotContain("Keep the body plan of image 1");
+    }
+
+    @Test
+    @DisplayName("성체(한도 50%)에서는 같은 잉크도 부위만 바뀌고 체형 유지 문장이 남는다")
+    void evolveChild_inkKeepsBodyPlan() {
+        String p = evolve("child", LandCatalog.absorbedPrompt("tank", List.of(), "child"));
+
+        assertThat(p).contains("Replace exactly ONE body part").contains("Keep the body plan of image 1");
+        assertThat(p).doesNotContain(LandCatalog.BODY_CHANGE_MARK).doesNotContain("its outer design may change a lot");
     }
 
     @Test
     @DisplayName("저장된 그림 정체가 없어도(null) 진화 프롬프트를 만든다")
     void evolve_withoutOrigin() {
-        String p = ImagePromptV3.evolve("child", null, COLORS, MOTIFS, null);
+        String p = ImagePromptV3.evolve("child", null, "desert", COLORS, MOTIFS, null);
 
         assertThat(p).doesNotContain("Origin of this creature").contains("Image 2 is the original doodle");
     }
