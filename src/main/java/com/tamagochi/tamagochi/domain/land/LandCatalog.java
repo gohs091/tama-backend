@@ -81,7 +81,7 @@ public final class LandCatalog {
     }
 
     /**
-     * 하체 분류: 체형까지 바꾸는 잉크(희귀·전설)가 쓴다. 자유 문장("네발로", "이족보행으로") 대신 다섯 가지로 고정하고
+     * 하체 분류(인간형·4족형·탱크형·다리없음·날개형): 체형까지 바꾸는 잉크(희귀·전설)가 쓴다. 자유 문장("네발로", "이족보행으로") 대신 다섯 가지로 고정하고
      * 다리 개수를 숫자로 못박으면 이미지 모델이 훨씬 잘 따른다(실험으로 확인).
      */
     public enum Body {
@@ -89,8 +89,6 @@ public final class LandCatalog {
                 "HARD RULE: exactly TWO legs are visible, and the character stands upright on them."),
         QUAD("a FOUR-LEGGED lower body: it walks on four clearly visible legs, all four feet on the ground, with its body held horizontally like an animal (it must NOT stand upright on two legs)",
                 "HARD RULE: exactly FOUR legs are visible, all on the ground."),
-        REVERSE("a REVERSE-JOINTED lower body: two long legs with knees that bend backward like a bird or a raptor, long lower legs and toes, a forward-leaning posture",
-                "HARD RULE: exactly TWO long reverse-jointed (backward-kneed) legs are visible."),
         TANK("a TANK-LIKE lower body: instead of legs it moves on caterpillar treads or big wheels, with a low, wide, armored base",
                 "HARD RULE: ZERO legs are visible; the base is treads or wheels."),
         LEGLESS("a LEGLESS single-trunk body: ONE continuous trunk-like body with NO legs, NO feet and NO talons at all; where legs would be, the body continues as a tail (like a serpent, a ghost, a worm or a fish tail, or a jet exhaust), floating or resting smoothly on the ground",
@@ -122,7 +120,7 @@ public final class LandCatalog {
             Map.entry("crocodile", Body.HUMAN), Map.entry("gorilla", Body.HUMAN), Map.entry("combining-robot", Body.HUMAN),
             Map.entry("lion-king", Body.QUAD), Map.entry("triceratops", Body.QUAD), Map.entry("tiger", Body.QUAD),
             Map.entry("black-panther", Body.QUAD), Map.entry("wolf", Body.QUAD),
-            Map.entry("t-rex", Body.REVERSE),
+            Map.entry("t-rex", Body.HUMAN),
             Map.entry("tank", Body.TANK), Map.entry("supercar", Body.TANK), Map.entry("bullet-train", Body.TANK),
             Map.entry("shark", Body.LEGLESS), Map.entry("octopus", Body.LEGLESS), Map.entry("whale", Body.LEGLESS),
             Map.entry("orca", Body.LEGLESS), Map.entry("anglerfish", Body.LEGLESS), Map.entry("megalodon", Body.LEGLESS),

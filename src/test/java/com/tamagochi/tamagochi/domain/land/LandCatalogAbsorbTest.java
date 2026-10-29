@@ -57,7 +57,7 @@ class LandCatalogAbsorbTest {
     @DisplayName("체형 분류: 전설 잉크는 해당 분류로, 흔한 잉크는 체형을 바꾸지 않는다")
     void bodyClass_byGrade() {
         assertThat(LandCatalog.absorbedPrompt("leviathan", List.of(), "adult")).contains("a LEGLESS single-trunk body").contains("ZERO");
-        assertThat(LandCatalog.absorbedPrompt("t-rex", List.of(), "adult")).contains("a REVERSE-JOINTED lower body");
+        assertThat(LandCatalog.absorbedPrompt("t-rex", List.of(), "adult")).contains("a HUMANOID lower body");
         assertThat(LandCatalog.absorbedPrompt("lion-king", List.of(), "adult")).contains("a FOUR-LEGGED lower body");
         assertThat(LandCatalog.absorbedPrompt("rocket", List.of(), "adult")).contains("a WINGED FLYING build");
         // 흔한 잉크는 체형 분류가 없다
