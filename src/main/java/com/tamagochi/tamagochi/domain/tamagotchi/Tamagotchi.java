@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Entity
 @Table(name = "tamagotchi")
@@ -63,10 +64,38 @@ public class Tamagotchi {
     private LocalDateTime lastStrengthTickAt; // 파워 감소 기준 시각
     private LocalDateTime deadAt; // 사망 시각 (null이면 생존)
     private LocalDateTime lastVitalsTickAt; // 마지막으로 시간 경과를 반영한 시각 (서버 중단 감지용)
-    private LocalDateTime sleptAt; // 마지막 수면 시간 (6시간 체크용)
+    private LocalDateTime sleptAt; // 마지막으로 불을 끈(잠든) 시각
 
     @Column(nullable = false)
     private boolean sleeping;
+
+    // 졸린 시간대: 끄적이마다 밤 9시~새벽 1시 중 한 시각에 시작해 8시간. 이 동안에만 불을 끄면 잠든다. 기존 행은 null(id로 정한다).
+    public static final int[] SLEEPY_START_HOURS = {21, 22, 23, 0, 1};
+    public static final int SLEEPY_HOURS = 8;
+    // 자는 동안 포만감·파워는 이 배만큼 느리게 줄고, 응가는 멈춘다
+    public static final int SLEEP_DECAY_SLOWDOWN = 3;
+    @Column(name = "sleepy_start_hour")
+    private Integer sleepyStartHour;
+
+    public int sleepyStartHour() {
+        if (this.sleepyStartHour != null) return this.sleepyStartHour;
+        long seed = this.id == null ? 0 : this.id;
+        return SLEEPY_START_HOURS[(int) Math.floorMod(seed, (long) SLEEPY_START_HOURS.length)];
+    }
+
+    /** 지금이 이 끄적이의 졸린 시간대인가 */
+    public boolean isSleepyTime(LocalDateTime now) {
+        return Math.floorMod(now.getHour() - sleepyStartHour(), 24) < SLEEPY_HOURS;
+    }
+
+    /** 졸린 시간대인데 아직 깨어 있다 (불을 꺼 달라고 보챈다) */
+    public boolean isSleepy(LocalDateTime now) {
+        return !this.sleeping && !isDead() && this.evolutionStage != EvolutionStage.EGG && isSleepyTime(now);
+    }
+
+    public static int randomSleepyStartHour() {
+        return SLEEPY_START_HOURS[ThreadLocalRandom.current().nextInt(SLEEPY_START_HOURS.length)];
+    }
 
     // 잉크통 충전 중. 이 동안은 잠잘 때처럼 시간이 흐르지 않고 돌보기·훈련을 할 수 없다. 기존 행은 null.
     @Column(name = "bathing")
@@ -171,6 +200,7 @@ public class Tamagotchi {
     }
 
     public void feed() {
+        this.sleeping = false; // 먹이면 깬다
         this.hunger = Math.max(0, this.hunger - FEED_AMOUNT);
         this.feedCount++;
         this.lastFedAt = LocalDateTime.now();
@@ -178,6 +208,7 @@ public class Tamagotchi {
     }
 
     public void addStrength(int amount) {
+        this.sleeping = false; // 알약을 먹여도 깬다
         this.strength = Math.min(100, this.strength + amount);
         if (this.strength > 0) this.strengthEmptySince = null;
     }
@@ -198,13 +229,17 @@ public class Tamagotchi {
         this.lastPoopAt = LocalDateTime.now(); // 청소 직후 바로 또 싸지 않도록 간격 재시작
     }
 
-    public void sleep() {
-        if (this.sleptAt != null &&
-                this.sleptAt.isAfter(LocalDateTime.now().minusHours(6))) {
-            throw new IllegalStateException("일어난 지 6시간이 안 됐어요. 싫어요! 😤");
+    /** 불 끄기. 졸린 시간대에만 잠든다. 저절로 깨지 않고, 불을 켜거나 만지거나 먹이면 깬다 */
+    public void sleep(LocalDateTime now) {
+        if (this.evolutionStage == EvolutionStage.EGG) {
+            throw new IllegalStateException("알은 잠을 자지 않아요.");
+        }
+        if (this.sleeping) return;
+        if (!isSleepyTime(now)) {
+            throw new IllegalStateException("아직 안 졸려요!");
         }
         this.sleeping = true;
-        this.sleptAt = LocalDateTime.now();
+        this.sleptAt = now;
     }
 
     public void wakeUp() {
@@ -271,7 +306,8 @@ public class Tamagotchi {
 
     /**
      * 시간 경과 반영: 포만감·파워 감소, 똥 증가, 사망 판정.
-     * 알은 대상이 아니고, 수면 중에는 감소/증가 기준 시각만 앞으로 당긴다(수면 중 소진 없음).
+     * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음).
+     * 자는 동안에는 응가가 멈추고 포만감·파워는 SLEEP_DECAY_SLOWDOWN배 느리게 준다.
      * 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 사망한다.
      */
     public void applyTime(LocalDateTime now, VitalsRule rule) {
@@ -279,13 +315,17 @@ public class Tamagotchi {
 
         absorbDowntime(now, rule);
 
-        if (this.sleeping || isBathing() || isAdventuring()) {
+        if (isBathing() || isAdventuring()) {
             this.lastHungerTickAt = now;
             this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
+        } else if (this.sleeping) {
+            decayHunger(now, rule.satietyMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
+            decayStrength(now, rule.strengthMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
+            this.lastPoopAt = now;
         } else {
-            decayHunger(now, rule);
-            decayStrength(now, rule);
+            decayHunger(now, rule.satietyMinutesPerPoint());
+            decayStrength(now, rule.strengthMinutesPerPoint());
             growPoop(now, rule);
         }
         syncEmptyMarkers(now);
@@ -314,25 +354,25 @@ public class Tamagotchi {
         return t == null ? null : t.plus(d);
     }
 
-    private void decayHunger(LocalDateTime now, VitalsRule rule) {
+    private void decayHunger(LocalDateTime now, int minutesPerPoint) {
         if (this.lastHungerTickAt == null) {
             this.lastHungerTickAt = now;
             return;
         }
-        long points = Duration.between(this.lastHungerTickAt, now).toMinutes() / rule.satietyMinutesPerPoint();
+        long points = Duration.between(this.lastHungerTickAt, now).toMinutes() / minutesPerPoint;
         if (points <= 0) return;
-        this.lastHungerTickAt = this.lastHungerTickAt.plusMinutes(points * rule.satietyMinutesPerPoint());
+        this.lastHungerTickAt = this.lastHungerTickAt.plusMinutes(points * minutesPerPoint);
         this.hunger = (int) Math.min(100, this.hunger + points);
     }
 
-    private void decayStrength(LocalDateTime now, VitalsRule rule) {
+    private void decayStrength(LocalDateTime now, int minutesPerPoint) {
         if (this.lastStrengthTickAt == null) {
             this.lastStrengthTickAt = now;
             return;
         }
-        long points = Duration.between(this.lastStrengthTickAt, now).toMinutes() / rule.strengthMinutesPerPoint();
+        long points = Duration.between(this.lastStrengthTickAt, now).toMinutes() / minutesPerPoint;
         if (points <= 0) return;
-        this.lastStrengthTickAt = this.lastStrengthTickAt.plusMinutes(points * rule.strengthMinutesPerPoint());
+        this.lastStrengthTickAt = this.lastStrengthTickAt.plusMinutes(points * minutesPerPoint);
         this.strength = (int) Math.max(0, this.strength - points);
     }
 
@@ -392,6 +432,7 @@ public class Tamagotchi {
         this.adventuring = false;
         setInkLoadout(null, null, null);
         this.sleptAt = null;
+        this.sleepyStartHour = randomSleepyStartHour(); // 새 끄적이마다 졸린 시간이 다르다
         // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
         this.babyImageBase64 = null;
         this.childImageBase64 = null;
