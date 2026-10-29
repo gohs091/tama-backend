@@ -90,9 +90,14 @@ public class PromotionGrant {
         return g;
     }
 
+    /** 관리자 테스트 건의 키에 붙이는 짧은 무작위 문자열. training_session_id 열이 36자라 UUID 전체는 들어가지 않는다 */
+    public static String shortRandomId() {
+        return java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    }
+
     /** 관리자 테스트용 진화 보상 한 건. 키가 evolution- 로 시작하지 않아 실제 보상 횟수 제한에는 세어지지 않는다 */
     public static PromotionGrant evolutionTest(User user, LocalDate date, int amount) {
-        PromotionGrant g = new PromotionGrant(user, "admin-test-evolution-" + java.util.UUID.randomUUID(), date, 0, 0, amount);
+        PromotionGrant g = new PromotionGrant(user, "admin-test-evo-" + shortRandomId(), date, 0, 0, amount);
         g.kind = KIND_EVOLUTION;
         return g;
     }
