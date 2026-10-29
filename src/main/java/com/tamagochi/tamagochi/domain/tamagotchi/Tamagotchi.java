@@ -93,6 +93,47 @@ public class Tamagotchi {
         return !this.sleeping && !isDead() && this.evolutionStage != EvolutionStage.EGG && isSleepyTime(now);
     }
 
+    // 성향 수치 0~100: 돌보는 방식에 따라 오르내리고, 진화할 때 가장 높은 것으로 성격이 정해진 뒤 0으로 돌아간다. 기존 행은 null(0).
+    public static final int TRAIT_MAX = 100;
+    public static final int OVERSLEEP_MINUTES_PER_GLOOM = 10; // 졸린 시간대가 끝났는데 불이 꺼져 있으면 이 분마다 우울 +1
+    public static final int WOKEN_GRUMPY = 5;     // 졸린 시간대에 깨우면 까칠 +5
+    public static final int SLEPT_WELL_HOURS = 6; // 이만큼 자고 졸린 시간대가 끝난 뒤 깨면 활기 +5
+    public static final int SLEPT_WELL_LIVELY = 5;
+    public static final int TRAINING_LIVELY = 3;  // 트레이닝 1번: 활기 +3, 우울 -2
+    public static final int TRAINING_CHEER = 2;
+    public static final int STARVED_GLOOM = 5;    // 포만감이 0이 되면 우울 +5
+    public static final int POOP_PILE_AT = 10;    // 응가가 이만큼 쌓인 뒤 하나 늘 때마다 까칠 +2
+    public static final int POOP_PILE_GRUMPY = 2;
+    public static final int CLEAN_CALM = 2;       // 청소하면 까칠 -2
+
+    @Column(name = "trait_grumpy")
+    private Integer traitGrumpy;   // 까칠
+    @Column(name = "trait_gloomy")
+    private Integer traitGloomy;   // 우울
+    @Column(name = "trait_lively")
+    private Integer traitLively;   // 활기
+    private LocalDateTime oversleepTickAt; // 늦잠 우울 계산 기준 시각 (늦잠 중이 아니면 null)
+
+    // 마지막 진화 때 정해진 성격(앱의 22가지 성격 키, 예: "Jolly"). 낙서(첫 진화 전)는 null이고 앱이 정한 성격을 쓴다
+    @Column(length = 20)
+    private String personality;
+
+    public int getTraitGrumpy() { return this.traitGrumpy == null ? 0 : this.traitGrumpy; }
+    public int getTraitGloomy() { return this.traitGloomy == null ? 0 : this.traitGloomy; }
+    public int getTraitLively() { return this.traitLively == null ? 0 : this.traitLively; }
+
+    private static int clampTrait(int v) {
+        return Math.max(0, Math.min(TRAIT_MAX, v));
+    }
+    private void addGrumpy(int d) { this.traitGrumpy = clampTrait(getTraitGrumpy() + d); }
+    private void addGloomy(int d) { this.traitGloomy = clampTrait(getTraitGloomy() + d); }
+    private void addLively(int d) { this.traitLively = clampTrait(getTraitLively() + d); }
+    private void clearTraits() {
+        this.traitGrumpy = 0;
+        this.traitGloomy = 0;
+        this.traitLively = 0;
+    }
+
     public static int randomSleepyStartHour() {
         return SLEEPY_START_HOURS[ThreadLocalRandom.current().nextInt(SLEEPY_START_HOURS.length)];
     }
@@ -200,7 +241,7 @@ public class Tamagotchi {
     }
 
     public void feed() {
-        this.sleeping = false; // 먹이면 깬다
+        wakeUp(LocalDateTime.now()); // 먹이면 깬다
         this.hunger = Math.max(0, this.hunger - FEED_AMOUNT);
         this.feedCount++;
         this.lastFedAt = LocalDateTime.now();
@@ -208,7 +249,7 @@ public class Tamagotchi {
     }
 
     public void addStrength(int amount) {
-        this.sleeping = false; // 알약을 먹여도 깬다
+        wakeUp(LocalDateTime.now()); // 알약을 먹여도 깬다
         this.strength = Math.min(100, this.strength + amount);
         if (this.strength > 0) this.strengthEmptySince = null;
     }
@@ -222,9 +263,12 @@ public class Tamagotchi {
         }
         this.hunger = Math.min(100, this.hunger + hungerCost);
         this.strength = Math.max(0, this.strength - strengthCost);
+        addLively(TRAINING_LIVELY); // 트레이닝하면 활기가 오르고 우울이 준다
+        addGloomy(-TRAINING_CHEER);
     }
 
     public void cleanPoop() {
+        if (this.poopCount > 0) addGrumpy(-CLEAN_CALM);
         this.poopCount = 0;
         this.lastPoopAt = LocalDateTime.now(); // 청소 직후 바로 또 싸지 않도록 간격 재시작
     }
@@ -242,11 +286,28 @@ public class Tamagotchi {
         this.sleptAt = now;
     }
 
-    public void wakeUp() {
+    /**
+     * 깨우기 (불 켜기·만지기·먹이기). 졸린 시간대에 깨우면 까칠해지고,
+     * 충분히 자고 졸린 시간대가 끝난 뒤 깨면 활기가 오른다.
+     */
+    public void wakeUp(LocalDateTime now) {
+        if (!this.sleeping) return;
         this.sleeping = false;
+        this.oversleepTickAt = null;
+        if (isSleepyTime(now)) {
+            addGrumpy(WOKEN_GRUMPY);
+        } else if (this.sleptAt != null && !this.sleptAt.plusHours(SLEPT_WELL_HOURS).isAfter(now)) {
+            addLively(SLEPT_WELL_LIVELY);
+        }
     }
 
     public void evolve(EvolutionStage nextStage) {
+        // 낙서 → 스케치, 스케치 → 완성작일 때 그동안 쌓인 성향으로 성격을 정하고 성향은 새로 쌓는다
+        if (nextStage == EvolutionStage.CHILD || nextStage == EvolutionStage.ADULT) {
+            this.personality = Personality.decide(getTraitGrumpy(), getTraitGloomy(), getTraitLively())
+                    .pick(ThreadLocalRandom.current());
+            clearTraits();
+        }
         this.evolutionStage = nextStage;
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
@@ -323,6 +384,7 @@ public class Tamagotchi {
             decayHunger(now, rule.satietyMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
             decayStrength(now, rule.strengthMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
             this.lastPoopAt = now;
+            growOversleepGloom(now);
         } else {
             decayHunger(now, rule.satietyMinutesPerPoint());
             decayStrength(now, rule.strengthMinutesPerPoint());
@@ -348,6 +410,7 @@ public class Tamagotchi {
         this.lastPoopAt = shift(this.lastPoopAt, gap);
         this.hungryStartedAt = shift(this.hungryStartedAt, gap);
         this.strengthEmptySince = shift(this.strengthEmptySince, gap);
+        this.oversleepTickAt = shift(this.oversleepTickAt, gap);
     }
 
     private static LocalDateTime shift(LocalDateTime t, Duration d) {
@@ -376,6 +439,22 @@ public class Tamagotchi {
         this.strength = (int) Math.max(0, this.strength - points);
     }
 
+    /** 졸린 시간대가 끝났는데도 불이 꺼져 있으면 OVERSLEEP_MINUTES_PER_GLOOM분마다 우울 +1 (자동 기상은 없다) */
+    private void growOversleepGloom(LocalDateTime now) {
+        if (isSleepyTime(now)) {
+            this.oversleepTickAt = null;
+            return;
+        }
+        if (this.oversleepTickAt == null) {
+            this.oversleepTickAt = now;
+            return;
+        }
+        long points = Duration.between(this.oversleepTickAt, now).toMinutes() / OVERSLEEP_MINUTES_PER_GLOOM;
+        if (points <= 0) return;
+        this.oversleepTickAt = this.oversleepTickAt.plusMinutes(points * OVERSLEEP_MINUTES_PER_GLOOM);
+        addGloomy((int) Math.min(TRAIT_MAX, points));
+    }
+
     private void growPoop(LocalDateTime now, VitalsRule rule) {
         if (this.lastPoopAt == null) {
             this.lastPoopAt = now;
@@ -384,13 +463,20 @@ public class Tamagotchi {
         long count = Duration.between(this.lastPoopAt, now).toMinutes() / rule.poopIntervalMinutes();
         if (count <= 0) return;
         this.lastPoopAt = this.lastPoopAt.plusMinutes(count * rule.poopIntervalMinutes());
+        int before = this.poopCount;
         this.poopCount = (int) Math.min(rule.maxPoop(), this.poopCount + count);
+        // 많이 쌓인 응가를 두면 까칠해진다 (POOP_PILE_AT개를 넘는 새 응가 하나마다)
+        int piled = Math.max(0, this.poopCount - Math.max(before, POOP_PILE_AT - 1));
+        if (piled > 0) addGrumpy(piled * POOP_PILE_GRUMPY);
     }
 
     /** 0 상태가 시작된 시각을 기록/해제 */
     private void syncEmptyMarkers(LocalDateTime now) {
         if (this.hunger >= 100) {
-            if (this.hungryStartedAt == null) this.hungryStartedAt = now;
+            if (this.hungryStartedAt == null) {
+                this.hungryStartedAt = now;
+                addGloomy(STARVED_GLOOM); // 배고픔을 0까지 두면 시무룩해진다
+            }
         } else {
             this.hungryStartedAt = null;
         }
@@ -433,6 +519,9 @@ public class Tamagotchi {
         setInkLoadout(null, null, null);
         this.sleptAt = null;
         this.sleepyStartHour = randomSleepyStartHour(); // 새 끄적이마다 졸린 시간이 다르다
+        this.oversleepTickAt = null;
+        this.personality = null;
+        clearTraits();
         // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
         this.babyImageBase64 = null;
         this.childImageBase64 = null;

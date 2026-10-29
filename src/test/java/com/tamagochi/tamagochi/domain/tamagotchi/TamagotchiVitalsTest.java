@@ -90,7 +90,7 @@ class TamagotchiVitalsTest {
         assertThat(p.getStrength()).isEqualTo(45); // 36분마다 1
         assertThat(p.getPoopCount()).isZero();
 
-        p.wakeUp();
+        p.wakeUp(night.plusMinutes(181));
         p.applyTime(night.plusMinutes(181), RULE);
         assertThat(p.getPoopCount()).isZero(); // 깨어난 직후 한꺼번에 생기지 않는다
     }
