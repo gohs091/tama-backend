@@ -10,11 +10,13 @@ import com.tamagochi.tamagochi.repository.point.PointTransactionRepository;
 import com.tamagochi.tamagochi.repository.point.PointWalletRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -31,9 +33,16 @@ public class PointService {
     private static final String IAP_KEY_PREFIX = "iap-";
     private static final long IDEMPOTENCY_TTL = 24 * 60 * 60; // 24시간
 
-    private static final int AD_REWARD_AMOUNT = 100;
-    private static final int AD_DAILY_LIMIT = 50;
-    private static final long AD_COOLDOWN_SECONDS = 4;
+    // 광고 보상은 잉크 결제를 대신할 만큼 쉽게 쌓이면 안 되므로 설정(point.ad-reward.*)으로 조절한다
+    @Value("${point.ad-reward.amount:100}")
+    private int adRewardAmount = 100;
+    @Value("${point.ad-reward.daily-limit:5}")
+    private int adDailyLimit = 5;                 // 하루(KST) 받을 수 있는 횟수
+    @Value("${point.ad-reward.cooldown-seconds:300}")
+    private long adCooldownSeconds = 300;         // 한 번 받은 뒤 다음 보상까지
+    @Value("${point.ad-reward.min-watch-ms:0}")
+    private long adMinWatchMs = 0;                // 0이면 끔. 앱이 알려 준 시청 시간이 이보다 짧으면 지급하지 않는다
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final String AD_COOLDOWN_KEY_PREFIX = "point:ad-cooldown:";
     private static final String AD_DAILY_COUNT_KEY_PREFIX = "point:ad-count:";
 
@@ -75,27 +84,55 @@ public class PointService {
 
     /**
      * 광고 시청 보상. 금액은 서버가 고정하고(클라이언트 값은 신뢰하지 않음),
-     * 연속 호출과 하루 횟수를 제한해 /earn 직접 호출로 포인트를 대량 생성하는 것을 막는다.
+     * 일정 시간에 한 번·하루 횟수로 제한해 광고를 연달아 보고 잉크를 대량으로 쌓는 것을 막는다.
+     * watchMs: 앱이 잰 광고 시청 시간(모르면 null). 실제 분포를 로그로 보고, 필요하면 min-watch-ms 로 최소 시간을 건다.
      */
     @Transactional
-    public PointTransaction earnAdReward(User user, String idempotencyKey) {
-        String cooldownKey = AD_COOLDOWN_KEY_PREFIX + user.getId();
-        Boolean passed = redisTemplate.opsForValue()
-                .setIfAbsent(cooldownKey, "1", AD_COOLDOWN_SECONDS, TimeUnit.SECONDS);
-        if (Boolean.FALSE.equals(passed)) {
-            throw new IllegalStateException("잠시 후 다시 시도해주세요.");
+    public PointTransaction earnAdReward(User user, String idempotencyKey, Long watchMs) {
+        log.info("광고 보상 요청 - userId: {}, watchMs: {}", user.getId(), watchMs);
+        if (adMinWatchMs > 0 && watchMs != null && watchMs < adMinWatchMs) {
+            throw new IllegalStateException("광고를 끝까지 봐야 잉크를 받을 수 있어요.");
         }
 
-        String countKey = AD_DAILY_COUNT_KEY_PREFIX + user.getId() + ":" + LocalDate.now();
+        String cooldownKey = AD_COOLDOWN_KEY_PREFIX + user.getId();
+        Boolean passed = redisTemplate.opsForValue()
+                .setIfAbsent(cooldownKey, "1", adCooldownSeconds, TimeUnit.SECONDS);
+        if (Boolean.FALSE.equals(passed)) {
+            throw new IllegalStateException("잠시 후에 다시 받을 수 있어요.");
+        }
+
+        String countKey = adCountKey(user);
         Long count = redisTemplate.opsForValue().increment(countKey);
         if (count != null && count == 1L) {
             redisTemplate.expire(countKey, 25, TimeUnit.HOURS);
         }
-        if (count != null && count > AD_DAILY_LIMIT) {
+        if (count != null && count > adDailyLimit) {
+            redisTemplate.delete(cooldownKey); // 못 받았으니 기다리게 하지 않는다
             throw new IllegalStateException("오늘 받을 수 있는 광고 보상을 모두 받았어요.");
         }
 
-        return earnPoint(user, AD_REWARD_AMOUNT, idempotencyKey);
+        return earnPoint(user, adRewardAmount, idempotencyKey);
+    }
+
+    private String adCountKey(User user) {
+        return AD_DAILY_COUNT_KEY_PREFIX + user.getId() + ":" + LocalDate.now(KST);
+    }
+
+    /** 앱이 광고를 보여 주기 전에 지금 받을 수 있는지 묻는다. 광고를 다 보고도 못 받는 일이 없게 한다 */
+    public AdRewardStatus adRewardStatus(User user) {
+        Long ttl = redisTemplate.getExpire(AD_COOLDOWN_KEY_PREFIX + user.getId(), TimeUnit.SECONDS);
+        int nextInSeconds = ttl != null && ttl > 0 ? ttl.intValue() : 0;
+        String used = redisTemplate.opsForValue().get(adCountKey(user));
+        int usedToday = 0;
+        try {
+            usedToday = used == null ? 0 : Integer.parseInt(used);
+        } catch (NumberFormatException ignored) {
+            // 숫자가 아니면 0으로 본다
+        }
+        return new AdRewardStatus(adRewardAmount, adDailyLimit, Math.max(0, adDailyLimit - usedToday), nextInSeconds);
+    }
+
+    public record AdRewardStatus(int amount, int dailyLimit, int remainingToday, int nextInSeconds) {
     }
 
     /**
