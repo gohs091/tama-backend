@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -65,6 +64,8 @@ public final class LandCatalog {
 
     /** 잉크 개수 → 흡수 비율(%). 특정(대표) 잉크는 2개, 계열 잉크는 1개로 센다 */
     static final int[] ABSORB_RATIO = {0, 35, 60, 85};
+    /** 이 비율부터 몸 전체가 잉크의 모습으로 바뀐다 */
+    static final int FULL_RATIO = 85;
 
     /** 단계별로 잉크가 겉모습을 바꿀 수 있는 최대 비율(%). 낙서가 갑자기 다른 생물이 되지 않게 한다 */
     static int stageCap(String stage) {
@@ -115,6 +116,8 @@ public final class LandCatalog {
     public static final String BODY_CHANGE_MARK = "Change its lower body type to";
     /** 강한 구간 문장에 들어가는 자리표시: 이미지 프롬프트를 만들 때 처음 그린 그림의 이름·특징으로 채운다 */
     public static final String ORIGIN_TOKEN = "{origin}";
+    /** 몸 전체가 바뀌는 단계(85% 이상)의 문장 머리말: 이 문구가 있으면 겉모습이 크게 바뀌어도 된다 */
+    public static final String FULL_MARK = "FULL TRANSFORMATION: ";
     public static final String TRAITS_TOKEN = "{origin-traits}";
 
     /** 체형 자체가 본질인 희귀·전설 잉크의 하체 분류. 흔한 잉크는 체형을 바꾸지 않는다 */
@@ -149,8 +152,9 @@ public final class LandCatalog {
      * 대표 잉크를 진화 이미지 프롬프트 문장으로 만든다. 문구는 모두 서버가 가진 고정 문구다.
      * 특정 잉크는 몸에 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
      * 잉크를 많이 장착할수록(특정 2 + 계열 1씩) 비율이 올라가 그쪽 모습이 강해지고, 단계 한도를 넘지 않는다.
-     *  - 15~34%: 장식만   - 35~54%: 부위 하나만 교체   - 55~84%: 얼굴 유지 / 부위 이식 / 동반 중 하나   - 85%~: 키메라도 가능
-     * 흔한 잉크는 얼굴 유지·부위 이식까지만, 희귀는 동반까지, 전설은 키메라까지. 체형(하체 분류)은 희귀·전설이 강한 구간에서만 바꾼다.
+     *  - 15~34%: 장식만   - 35~54%: 부위 하나만 교체   - 55~84%: 그 특징을 크고 뚜렷하게(얼굴·체형은 유지)   - 85%~: 몸 전체가 바뀜
+     * 무작위로 방식을 고르지 않는다. 같은 단계면 항상 같은 문장이라 잉크가 많을수록 더 강해진다.
+     * 85%~는 등급마다 정해진 한 가지: 흔한 잉크는 얼굴 유지, 희귀는 부위 이식, 전설은 키메라. 체형(하체 분류)은 이 구간의 희귀·전설만 바꾼다.
      * 고른 잉크가 하나도 없으면 null.
      */
     public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
@@ -163,21 +167,20 @@ public final class LandCatalog {
         StringBuilder sb = new StringBuilder("Absorbed ink data chosen by the player: ");
         int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
         if (main != null) {
-            int seed = Math.floorMod(Objects.hash(main.id(), stage), 1000);
-            sb.append(mainText(main.prompt(), PART_OF.getOrDefault(main.id(), main.prompt()), ratio, seed, main.grade()));
-            Body body = main.grade() == Grade.COMMON || ratio < 55 ? null : BODY_OF.get(main.id());
+            sb.append(mainText(main.prompt(), PART_OF.getOrDefault(main.id(), main.prompt()), ratio, main.grade()));
+            Body body = main.grade() == Grade.COMMON || ratio < FULL_RATIO ? null : BODY_OF.get(main.id());
             if (body != null) sb.append(body.prompt());
         }
         if (!families.isEmpty()) {
             sb.append("Its surface texture, colors and mood also carry ").append(String.join(" and ", families))
               .append("; use these only as texture, pattern and mood, not as extra body parts. ");
         }
-        if (ratio < 55) sb.append("Keep the doodle's identity and the faction theme.");
+        if (ratio < FULL_RATIO) sb.append("Keep the doodle's identity and the faction theme.");
         return sb.toString().trim();
     }
 
-    /** 비율 구간별 합치는 방식. 55~84%는 시드로 한 가지를 고른다(같은 잉크·단계면 같은 결과) */
-    static String mainText(String full, String part, int ratio, int seed, Grade grade) {
+    /** 비율 구간별 합치는 방식. 단계마다 문장이 정해져 있다(무작위 없음). */
+    static String mainText(String full, String part, int ratio, Grade grade) {
         if (ratio < 15) return "";
         if (ratio < 35) {
             return "Decoration only: add " + part + " as small accents (colors, textures, tiny parts). "
@@ -188,24 +191,20 @@ public final class LandCatalog {
                     + ". Everything else stays unchanged and recognizable. The creature keeps its posture, its number of legs and its overall body shape. ";
         }
         String o = ORIGIN_TOKEN;
-        String[] modes = {
-                "The creature keeps the face and head of " + o + " (the creature of image 2) clearly recognizable, with its own distinctive facial shape"
-                        + TRAITS_TOKEN + ", but its whole body becomes the body of a creature that truly has " + full
-                        + ": these traits must be clearly visible on the body, limbs and silhouette, not just as small details. ",
-                "The body truly takes on " + full + ", but one major body part (its wings or arms) keeps the version of " + o
-                        + " with its own texture and shape (for a bird: real feathered wings with separate feather tips, NOT membrane or scaled wings), "
-                        + "and the rest of the body clearly shows " + full + ". ",
-                "A warrior-like character that truly takes on " + full + ", holding or accompanied by " + o + " (from image 2) as a smaller companion "
-                        + "standing or flying right next to it; the small companion MUST be clearly visible in the frame and still recognizable as " + o
-                        + "; both together form ONE sprite group. ",
-                "An even blend of " + o + " (from image 2) and a creature that truly has " + full + ": a chimera that clearly shows both. "
+        if (ratio < FULL_RATIO) {
+            return "Make " + part + " large, prominent and clearly visible, and add one or two smaller matching details (colors, textures, markings) "
+                    + "that spread from it onto the nearby body. The face and head of " + o + " (the creature of image 2)" + TRAITS_TOKEN
+                    + ", its posture, its number of legs and its overall body shape stay clearly recognizable. ";
+        }
+        return FULL_MARK + switch (grade) {
+            case COMMON -> "The creature keeps the face and head of " + o + " (the creature of image 2) clearly recognizable, with its own distinctive facial shape"
+                    + TRAITS_TOKEN + ", but its whole body becomes the body of a creature that truly has " + full
+                    + ": these traits must be clearly visible on the body, limbs and silhouette, not just as small details. ";
+            case RARE -> "The body truly takes on " + full + ", but one major body part (its wings or arms) keeps the version of " + o
+                    + " with its own texture and shape (for a bird: real feathered wings with separate feather tips, NOT membrane or scaled wings), "
+                    + "and the rest of the body clearly shows " + full + ". ";
+            default -> "An even blend of " + o + " (from image 2) and a creature that truly has " + full + ": a chimera that clearly shows both. ";
         };
-        int pool = switch (grade) {
-            case COMMON -> 2;
-            case RARE -> 3;
-            default -> ratio >= 85 ? 4 : 3;
-        };
-        return modes[seed % pool];
     }
 
     /** 자리표시를 처음 그린 그림의 이름·특징으로 채운다. 모르면 일반 표현을 쓴다 */
