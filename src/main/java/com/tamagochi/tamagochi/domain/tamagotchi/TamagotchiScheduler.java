@@ -30,7 +30,7 @@ public class TamagotchiScheduler {
     @Value("${tamagotchi.vitals.poop-interval-minutes:60}")
     private int poopIntervalMinutes;
 
-    @Value("${tamagotchi.vitals.max-poop:8}")
+    @Value("${tamagotchi.vitals.max-poop:13}")
     private int maxPoop;
 
     @Value("${tamagotchi.vitals.max-tick-gap-minutes:5}")
