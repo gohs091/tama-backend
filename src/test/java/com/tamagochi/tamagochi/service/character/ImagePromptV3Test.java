@@ -127,6 +127,47 @@ class ImagePromptV3Test {
         assertThat(p).doesNotContain("Origin of this creature").contains("Image 2 is the original doodle");
     }
 
+    private static final DoodleSubject SWORD_TOOL = new DoodleSubject("a sword", "tool", "a blade, a crossguard", "칼", "red zigzag handle", "other", "ears");
+
+    @Test
+    @DisplayName("도구(칼·방패): 도구에 얼굴을 붙이지 않고 몸의 한 부분이 된 생물로 만든다")
+    void babyTool_becomesBodyPart() {
+        String p = ImagePromptV3.baby(SWORD_TOOL, "silver and gold");
+
+        assertThat(p).contains("Do NOT draw the a sword itself with a face stuck on it");
+        assertThat(p).contains("two long, narrow, pointed EARS").contains("red zigzag handle").contains("silver and gold");
+        assertThat(p).doesNotContain("tiny stubby arms and legs");
+    }
+
+    @Test
+    @DisplayName("도구가 되는 부위: 껍질·손·날개, 모르면 귀")
+    void toolPart_byAttach() {
+        assertThat(ImagePromptV3.toolPart("shell", "a shield")).contains("SHELL");
+        assertThat(ImagePromptV3.toolPart("hands", "a hammer")).contains("HANDS");
+        assertThat(ImagePromptV3.toolPart("wings", "a fan")).contains("wing-like fins");
+        assertThat(ImagePromptV3.toolPart(null, "a sword")).contains("EARS");
+        assertThat(ImagePromptV3.toolPart("???", "a sword")).contains("EARS");
+    }
+
+    @Test
+    @DisplayName("기차·자동차 같은 완성된 물체(object)는 지금처럼 하나의 캐릭터로 만든다")
+    void finishedObject_keepsOldWay() {
+        DoodleSubject train = new DoodleSubject("a train engine", "object", "chimney, wheels", "기관차", null, "vehicle");
+
+        String p = ImagePromptV3.baby(train, "silver");
+
+        assertThat(p).contains("itself is the character").contains("tiny stubby arms and legs").doesNotContain("EARS");
+    }
+
+    @Test
+    @DisplayName("도구를 진화시킬 때는 손에 든 무기가 아니라 몸의 일부로 남긴다")
+    void evolveTool_staysBodyPart() {
+        String p = ImagePromptV3.evolve("child", SWORD_TOOL, "metal-empire", "silver", "plates", null);
+
+        assertThat(p).contains("is NOT a weapon or object the creature holds").contains("must NOT hold the a sword in its hand");
+        assertThat(ImagePromptV3.evolve("child", PERSON, "metal-empire", "silver", "plates", null)).doesNotContain("NOT a weapon");
+    }
+
     @Test
     @DisplayName("진화 프롬프트는 앞 단계의 눈 모양을 유지하고 하이라이트를 넣게 한다")
     void evolve_keepsEyes() {

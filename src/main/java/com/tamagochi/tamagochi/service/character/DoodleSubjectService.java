@@ -26,11 +26,14 @@ public class DoodleSubjectService {
             Look at this rough doodle drawn by a player and say what it depicts.
             Respond with JSON only, no markdown:
             {"subject":"<short English noun phrase, e.g. 'a sword', 'a cat', 'a bow with a string and an arrow'>",
-             "kind":"<animal | creature | object | plant | person | abstract>",
+             "kind":"<animal | creature | tool | object | plant | person | abstract>",
              "subjectKo":"<the single most fitting short Korean noun for the subject, e.g. '칼', '고양이', '활', '컵'>",
              "parts":"<comma-separated list of the 2-5 key parts with rough positions, e.g. 'a long curved blade on top, a horizontal crossguard in the middle, a short handle at the bottom'>",
              "traits":"<the 2-3 most distinctive, unusual or characteristic features of THIS particular drawing that make it different from a generic one, e.g. 'one ear much bigger than the other, a zigzag tail, a very large head'>",
-             "bodyPlan":"<one of: biped | quadruped | winged | serpent | vehicle | blob | floating | other>"}
+             "bodyPlan":"<one of: biped | quadruped | winged | serpent | vehicle | blob | floating | other>",
+             "attach":"<only when kind is tool, otherwise empty: which body part of a cute creature this tool should become, one of ears | shell | hands | wings>"}
+            Use kind "tool" for hand-held or worn tools, weapons, armor pieces and gear (a sword, a shield, a helmet, a bow, an axe, a hammer, a pencil, an umbrella, a key, a frying pan). A shield is always a tool, even when it has an emblem or a cross on it. Use kind "object" for complete finished objects such as vehicles, buildings, furniture and machines (a car, a train, a house, a robot).
+            For a tool choose attach by its shape: ears = long, narrow, pointed tools (sword, spear, knife, pencil, arrow); shell = wide, flat or round tools (shield, pan, lid, umbrella); hands = tools held in a fist or that come in pairs (hammer, racket, glove); wings = flat fan-like tools (fan, paddle, leaf-shaped blade).
             If you cannot tell what it is, use subject "an abstract shape" and kind "abstract".
             """;
 
