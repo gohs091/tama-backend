@@ -37,6 +37,9 @@ public class DoodleOrigin {
     private String traits;
     @Column(name = "body_plan", length = 40)
     private String bodyPlan;
+    /** 도구 그림이 생물의 어느 부위가 되는지 (ears, shell, hands, wings). 도구가 아니면 null */
+    @Column(length = 20)
+    private String attach;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -46,12 +49,17 @@ public class DoodleOrigin {
     }
 
     public void update(String subject, String kind, String subjectKo, String parts, String traits, String bodyPlan) {
+        update(subject, kind, subjectKo, parts, traits, bodyPlan, null);
+    }
+
+    public void update(String subject, String kind, String subjectKo, String parts, String traits, String bodyPlan, String attach) {
         this.subject = cut(subject, 200);
         this.kind = cut(kind, 40);
         this.subjectKo = cut(subjectKo, 80);
         this.parts = cut(parts, 600);
         this.traits = cut(traits, 600);
         this.bodyPlan = cut(bodyPlan, 40);
+        this.attach = cut(attach, 20);
         this.updatedAt = LocalDateTime.now();
     }
 

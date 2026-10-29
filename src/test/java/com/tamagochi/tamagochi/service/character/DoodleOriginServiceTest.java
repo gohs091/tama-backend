@@ -88,4 +88,14 @@ class DoodleOriginServiceTest {
         assertThat(o.getParts()).hasSize(600);
         assertThat(o.getTraits()).hasSize(600);
     }
+
+    @Test
+    @DisplayName("도구 그림의 몸 부위(attach)도 저장하고 다시 읽는다")
+    void savesAttach() {
+        DoodleOrigin o = new DoodleOrigin("u1");
+        o.update("a sword", "tool", "칼", "blade", "red zigzag", "other", "ears");
+        assertThat(o.getAttach()).isEqualTo("ears");
+        o.update("a cat", "animal", "고양이", "ears", "big ears", "quadruped");
+        assertThat(o.getAttach()).isNull();
+    }
 }

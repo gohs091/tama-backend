@@ -22,7 +22,7 @@ public class DoodleOriginService {
         if (tossUserId == null || tossUserId.isBlank()) return Optional.empty();
         try {
             return repository.findByTossUserId(tossUserId).map(o ->
-                    new DoodleSubject(o.getSubject(), o.getKind(), o.getParts(), o.getSubjectKo(), o.getTraits(), o.getBodyPlan()));
+                    new DoodleSubject(o.getSubject(), o.getKind(), o.getParts(), o.getSubjectKo(), o.getTraits(), o.getBodyPlan(), o.getAttach()));
         } catch (Exception e) {
             log.warn("그림 정체 조회 실패 - {}", e.getMessage());
             return Optional.empty();
@@ -34,7 +34,7 @@ public class DoodleOriginService {
         if (tossUserId == null || tossUserId.isBlank() || s == null) return;
         try {
             DoodleOrigin origin = repository.findByTossUserId(tossUserId).orElseGet(() -> new DoodleOrigin(tossUserId));
-            origin.update(s.subject(), s.kind(), s.subjectKo(), s.parts(), s.traits(), s.bodyPlan());
+            origin.update(s.subject(), s.kind(), s.subjectKo(), s.parts(), s.traits(), s.bodyPlan(), s.attach());
             repository.save(origin);
         } catch (Exception e) {
             log.warn("그림 정체 저장 실패 - {}", e.getMessage());

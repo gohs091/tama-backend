@@ -26,6 +26,7 @@ final class ImagePromptV3 {
 
     /** 원본이 사람·생물이면 그 모습 그대로, 물체이면 물체 자체에 얼굴을 달아 캐릭터로 만든다 */
     static String baby(DoodleSubject o, String colors) {
+        if (o.isTool()) return babyTool(o, colors);
         boolean living = isLiving(o);
         String identity = living
                 ? "The doodle depicts " + o.subject() + ". Draw that same character as a cute pet: keep its silhouette, proportions and pose."
@@ -43,6 +44,44 @@ final class ImagePromptV3 {
                 "Do not draw blueprints, diagrams or text, and do not invent an unrelated creature. " +
                 "Faction color hint (subtle, only as colors and at most one tiny accent): " + colors + ". " +
                 "It is a small, cute baby form with big cute eyes. Do not add accessories, scarves, armor or props. " + FRAME;
+    }
+
+    /**
+     * 칼·방패 같은 도구: 도구에 얼굴을 붙이지 않고, 도구가 생물의 몸 한 부분(귀·껍질·손·날개)이 된 귀여운 생물로 만든다.
+     * 도구 자체에 얼굴을 붙이면 "머리 위에 칼을 얹은 로봇"처럼 매력이 떨어진다 (기차·자동차 같은 완성된 물체는 이 경로를 쓰지 않는다).
+     */
+    static String babyTool(DoodleSubject o, String colors) {
+        String s = o.subject();
+        String detail = !blank(o.traits()) ? o.traits() : (!blank(o.parts()) ? o.parts() : "its own shape and details");
+        return ImageGenerationService.PIXEL_STYLE +
+                "The sprite shows ONE cute original tamagotchi-style creature inspired by the player's rough doodle of " + s + ". " +
+                "Do NOT draw the " + s + " itself with a face stuck on it. Instead, design a small chubby, round, soft creature with a big head, " +
+                "big cute eyes and a simple friendly face, in which the " + s + " appears as one of its own body parts: " + toolPart(o.attach(), s) + ". " +
+                "That part must clearly keep the " + s + "'s own shape, material and details (" + detail + ") so a person immediately recognizes where it came from, " +
+                "while the rest of the body is soft, round and cute and uses the " + s + "'s main colors. " +
+                "It is ONE single creature: no rider, no second character. Fill the whole body with solid flat colors, no see-through parts, no text. " +
+                "Faction color hint (subtle, only as colors and at most one tiny accent): " + colors + ". " +
+                "Eyes: round dark eyes with a clear white highlight. " + FRAME;
+    }
+
+    /** 도구가 되는 몸 부위. 알 수 없으면 귀로 한다 (길고 얇은 도구가 가장 많아 가장 안전하다) */
+    static String toolPart(String attach, String s) {
+        String a = attach == null ? "" : attach.trim().toLowerCase();
+        return switch (a) {
+            case "shell" -> "a big round SHELL on its back made from the " + s + ", like a turtle or a hermit crab carries its shell";
+            case "hands" -> "two big round HANDS shaped like the " + s + " (one on each side, like big mittens or gloves), and a small " + s + "-shaped crest on its forehead";
+            case "wings" -> "two flat wing-like fins shaped like the " + s + " on its back";
+            default -> "two long, narrow, pointed EARS standing up on its head, shaped like two small copies of the " + s;
+        };
+    }
+
+    /** 진화할 때도 도구는 손에 든 무기가 아니라 몸의 일부로 남는다 */
+    private static String toolGrowth(DoodleSubject o) {
+        if (o == null || !o.isTool()) return "";
+        String s = o.subject();
+        return "The " + s + " is NOT a weapon or object the creature holds: it is part of its body (" + toolPart(o.attach(), s) + "). " +
+                "Keep that part clearly recognizable and let it grow sharper, bigger or more ornate as the creature matures into a stronger armored creature around it, " +
+                "with armor plates in its own colors. The creature must NOT hold the " + s + " in its hand and must NOT turn into the " + s + " itself. ";
     }
 
     /**
@@ -72,7 +111,7 @@ final class ImagePromptV3 {
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + ink + decor + " " +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
