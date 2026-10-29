@@ -16,8 +16,19 @@ import java.util.Optional;
 
 public interface PromotionGrantRepository extends JpaRepository<PromotionGrant, Long> {
 
-    /** 하루 상한을 셀 때는 지급에 실패한 건(FAILED)은 뺀다. 우리 쪽 문제로 기회를 잃지 않게 하기 위해서다. */
-    long countByUserIdAndGrantDateAndStatusNot(Long userId, LocalDate grantDate, PromotionGrantStatus status);
+    /**
+     * 트레이닝 하루 상한을 셀 때는 지급에 실패한 건(FAILED)은 뺀다. 우리 쪽 문제로 기회를 잃지 않게 하기 위해서다.
+     * 진화 달성 보상(kind=EVOLUTION)은 트레이닝 상한과 무관하므로 세지 않는다.
+     */
+    @Query("select count(g) from PromotionGrant g where g.user.id = :userId and g.grantDate = :grantDate "
+            + "and g.status <> :status and (g.kind is null or g.kind <> 'EVOLUTION')")
+    long countByUserIdAndGrantDateAndStatusNot(@Param("userId") Long userId, @Param("grantDate") LocalDate grantDate,
+                                              @Param("status") PromotionGrantStatus status);
+
+    /** 진화 달성 보상: 이번 달 이 단계 키(evolution-단계-사용자-연월-)로 시작하는 건 수. 실패 건을 셀지는 status로 고른다 */
+    long countByTrainingSessionIdStartingWith(String keyPrefix);
+
+    long countByTrainingSessionIdStartingWithAndStatusNot(String keyPrefix, PromotionGrantStatus status);
 
     /** 한 곳에서만 처리하도록 상태를 선점한다. 선점에 성공하면 1, 이미 누가 가져갔으면 0. */
     @Transactional

@@ -66,6 +66,35 @@ public class PromotionGrant {
     @Column(length = 300)
     private String lastError;
 
+    /** 진화 달성 보상이면 EVOLUTION (진화 보상용 프로모션 코드로 지급하고, 트레이닝 하루 상한에 세지 않는다). 트레이닝 보상은 null */
+    public static final String KIND_EVOLUTION = "EVOLUTION";
+    @Column(name = "kind", length = 20)
+    private String kind;
+
+    public boolean isEvolution() {
+        return KIND_EVOLUTION.equals(this.kind);
+    }
+
+    /**
+     * 진화 달성 보상 한 건. 키는 evolution-단계-사용자-연월-순번 (예: evolution-ADULT-7-202610-2).
+     * 같은 진화가 두 번 기록되지 않도록 순번까지 유니크 제약을 건다
+     */
+    public static PromotionGrant evolution(User user, String stage, LocalDate date, int seq, int amount) {
+        PromotionGrant g = new PromotionGrant(user, evolutionMonthPrefix(stage, user.getId(), date) + seq, date, 0, 0, amount);
+        g.kind = KIND_EVOLUTION;
+        return g;
+    }
+
+    /** 이 사용자의 이 단계 보상 키 앞부분 (달과 상관없이 모두) */
+    public static String evolutionUserPrefix(String stage, Long userId) {
+        return "evolution-" + stage + "-" + userId + "-";
+    }
+
+    /** 이번 달 이 단계 보상 키의 앞부분. 달이 바뀌면 다시 1번부터 센다 */
+    public static String evolutionMonthPrefix(String stage, Long userId, LocalDate date) {
+        return evolutionUserPrefix(stage, userId) + String.format("%d%02d", date.getYear(), date.getMonthValue()) + "-";
+    }
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
