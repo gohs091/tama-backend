@@ -55,7 +55,7 @@ public class PromotionService {
     /** 관리자 테스트 지급 한 건을 기록한다 (트레이닝과 무관, 하루 상한에 세지 않음). 지급은 호출한 쪽이 시작한다. */
     @Transactional
     public PromotionGrant recordTest(User user, int amount) {
-        return repository.save(new PromotionGrant(user, "admin-test-" + java.util.UUID.randomUUID(),
+        return repository.save(new PromotionGrant(user, "admin-test-" + PromotionGrant.shortRandomId(),
                 TEST_GRANT_DATE, 0, 0, amount));
     }
 

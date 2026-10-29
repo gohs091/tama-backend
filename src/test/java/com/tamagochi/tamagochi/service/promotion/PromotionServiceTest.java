@@ -53,6 +53,18 @@ class PromotionServiceTest {
     }
 
     @Test
+    @DisplayName("관리자 테스트 건의 키는 training_session_id 열(36자)에 들어가는 길이다")
+    void adminTestKeysFitTheColumn() {
+        PromotionGrant training = service("off").recordTest(me, 1);
+        PromotionGrant evolution = service("off").recordEvolutionTest(me, 1);
+
+        assertThat(training.getTrainingSessionId()).startsWith("admin-test-").hasSizeLessThanOrEqualTo(36);
+        assertThat(evolution.getTrainingSessionId()).startsWith("admin-test-").hasSizeLessThanOrEqualTo(36);
+        assertThat(evolution.isAdminTest()).isTrue();
+        assertThat(training.getTrainingSessionId()).isNotEqualTo(service("off").recordTest(me, 1).getTrainingSessionId());
+    }
+
+    @Test
     @DisplayName("탭 수 구간: 60 미만 0, 60~79 1, 80 이상 2, 100을 넘는 탭은 잘라낸다")
     void tiers() {
         assertThat(PromotionRules.tierForTaps(0)).isZero();
