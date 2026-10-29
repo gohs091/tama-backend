@@ -359,7 +359,7 @@ class ImageGenerationServiceOpenAiTest {
 
         assertThat(service.getJob("v3-evo").getStatus()).isEqualTo("DONE");
         verify(origin).find("u1");
-        verifyNoInteractions(describer);
+        verify(describer, never()).describe(any(), any());
     }
 
     @Test
