@@ -2,12 +2,19 @@ package com.tamagochi.tamagochi.service.character;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-/** 손그림이 무엇을 그린 것인지 (이미지 생성 프롬프트에 명시하기 위한 분석 결과) */
+/**
+ * 손그림이 무엇을 그린 것인지 (이미지 생성 프롬프트에 명시하기 위한 분석 결과).
+ * traits: 이 그림만의 두드러진 특징 2~3개, bodyPlan: 몸 구조(biped, quadruped, winged ...). 진화 단계에서도 이어서 쓴다.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record DoodleSubject(String subject, String kind, String parts, String subjectKo) {
+public record DoodleSubject(String subject, String kind, String parts, String subjectKo, String traits, String bodyPlan) {
+
+    public DoodleSubject(String subject, String kind, String parts, String subjectKo) {
+        this(subject, kind, parts, subjectKo, null, null);
+    }
 
     public DoodleSubject(String subject, String kind, String parts) {
-        this(subject, kind, parts, null);
+        this(subject, kind, parts, null, null, null);
     }
 
     /** 앱에 보여줄 종족 이름. 알아보지 못했으면 null (앱이 "정체불명"으로 표시) */

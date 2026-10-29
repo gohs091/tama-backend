@@ -56,7 +56,7 @@ class CharacterControllerJobTest {
         ArgumentCaptor<String> jobId = ArgumentCaptor.forClass(String.class);
         InOrder order = inOrder(imageService);
         order.verify(imageService).storeJob(jobId.capture(), any(ImageJobResult.class));
-        order.verify(imageService).generateAsync(eq(jobId.getValue()), eq("AAAA"), eq("dragons-roar"), eq(42L));
+        order.verify(imageService).generateAsync(eq(jobId.getValue()), eq("AAAA"), eq("dragons-roar"), eq(42L), eq("u1"));
         assertThat(res.getBody().getJobId()).isEqualTo(jobId.getValue());
     }
 
@@ -73,7 +73,7 @@ class CharacterControllerJobTest {
 
         InOrder order = inOrder(imageService);
         order.verify(imageService).storeJob(anyString(), any(ImageJobResult.class));
-        order.verify(imageService).generateEvolvedAsync(anyString(), any(), eq("AAAA"), eq("metal-empire"), eq("child"), any(), any());
+        order.verify(imageService).generateEvolvedAsync(anyString(), any(), eq("AAAA"), eq("metal-empire"), eq("child"), any(), any(), eq("u1"));
     }
 
     @Test
@@ -85,7 +85,7 @@ class CharacterControllerJobTest {
 
         assertThat(res.getStatusCode().value()).isEqualTo(429);
         verify(imageService, never()).storeJob(anyString(), any());
-        verify(imageService, never()).generateAsync(anyString(), anyString(), anyString(), any());
+        verify(imageService, never()).generateAsync(anyString(), anyString(), anyString(), any(), any());
     }
 
     @Test

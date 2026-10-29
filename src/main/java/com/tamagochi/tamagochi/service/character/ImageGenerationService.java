@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import com.tamagochi.tamagochi.domain.land.LandCatalog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +47,14 @@ public class ImageGenerationService {
     // 손그림이 무엇인지 분석 (없거나 실패하면 일반 프롬프트로 진행)
     @Autowired(required = false)
     private DoodleSubjectService doodleSubjectService;
+
+    // 처음 그린 그림의 분석 결과 저장소 (없으면 진화 때마다 분석)
+    @Autowired(required = false)
+    private DoodleOriginService doodleOriginService;
+
+    // image.prompt-version: v3(기본, 칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
+    @Value("${image.prompt-version:v3}")
+    private String promptVersion = "v3";
 
     @Value("${openai.api-key:}")
     private String openAiApiKey;
@@ -109,11 +118,17 @@ public class ImageGenerationService {
     // variationSeed: 그림과 팩션이 합쳐지는 방식(FusionMode)을 정한다. 같은 시드는 같은 방식
     @Async("imageExecutor")
     public void generateAsync(String jobId, String imageBase64, String faction, Long variationSeed) {
+        generateAsync(jobId, imageBase64, faction, variationSeed, null);
+    }
+
+    // tossUserId: 그림 분석 결과를 저장해 두었다가 성체·완전체 진화에서 다시 쓴다 (없으면 저장하지 않는다)
+    @Async("imageExecutor")
+    public void generateAsync(String jobId, String imageBase64, String faction, Long variationSeed, String tossUserId) {
         jobStore.put(jobId, ImageJobResult.pending());
         try {
             String mimeType = extractMimeType(imageBase64);
             byte[] imageBytes = decodeBase64Image(imageBase64);
-            Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed, null);
+            Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed, null, tossUserId);
             byte[] responseBytes = generated.bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
@@ -148,6 +163,14 @@ public class ImageGenerationService {
     @Async("imageExecutor")
     public void generateEvolvedAsync(String jobId, String imageUrl, String imageBase64,
                                      String faction, String stage, String referenceBase64, String absorbedInk) {
+        generateEvolvedAsync(jobId, imageUrl, imageBase64, faction, stage, referenceBase64, absorbedInk, null);
+    }
+
+    // tossUserId: 처음 그린 그림의 분석 결과를 불러온다 (없으면 그때 한 번 분석해 저장)
+    @Async("imageExecutor")
+    public void generateEvolvedAsync(String jobId, String imageUrl, String imageBase64,
+                                     String faction, String stage, String referenceBase64, String absorbedInk,
+                                     String tossUserId) {
         jobStore.put(jobId, ImageJobResult.pending());
         try {
             byte[] imageBytes;
@@ -172,7 +195,7 @@ public class ImageGenerationService {
             byte[] referenceBytes = hasReference ? decodeBase64Image(referenceBase64) : null;
             String referenceMime = hasReference ? extractMimeType(referenceBase64) : null;
             byte[] responseBytes = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
-                    faction, stage, controlStrength, null, absorbedInk).bytes();
+                    faction, stage, controlStrength, null, absorbedInk, tossUserId).bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
@@ -197,9 +220,13 @@ public class ImageGenerationService {
 
     private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
                                     String faction, String stage, String controlStrength, Long variationSeed,
-                                    String absorbedInk) {
-        String ink = absorbedInk == null || absorbedInk.isBlank() ? "" : " " + absorbedInk;
+                                    String absorbedInk, String tossUserId) {
+        String ink = absorbedInk == null || absorbedInk.isBlank() ? "" : " " + LandCatalog.fillOrigin(absorbedInk, null, null);
         if ("openai".equalsIgnoreCase(provider)) {
+            if (!"v2".equalsIgnoreCase(promptVersion)) {
+                return generateV3(imageBytes, mimeType, referenceBytes, referenceMime, faction, stage, absorbedInk, tossUserId);
+            }
+            // v2(롤백용): 이전 프롬프트
             DoodleSubject subject = referenceBytes == null ? describeDoodle(imageBytes, mimeType) : null;
             FusionMode mode = FusionMode.SELF;
             if (subject != null && !subject.isAbstract()) {
@@ -213,6 +240,46 @@ public class ImageGenerationService {
         byte[] bytes = callStabilitySketch(imageBytes, mimeType, buildFactionPrompt(faction, stage) + ink, controlStrength);
         if (bytes == null || bytes.length == 0) return new Generated(bytes, null);
         return new Generated(removeBackground(bytes), null);
+    }
+
+    // v3: 유체는 그림 그대로 살리고(합체 없음), 진화는 처음 그림의 정체를 이어서 쓴다
+    private Generated generateV3(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
+                                 String faction, String stage, String absorbedInk, String tossUserId) {
+        boolean evolving = referenceBytes != null;
+        String colors = getFactionPixelColors(faction);
+        DoodleSubject subject;
+        String prompt;
+        if (evolving) {
+            subject = originFor(tossUserId, imageBytes, mimeType);
+            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk);
+        } else {
+            subject = describeDoodle(imageBytes, mimeType);
+            if (subject != null && !subject.isAbstract()) {
+                saveOrigin(tossUserId, subject);
+                log.info("v3 유체 - subject: {}, kind: {}, bodyPlan: {}, faction: {}", subject.subject(), subject.kind(), subject.bodyPlan(), faction);
+                prompt = ImagePromptV3.baby(subject, colors);
+            } else {
+                // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다
+                prompt = buildOpenAiPrompt(faction, stage, false, subject, FusionMode.SELF);
+            }
+        }
+        byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt));
+        return new Generated(image, evolving || subject == null ? null : subject.species());
+    }
+
+    /** 저장된 그림 분석을 읽고, 없으면(저장 기능 이전에 만든 유저) 지금 한 번 분석해 저장한다 */
+    private DoodleSubject originFor(String tossUserId, byte[] imageBytes, String mimeType) {
+        if (doodleOriginService != null) {
+            DoodleSubject saved = doodleOriginService.find(tossUserId).orElse(null);
+            if (saved != null) return saved;
+        }
+        DoodleSubject described = describeDoodle(imageBytes, mimeType);
+        if (described != null && !described.isAbstract()) saveOrigin(tossUserId, described);
+        return described;
+    }
+
+    private void saveOrigin(String tossUserId, DoodleSubject subject) {
+        if (doodleOriginService != null) doodleOriginService.save(tossUserId, subject);
     }
 
     // ----------------------------------------------------------------
@@ -298,7 +365,7 @@ public class ImageGenerationService {
     // - 낙서가 무엇인지(subject)를 알면 그 대상 자체를 캐릭터로 만들게 한다 (칼 → 칼 캐릭터)
     // - 참조 이미지(성장 전 모습)가 있으면 같은 캐릭터가 성장한 모습으로 그린다
     // ----------------------------------------------------------------
-    private static final String PIXEL_STYLE =
+    static final String PIXEL_STYLE =
             "Create a 16-bit PIXEL ART sprite, like a retro handheld tamagotchi / Game Boy Advance game: " +
             "the image must be made of clearly visible chunky square pixels with hard stair-stepped edges, " +
             "a very low-resolution look (about 48x48 pixels upscaled), bold dark pixel outlines, flat colors " +
@@ -469,7 +536,7 @@ public class ImageGenerationService {
                 "and express the theme through decoration, texture and small parts.";
     }
 
-    private String getFactionThemeMotifs(String faction) {
+    String getFactionThemeMotifs(String faction) {
         return switch (faction) {
             case "nature-spirits"     -> "wild beast (canine or feline) traits: fur tufts, pointed animal ears, a bushy tail, paws and claws";
             case "deep-savers"        -> "aquatic creature traits: fins, scales, water droplets, bubbles, shell or coral parts";
@@ -495,7 +562,7 @@ public class ImageGenerationService {
         };
     }
 
-    private String getFactionPixelColors(String faction) {
+    String getFactionPixelColors(String faction) {
         return switch (faction) {
             case "nature-spirits"     -> "green and brown color scheme";
             case "deep-savers"        -> "blue and cyan color scheme";

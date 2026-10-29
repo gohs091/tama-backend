@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -62,9 +63,94 @@ public final class LandCatalog {
         return Optional.ofNullable(key == null ? null : FAMILIES.get(key));
     }
 
+    /** 잉크 개수 → 흡수 비율(%). 특정(대표) 잉크는 2개, 계열 잉크는 1개로 센다 */
+    static final int[] ABSORB_RATIO = {0, 35, 60, 85};
+
+    /** 단계별로 잉크가 겉모습을 바꿀 수 있는 최대 비율(%). 유체가 갑자기 다른 생물이 되지 않게 한다 */
+    static int stageCap(String stage) {
+        return switch (stage == null ? "" : stage) {
+            case "baby" -> 15;
+            case "child" -> 50;
+            default -> 90;
+        };
+    }
+
+    /** 실제로 쓰는 비율 = min(잉크 비율, 단계 한도) */
+    public static int absorbRatio(int units, String stage) {
+        return Math.min(ABSORB_RATIO[Math.max(0, Math.min(units, ABSORB_RATIO.length - 1))], stageCap(stage));
+    }
+
+    /**
+     * 하체 분류(인간형·4족형·2족 공룡 다리형·탱크형·다리없음·날개형): 체형까지 바꾸는 잉크(희귀·전설)가 쓴다. 자유 문장("네발로", "이족보행으로") 대신 다섯 가지로 고정하고
+     * 다리 개수를 숫자로 못박으면 이미지 모델이 훨씬 잘 따른다(실험으로 확인).
+     */
+    public enum Body {
+        HUMAN("a HUMANOID lower body: it stands upright on two ordinary legs and walks like a person",
+                "HARD RULE: exactly TWO legs are visible, and the character stands upright on them."),
+        QUAD("a FOUR-LEGGED lower body: it walks on four clearly visible legs, all four feet on the ground, with its body held horizontally like an animal (it must NOT stand upright on two legs)",
+                "HARD RULE: exactly FOUR legs are visible, all on the ground."),
+        DINO("a BIPEDAL DINOSAUR lower body: it walks on two strong dinosaur legs like a velociraptor or a tyrannosaurus, with a hunched forward-leaning torso, a long thick tail held out behind for balance, and three-toed clawed feet",
+                "HARD RULE: exactly TWO legs are visible, on a hunched forward-leaning body with a long tail behind it."),
+        TANK("a TANK-LIKE lower body: instead of legs it moves on caterpillar treads or big wheels, with a low, wide, armored base",
+                "HARD RULE: ZERO legs are visible; the base is treads or wheels."),
+        LEGLESS("a LEGLESS single-trunk body: ONE continuous trunk-like body with NO legs, NO feet and NO talons at all; where legs would be, the body continues as a tail (like a serpent, a ghost, a worm or a fish tail, or a jet exhaust), floating or resting smoothly on the ground",
+                "HARD RULE: the number of visible legs, feet and talons is ZERO; the lower body is a tail."),
+        FLY("a WINGED FLYING build: large prominent wings, flying or hovering in the air in a lifted posture (any legs are small and tucked away)",
+                "HARD RULE: the large wings are clearly visible and the pose is airborne.");
+
+        private final String description;
+        private final String hardRule;
+
+        Body(String description, String hardRule) {
+            this.description = description;
+            this.hardRule = hardRule;
+        }
+
+        String prompt() {
+            return BODY_CHANGE_MARK + " " + description + ". The rest of the body must follow naturally from that. " + hardRule + " ";
+        }
+    }
+
+    /** 프롬프트에 이 문구가 있으면 체형이 바뀌는 진화이므로, "이전 체형을 유지하라"는 문장을 넣지 않는다 */
+    public static final String BODY_CHANGE_MARK = "Change its lower body type to";
+    /** 강한 구간 문장에 들어가는 자리표시: 이미지 프롬프트를 만들 때 처음 그린 그림의 이름·특징으로 채운다 */
+    public static final String ORIGIN_TOKEN = "{origin}";
+    public static final String TRAITS_TOKEN = "{origin-traits}";
+
+    /** 체형 자체가 본질인 희귀·전설 잉크의 하체 분류. 흔한 잉크는 체형을 바꾸지 않는다 */
+    private static final Map<String, Body> BODY_OF = Map.ofEntries(
+            Map.entry("crocodile", Body.HUMAN), Map.entry("gorilla", Body.HUMAN), Map.entry("combining-robot", Body.HUMAN),
+            Map.entry("lion-king", Body.QUAD), Map.entry("triceratops", Body.QUAD), Map.entry("tiger", Body.QUAD),
+            Map.entry("black-panther", Body.QUAD), Map.entry("wolf", Body.QUAD),
+            Map.entry("t-rex", Body.DINO),
+            Map.entry("tank", Body.TANK), Map.entry("supercar", Body.TANK), Map.entry("bullet-train", Body.TANK),
+            Map.entry("shark", Body.LEGLESS), Map.entry("octopus", Body.LEGLESS), Map.entry("whale", Body.LEGLESS),
+            Map.entry("orca", Body.LEGLESS), Map.entry("anglerfish", Body.LEGLESS), Map.entry("megalodon", Body.LEGLESS),
+            Map.entry("kraken", Body.LEGLESS), Map.entry("leviathan", Body.LEGLESS),
+            Map.entry("fighter-jet", Body.FLY), Map.entry("rocket", Body.FLY), Map.entry("space-shuttle", Body.FLY));
+
+    /** 낮은 비율(부위 하나만 바뀌는 구간)에서 쓰는 짧은 문구. 몸 전체를 떠올리게 하는 문구(갑옷·트랙 등)는 체형을 바꿔 버리기 때문에 따로 둔다 */
+    private static final Map<String, String> PART_OF = Map.ofEntries(
+            Map.entry("combining-robot", "a chest emblem and shoulder armor plates"),
+            Map.entry("machine-king", "golden armor plates on the shoulders"),
+            Map.entry("tank", "a small turret cannon on the back"),
+            Map.entry("supercar", "a small spoiler fin on the back"),
+            Map.entry("fighter-jet", "small swept-back wing fins"),
+            Map.entry("rocket", "small rocket boosters on the back"),
+            Map.entry("space-shuttle", "small white heat-shield wing plates"),
+            Map.entry("t-rex", "a tyrannosaurus's mighty jaws"),
+            Map.entry("kraken", "a few kraken tentacles"),
+            Map.entry("leviathan", "glowing scales and a fin along the back"),
+            Map.entry("megalodon", "a large dorsal fin and sharp teeth"),
+            Map.entry("jungle-giant-tree", "a few branches with leaves growing from the back"),
+            Map.entry("bus", "a row of small windows along the body"));
+
     /**
      * 대표 잉크를 진화 이미지 프롬프트 문장으로 만든다. 문구는 모두 서버가 가진 고정 문구다.
-     * 특정 잉크는 몸 전체에 확실히 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
+     * 특정 잉크는 몸에 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
+     * 잉크를 많이 장착할수록(특정 2 + 계열 1씩) 비율이 올라가 그쪽 모습이 강해지고, 단계 한도를 넘지 않는다.
+     *  - 15~34%: 장식만   - 35~54%: 부위 하나만 교체   - 55~84%: 얼굴 유지 / 부위 이식 / 동반 중 하나   - 85%~: 키메라도 가능
+     * 흔한 잉크는 얼굴 유지·부위 이식까지만, 희귀는 동반까지, 전설은 키메라까지. 체형(하체 분류)은 희귀·전설이 강한 구간에서만 바꾼다.
      * 고른 잉크가 하나도 없으면 null.
      */
     public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
@@ -75,19 +161,59 @@ public final class LandCatalog {
         if (main == null && families.isEmpty()) return null;
 
         StringBuilder sb = new StringBuilder("Absorbed ink data chosen by the player: ");
+        int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
         if (main != null) {
-            String strength = "adult".equals(stage)
-                    ? "prominent and a core part of its iconic final look"
-                    : "clearly visible";
-            sb.append("the creature truly takes on ").append(main.prompt())
-              .append(", expressed on its own body (").append(strength).append("). ");
+            int seed = Math.floorMod(Objects.hash(main.id(), stage), 1000);
+            sb.append(mainText(main.prompt(), PART_OF.getOrDefault(main.id(), main.prompt()), ratio, seed, main.grade()));
+            Body body = main.grade() == Grade.COMMON || ratio < 55 ? null : BODY_OF.get(main.id());
+            if (body != null) sb.append(body.prompt());
         }
         if (!families.isEmpty()) {
             sb.append("Its surface texture, colors and mood also carry ").append(String.join(" and ", families))
               .append("; use these only as texture, pattern and mood, not as extra body parts. ");
         }
-        sb.append("Keep the doodle's identity and the faction theme.");
-        return sb.toString();
+        if (ratio < 55) sb.append("Keep the doodle's identity and the faction theme.");
+        return sb.toString().trim();
+    }
+
+    /** 비율 구간별 합치는 방식. 55~84%는 시드로 한 가지를 고른다(같은 잉크·단계면 같은 결과) */
+    static String mainText(String full, String part, int ratio, int seed, Grade grade) {
+        if (ratio < 15) return "";
+        if (ratio < 35) {
+            return "Decoration only: add " + part + " as small accents (colors, textures, tiny parts). "
+                    + "The body, posture, number of legs and silhouette stay unchanged. ";
+        }
+        if (ratio < 55) {
+            return "Replace exactly ONE body part (for example the tail, the ears or a crest) with a version that truly has " + part
+                    + ". Everything else stays unchanged and recognizable. The creature keeps its posture, its number of legs and its overall body shape. ";
+        }
+        String o = ORIGIN_TOKEN;
+        String[] modes = {
+                "The creature keeps the face and head of " + o + " (the creature of image 2) clearly recognizable, with its own distinctive facial shape"
+                        + TRAITS_TOKEN + ", but its whole body becomes the body of a creature that truly has " + full
+                        + ": these traits must be clearly visible on the body, limbs and silhouette, not just as small details. ",
+                "The body truly takes on " + full + ", but one major body part (its wings or arms) keeps the version of " + o
+                        + " with its own texture and shape (for a bird: real feathered wings with separate feather tips, NOT membrane or scaled wings), "
+                        + "and the rest of the body clearly shows " + full + ". ",
+                "A warrior-like character that truly takes on " + full + ", holding or accompanied by " + o + " (from image 2) as a smaller companion "
+                        + "standing or flying right next to it; the small companion MUST be clearly visible in the frame and still recognizable as " + o
+                        + "; both together form ONE sprite group. ",
+                "An even blend of " + o + " (from image 2) and a creature that truly has " + full + ": a chimera that clearly shows both. "
+        };
+        int pool = switch (grade) {
+            case COMMON -> 2;
+            case RARE -> 3;
+            default -> ratio >= 85 ? 4 : 3;
+        };
+        return modes[seed % pool];
+    }
+
+    /** 자리표시를 처음 그린 그림의 이름·특징으로 채운다. 모르면 일반 표현을 쓴다 */
+    public static String fillOrigin(String text, String originSubject, String originTraits) {
+        if (text == null) return null;
+        String subject = originSubject == null || originSubject.isBlank() ? "the ORIGIN creature" : originSubject;
+        String traits = originTraits == null || originTraits.isBlank() ? "" : " (" + originTraits + ")";
+        return text.replace(ORIGIN_TOKEN, subject).replace(TRAITS_TOKEN, traits);
     }
 
     private static void family(String key, String name, String prompt) {

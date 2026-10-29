@@ -49,6 +49,7 @@ stability:
   api-key: ${STABILITY_API_KEY:}
 
 image:
+  prompt-version: ${IMAGE_PROMPT_VERSION:v3}  # v3(칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
   provider: ${IMAGE_PROVIDER:openai}
 
 openai:
