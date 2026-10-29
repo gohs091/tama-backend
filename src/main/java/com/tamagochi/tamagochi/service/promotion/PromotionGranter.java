@@ -62,13 +62,14 @@ public class PromotionGranter {
 
     /** 트레이닝·진화 중 하나라도 실제 지급하도록 켜져 있고 코드가 있으면 지급할 수 있다 */
     private boolean anyConfigured() {
-        return (isConfigured() && (trainingPays || isTestCode())) || (evolutionPays && !evolutionCode.isBlank());
+        return (isConfigured() && (trainingPays || isTestCode())) || (!evolutionCode.isBlank() && (evolutionPays || isEvolutionTestCode()));
     }
 
     /** 이 건을 지금 지급해도 되는지: 그 종류가 mode=grant 이고 코드가 있어야 한다 (record 로 기록만 한 건은 지급하지 않는다) */
     private boolean payable(PromotionGrant grant) {
         // 트레이닝: 관리자 테스트 지급(TEST_ 코드)은 mode와 상관없이 확인할 수 있게 둔다
-        return grant.isEvolution() ? evolutionPays && !evolutionCode.isBlank() : isConfigured() && (trainingPays || isTestCode());
+        // 진화: TEST_ 코드는 mode와 상관없이 관리자 테스트 지급을 확인할 수 있게 둔다 (실제 진화 보상은 mode=grant 일 때만)
+        return grant.isEvolution() ? !evolutionCode.isBlank() && (evolutionPays || (isEvolutionTestCode() && grant.isAdminTest())) : isConfigured() && (trainingPays || isTestCode());
     }
 
     /** 이 건을 지급할 프로모션 코드: 진화 달성 보상은 진화용 코드, 나머지는 트레이닝 코드 */
@@ -79,6 +80,16 @@ public class PromotionGranter {
     /** 테스트 프로모션 코드(TEST_ 로 시작)이면 실제 포인트 지급·차감 없이 API만 확인된다. */
     public boolean isTestCode() {
         return promotionCode.startsWith("TEST_");
+    }
+
+    /** 진화 달성 보상용 코드가 설정돼 있는지 */
+    public boolean isEvolutionConfigured() {
+        return !evolutionCode.isBlank();
+    }
+
+    /** 진화 달성 보상용 테스트 코드(TEST_ 로 시작)이면 실제 포인트 지급·차감 없이 API만 확인된다. */
+    public boolean isEvolutionTestCode() {
+        return evolutionCode.startsWith("TEST_");
     }
 
     /** 새로 기록된(또는 재시도할) 한 건을 지급한다. 이미 다른 곳에서 처리 중이면 아무것도 하지 않는다. */
@@ -99,6 +110,13 @@ public class PromotionGranter {
             return;
         }
         String code = codeFor(grant);
+        // 마지막 방어선: 관리자 테스트 건은 어떤 경로로 만들어졌든 TEST_ 코드가 아니면 토스를 부르지 않는다 (실제 포인트 지급 악용 방지)
+        if (grant.isAdminTest() && !code.startsWith("TEST_")) {
+            log.error("관리자 테스트 지급은 TEST_ 코드로만 보낼 수 있어요. grantId: {}", grantId);
+            grant.markFailed("관리자 테스트 지급은 TEST_ 코드로만 보낼 수 있어요");
+            repository.save(grant);
+            return;
+        }
 
         String anonKey = anonKeyOf(grant);
         if (anonKey == null) {

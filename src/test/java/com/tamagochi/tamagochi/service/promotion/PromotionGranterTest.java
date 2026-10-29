@@ -109,6 +109,49 @@ class PromotionGranterTest {
     }
 
     @Test
+    @DisplayName("진화 TEST_ 코드는 mode가 꺼져 있어도 관리자 테스트 지급은 보내고, 실제 진화 보상은 보내지 않는다")
+    void evolutionTestCodeSendsOnlyAdminTests() throws Exception {
+        PromotionGranter evoTest = new PromotionGranter(repository, api,
+                Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "off", "", "off", "TEST_EVO");
+        User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
+        assertThat(evoTest.isEvolutionConfigured()).isTrue();
+        assertThat(evoTest.isEvolutionTestCode()).isTrue();
+
+        PromotionGrant real = PromotionGrant.evolution(user, "CHILD", LocalDate.of(2026, 10, 26), 1, 10);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(real));
+        evoTest.grant(1L);
+        verify(api, never()).getKey(); // 실제 진화 보상은 mode=grant 가 아니면 보내지 않는다
+
+        PromotionGrant test = PromotionGrant.evolutionTest(user, LocalDate.of(1970, 1, 1), 1);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(test));
+        when(api.getKey()).thenReturn(ok("{\"key\":\"K1\"}"));
+        when(api.execute(ANON, "TEST_EVO", "K1", 1)).thenReturn(ok("{\"key\":\"K1\"}"));
+        when(api.result(ANON, "TEST_EVO", "K1")).thenReturn(ok("\"SUCCESS\""));
+        evoTest.grant(1L);
+        assertThat(test.getStatus()).isEqualTo(PromotionGrantStatus.GRANTED);
+    }
+
+    @Test
+    @DisplayName("관리자 테스트 건은 코드가 TEST_ 가 아니면 토스를 부르지 않고 실패로 끝낸다")
+    void adminTestNeverUsesRealCode() {
+        PromotionGranter real = new PromotionGranter(repository, api,
+                Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "grant", "REAL_CODE", "grant", "REAL_EVO");
+        User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
+
+        PromotionGrant training = new PromotionGrant(user, "admin-test-x", LocalDate.of(1970, 1, 1), 0, 0, 1);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(training));
+        real.grant(1L);
+        assertThat(training.getStatus()).isEqualTo(PromotionGrantStatus.FAILED);
+
+        PromotionGrant evo = PromotionGrant.evolutionTest(user, LocalDate.of(1970, 1, 1), 1);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
+        real.grant(1L);
+        assertThat(evo.getStatus()).isEqualTo(PromotionGrantStatus.FAILED);
+
+        verify(api, never()).getKey();
+    }
+
+    @Test
     @DisplayName("결과가 PENDING이면 접수 중으로 두고 나중에 다시 조회한다")
     void pending() throws Exception {
         when(api.getKey()).thenReturn(ok("{\"key\":\"K1\"}"));

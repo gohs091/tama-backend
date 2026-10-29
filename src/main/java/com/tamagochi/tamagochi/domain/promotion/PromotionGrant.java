@@ -71,6 +71,11 @@ public class PromotionGrant {
     @Column(name = "kind", length = 20)
     private String kind;
 
+    /** 관리자 테스트 지급인지 (키가 admin-test- 로 시작) */
+    public boolean isAdminTest() {
+        return trainingSessionId != null && trainingSessionId.startsWith("admin-test-");
+    }
+
     public boolean isEvolution() {
         return KIND_EVOLUTION.equals(this.kind);
     }
@@ -81,6 +86,13 @@ public class PromotionGrant {
      */
     public static PromotionGrant evolution(User user, String stage, LocalDate date, int seq, int amount) {
         PromotionGrant g = new PromotionGrant(user, evolutionMonthPrefix(stage, user.getId(), date) + seq, date, 0, 0, amount);
+        g.kind = KIND_EVOLUTION;
+        return g;
+    }
+
+    /** 관리자 테스트용 진화 보상 한 건. 키가 evolution- 로 시작하지 않아 실제 보상 횟수 제한에는 세어지지 않는다 */
+    public static PromotionGrant evolutionTest(User user, LocalDate date, int amount) {
+        PromotionGrant g = new PromotionGrant(user, "admin-test-evolution-" + java.util.UUID.randomUUID(), date, 0, 0, amount);
         g.kind = KIND_EVOLUTION;
         return g;
     }
