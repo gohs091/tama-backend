@@ -59,6 +59,12 @@ public class PromotionService {
                 TEST_GRANT_DATE, 0, 0, amount));
     }
 
+    /** 관리자 테스트 지급 한 건(진화 보상용 코드로 보낸다). 실제 진화 보상 횟수에는 세지 않는다. */
+    @Transactional
+    public PromotionGrant recordEvolutionTest(User user, int amount) {
+        return repository.save(PromotionGrant.evolutionTest(user, TEST_GRANT_DATE, amount));
+    }
+
     /** 트레이닝 화면에 보여줄 프로모션 안내: 구간표와 오늘 남은 횟수 */
     public PromotionInfo info(User user) {
         int remaining = 0;

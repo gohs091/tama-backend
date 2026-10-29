@@ -81,6 +81,36 @@ class AdminPromotionControllerTest {
     }
 
     @Test
+    @DisplayName("kind=evolution 이면 진화용 TEST_ 코드로 테스트 지급을 일으킨다")
+    void evolutionKind() throws Exception {
+        User user = User.builder().id(1L).tossUserId("toss_abc").nickname("n").build();
+        PromotionGrant evo = PromotionGrant.evolutionTest(user, LocalDate.of(1970, 1, 1), 1);
+        ReflectionTestUtils.setField(evo, "id", 8L);
+        evo.markGranted();
+        when(granter.isEvolutionConfigured()).thenReturn(true);
+        when(granter.isEvolutionTestCode()).thenReturn(true);
+        when(promotionService.recordEvolutionTest(any(User.class), anyInt())).thenReturn(evo);
+        when(grantRepository.findById(8L)).thenReturn(Optional.of(evo));
+
+        call("secret-admin-key", "{\"tossUserId\":\"toss_abc\",\"amount\":1,\"kind\":\"evolution\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("evolution"))
+                .andExpect(jsonPath("$.status").value("GRANTED"));
+
+        verify(granter).grant(8L);
+    }
+
+    @Test
+    @DisplayName("kind=evolution 인데 진화 코드가 TEST_ 가 아니면 거절한다")
+    void evolutionRealCodeRejected() throws Exception {
+        when(granter.isEvolutionConfigured()).thenReturn(true);
+        when(granter.isEvolutionTestCode()).thenReturn(false);
+
+        call("secret-admin-key", "{\"tossUserId\":\"toss_abc\",\"kind\":\"evolution\"}").andExpect(status().isBadRequest());
+        verify(granter, never()).grant(any());
+    }
+
+    @Test
     @DisplayName("관리자 키가 없거나 틀리면 403이고 지급을 시도하지 않는다")
     void wrongKey() throws Exception {
         call(null, "{\"tossUserId\":\"toss_abc\"}").andExpect(status().isForbidden());
