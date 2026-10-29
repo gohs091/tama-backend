@@ -28,7 +28,9 @@ public class DoodleSubjectService {
             {"subject":"<short English noun phrase, e.g. 'a sword', 'a cat', 'a bow with a string and an arrow'>",
              "kind":"<animal | creature | object | plant | person | abstract>",
              "subjectKo":"<the single most fitting short Korean noun for the subject, e.g. '칼', '고양이', '활', '컵'>",
-             "parts":"<comma-separated list of the 2-5 key parts with rough positions, e.g. 'a long curved blade on top, a horizontal crossguard in the middle, a short handle at the bottom'>"}
+             "parts":"<comma-separated list of the 2-5 key parts with rough positions, e.g. 'a long curved blade on top, a horizontal crossguard in the middle, a short handle at the bottom'>",
+             "traits":"<the 2-3 most distinctive, unusual or characteristic features of THIS particular drawing that make it different from a generic one, e.g. 'one ear much bigger than the other, a zigzag tail, a very large head'>",
+             "bodyPlan":"<one of: biped | quadruped | winged | serpent | vehicle | blob | floating | other>"}
             If you cannot tell what it is, use subject "an abstract shape" and kind "abstract".
             """;
 

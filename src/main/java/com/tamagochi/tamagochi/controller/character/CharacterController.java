@@ -60,7 +60,7 @@ public class CharacterController {
         if (rejected != null) return rejected;
         String jobId = UUID.randomUUID().toString();
         imageGenerationService.storeJob(jobId, ImageJobResult.pending()); // 큐에서 대기 중인 작업이 "없는 작업"으로 보이지 않게 먼저 저장
-        imageGenerationService.generateAsync(jobId, request.getImageBase64(), request.getFaction(), request.getVariationSeed());
+        imageGenerationService.generateAsync(jobId, request.getImageBase64(), request.getFaction(), request.getVariationSeed(), request.getTossUserId());
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
     }
 
@@ -81,7 +81,8 @@ public class CharacterController {
                 request.getFaction(),
                 request.getStage(),
                 request.getReferenceImageBase64(),
-                absorbedInk(request.getTossUserId(), request.getStage())
+                absorbedInk(request.getTossUserId(), request.getStage()),
+                request.getTossUserId()
         );
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
     }

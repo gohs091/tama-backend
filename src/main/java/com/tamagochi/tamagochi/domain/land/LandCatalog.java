@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -62,9 +63,28 @@ public final class LandCatalog {
         return Optional.ofNullable(key == null ? null : FAMILIES.get(key));
     }
 
+    /** 잉크 개수 → 흡수 비율(%). 특정(대표) 잉크는 2개, 계열 잉크는 1개로 센다 */
+    static final int[] ABSORB_RATIO = {0, 35, 60, 85};
+
+    /** 단계별로 잉크가 겉모습을 바꿀 수 있는 최대 비율(%). 유체가 갑자기 다른 생물이 되지 않게 한다 */
+    static int stageCap(String stage) {
+        return switch (stage == null ? "" : stage) {
+            case "baby" -> 15;
+            case "child" -> 50;
+            default -> 90;
+        };
+    }
+
+    /** 실제로 쓰는 비율 = min(잉크 비율, 단계 한도) */
+    public static int absorbRatio(int units, String stage) {
+        return Math.min(ABSORB_RATIO[Math.max(0, Math.min(units, ABSORB_RATIO.length - 1))], stageCap(stage));
+    }
+
     /**
      * 대표 잉크를 진화 이미지 프롬프트 문장으로 만든다. 문구는 모두 서버가 가진 고정 문구다.
-     * 특정 잉크는 몸 전체에 확실히 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
+     * 특정 잉크는 몸에 드러나는 특징("무엇이 되는가"), 계열 잉크는 질감·색·분위기만 맡는다.
+     * 잉크를 많이 장착할수록(특정 2 + 계열 1씩) 비율이 올라가 그쪽 모습이 강해지고, 단계 한도를 넘지 않는다.
+     *  - 15~34%: 장식만   - 35~54%: 부위 하나만 교체   - 55~84%: 얼굴 유지 / 부위 이식 / 동반 중 하나   - 85%~: 키메라도 가능
      * 고른 잉크가 하나도 없으면 null.
      */
     public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
@@ -75,19 +95,37 @@ public final class LandCatalog {
         if (main == null && families.isEmpty()) return null;
 
         StringBuilder sb = new StringBuilder("Absorbed ink data chosen by the player: ");
-        if (main != null) {
-            String strength = "adult".equals(stage)
-                    ? "prominent and a core part of its iconic final look"
-                    : "clearly visible";
-            sb.append("the creature truly takes on ").append(main.prompt())
-              .append(", expressed on its own body (").append(strength).append("). ");
-        }
+        int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
+        if (main != null) sb.append(mainText(main.prompt(), ratio, Math.abs(Objects.hash(main.id(), stage))));
         if (!families.isEmpty()) {
             sb.append("Its surface texture, colors and mood also carry ").append(String.join(" and ", families))
               .append("; use these only as texture, pattern and mood, not as extra body parts. ");
         }
-        sb.append("Keep the doodle's identity and the faction theme.");
-        return sb.toString();
+        if (ratio < 55) sb.append("Keep the doodle's identity and the faction theme.");
+        return sb.toString().trim();
+    }
+
+    /** 비율 구간별 합치는 방식. 55~84%는 시드로 한 가지를 고른다(같은 잉크·단계면 같은 결과) */
+    static String mainText(String g, int ratio, int seed) {
+        if (ratio < 15) return "";
+        if (ratio < 35) {
+            return "Decoration only: add " + g + " as small accents (colors, textures, tiny parts). The body and silhouette stay unchanged. ";
+        }
+        if (ratio < 55) {
+            return "Replace exactly ONE body part (for example the tail, the ears or a crest) with a version that truly has " + g
+                    + ". Everything else stays unchanged and recognizable. ";
+        }
+        String[] modes = {
+                "The creature keeps the ORIGIN's face and head (the creature of image 2) clearly recognizable, but its whole body becomes the body of a creature that truly has "
+                        + g + ": these traits must be clearly visible on the body, limbs and silhouette, not just as small details. ",
+                "The body truly takes on " + g + ", but one major body part (its wings or arms) keeps the ORIGIN's own version with the origin's own texture and shape "
+                        + "(for a bird: real feathered wings with separate feather tips, NOT membrane or scaled wings), and the rest of the body clearly shows " + g + ". ",
+                "A warrior-like character that truly takes on " + g + ", holding or accompanied by the ORIGIN creature (from image 2) as a companion, "
+                        + "both clearly visible, still ONE sprite. ",
+                "An even blend of the ORIGIN creature (from image 2) and a creature that truly has " + g + ": a chimera that clearly shows both. "
+        };
+        int pool = ratio >= 85 ? modes.length : 3;
+        return modes[seed % pool];
     }
 
     private static void family(String key, String name, String prompt) {

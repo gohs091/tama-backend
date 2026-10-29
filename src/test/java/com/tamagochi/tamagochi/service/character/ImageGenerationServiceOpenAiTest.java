@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -312,6 +313,88 @@ class ImageGenerationServiceOpenAiTest {
 
         assertThat(service.getJob("evo-job").getStatus()).isEqualTo("DONE");
         verifyNoInteractions(stabilityClient);
+    }
+
+    // ── v3: 그림 정체 저장·재사용 ─────────────────────────────
+
+    private static final DoodleSubject CROW = new DoodleSubject("a crow", "animal", "beak, wing", "새", "sharp beak", "winged");
+
+    private DoodleSubjectService describerReturning(DoodleSubject s) {
+        DoodleSubjectService describer = mock(DoodleSubjectService.class);
+        when(describer.describe(any(), any())).thenReturn(Optional.ofNullable(s));
+        ReflectionTestUtils.setField(service, "doodleSubjectService", describer);
+        return describer;
+    }
+
+    @Test
+    @DisplayName("v3 유체: 그림을 분석해 정체를 저장하고, 종족 이름을 결과에 담는다")
+    void baby_v3_savesOrigin() throws InterruptedException {
+        describerReturning(CROW);
+        DoodleOriginService origin = mock(DoodleOriginService.class);
+        ReflectionTestUtils.setField(service, "doodleOriginService", origin);
+        mockOpenAi(openAiJson("png".getBytes()));
+
+        service.generateAsync("v3-baby", Base64.getEncoder().encodeToString(new byte[]{1, 2, 3}), "trash", null, "u1");
+        Thread.sleep(300);
+
+        verify(origin).save("u1", CROW);
+        ImageJobResult r = service.getJob("v3-baby");
+        assertThat(r.getStatus()).isEqualTo("DONE");
+        assertThat(r.getSpecies()).isEqualTo("새");
+    }
+
+    @Test
+    @DisplayName("v3 진화: 저장된 정체를 읽어 쓰고 그림을 다시 분석하지 않는다")
+    void evolve_v3_usesSavedOrigin() throws InterruptedException {
+        DoodleSubjectService describer = describerReturning(CROW);
+        DoodleOriginService origin = mock(DoodleOriginService.class);
+        when(origin.find("u1")).thenReturn(Optional.of(CROW));
+        ReflectionTestUtils.setField(service, "doodleOriginService", origin);
+        mockOpenAi(openAiJson("png".getBytes()));
+        String sketch = Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
+        String reference = "data:image/png;base64," + Base64.getEncoder().encodeToString(new byte[]{9, 9, 9});
+
+        service.generateEvolvedAsync("v3-evo", null, sketch, "metal-empire", "child", reference, null, "u1");
+        Thread.sleep(300);
+
+        assertThat(service.getJob("v3-evo").getStatus()).isEqualTo("DONE");
+        verify(origin).find("u1");
+        verifyNoInteractions(describer);
+    }
+
+    @Test
+    @DisplayName("v3 진화: 저장된 정체가 없는 기존 유저는 그때 한 번 분석해 저장한다")
+    void evolve_v3_legacyUser_describesAndSaves() throws InterruptedException {
+        DoodleSubjectService describer = describerReturning(CROW);
+        DoodleOriginService origin = mock(DoodleOriginService.class);
+        when(origin.find("u1")).thenReturn(Optional.empty());
+        ReflectionTestUtils.setField(service, "doodleOriginService", origin);
+        mockOpenAi(openAiJson("png".getBytes()));
+        String sketch = Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
+        String reference = "data:image/png;base64," + Base64.getEncoder().encodeToString(new byte[]{9, 9, 9});
+
+        service.generateEvolvedAsync("v3-legacy", null, sketch, "metal-empire", "adult", reference, null, "u1");
+        Thread.sleep(300);
+
+        assertThat(service.getJob("v3-legacy").getStatus()).isEqualTo("DONE");
+        verify(describer, times(1)).describe(any(), any());
+        verify(origin).save("u1", CROW);
+    }
+
+    @Test
+    @DisplayName("v2(롤백) 설정이면 이전 방식으로 만들고 그림 정체를 저장하지 않는다")
+    void baby_v2_doesNotSaveOrigin() throws InterruptedException {
+        ReflectionTestUtils.setField(service, "promptVersion", "v2");
+        describerReturning(CROW);
+        DoodleOriginService origin = mock(DoodleOriginService.class);
+        ReflectionTestUtils.setField(service, "doodleOriginService", origin);
+        mockOpenAi(openAiJson("png".getBytes()));
+
+        service.generateAsync("v2-baby", Base64.getEncoder().encodeToString(new byte[]{1, 2, 3}), "trash", 7L, "u1");
+        Thread.sleep(300);
+
+        assertThat(service.getJob("v2-baby").getStatus()).isEqualTo("DONE");
+        verifyNoInteractions(origin);
     }
 
     @Test

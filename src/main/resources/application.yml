@@ -43,6 +43,7 @@ anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
 
 image:
+  prompt-version: ${IMAGE_PROMPT_VERSION:v3}  # v3(칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
   provider: ${IMAGE_PROVIDER:openai}  # openai | stability(롤백용)
   quota-enabled: true         # false면 생성 횟수 제한을 끈다 (로컬 개발 전용)
   daily-limit-per-user: 8     # 유저당 하루 이미지 생성 한도 (유체+성체+완전체 = 3회)
