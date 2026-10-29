@@ -15,7 +15,7 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
-    @DisplayName("흡수 비율: 잉크 개수로 정하고 단계 한도를 넘지 않는다 (유체 15 / 성체 50 / 완전체 90)")
+    @DisplayName("흡수 비율: 잉크 개수로 정하고 단계 한도를 넘지 않는다 (낙서 15 / 스케치 50 / 완성작 90)")
     void ratio_capsByStage() {
         assertThat(LandCatalog.absorbRatio(2, "baby")).isEqualTo(15);
         assertThat(LandCatalog.absorbRatio(4, "child")).isEqualTo(50);
@@ -33,7 +33,7 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
-    @DisplayName("성체: 단계 한도(50%) 때문에 부위 하나만 바뀌고 체형·정체를 유지한다 (체형을 바꾸는 잉크도 마찬가지)")
+    @DisplayName("스케치: 단계 한도(50%) 때문에 부위 하나만 바뀌고 체형·정체를 유지한다 (체형을 바꾸는 잉크도 마찬가지)")
     void child_replacesOnePart() {
         String p = LandCatalog.absorbedPrompt("tank", familyInkIds(2), "child");
 
@@ -43,7 +43,7 @@ class LandCatalogAbsorbTest {
     }
 
     @Test
-    @DisplayName("완전체 + 체형 잉크(희귀): 하체 분류가 바뀌고 다리 개수를 못박는다")
+    @DisplayName("완성작 + 체형 잉크(희귀): 하체 분류가 바뀌고 다리 개수를 못박는다")
     void adult_rareInk_changesBody() {
         String p = LandCatalog.absorbedPrompt("tank", List.of(), "adult");
 

@@ -17,7 +17,7 @@ class FusionModeTest {
     }
 
     @Test
-    @DisplayName("같은 시드는 항상 같은 합체 방식 (성체/완전체까지 방식이 이어지는 기반)")
+    @DisplayName("같은 시드는 항상 같은 합체 방식 (스케치/완성작까지 방식이 이어지는 기반)")
     void sameSeedSameMode() {
         for (long seed : new long[]{0, 1, 42, 123456789L, -7L}) {
             assertThat(FusionMode.pick(seed, false)).isEqualTo(FusionMode.pick(seed, false));

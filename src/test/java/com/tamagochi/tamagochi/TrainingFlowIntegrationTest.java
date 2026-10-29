@@ -128,7 +128,7 @@ class TrainingFlowIntegrationTest {
                 .andExpect(jsonPath("$.promotion.tier").value(2))
                 .andExpect(jsonPath("$.promotion.amount").value(2))
                 .andExpect(jsonPath("$.promotion.remainingToday").value(2))
-                .andExpect(jsonPath("$.evoGain").value(0)); // 완전체는 진화 게이지가 오르지 않는다
+                .andExpect(jsonPath("$.evoGain").value(0)); // 완성작은 진화 게이지가 오르지 않는다
 
         submit(sessionId, 90).andExpect(status().isBadRequest()); // 같은 세션은 한 번만
     }
@@ -157,7 +157,7 @@ class TrainingFlowIntegrationTest {
     @Test
     @DisplayName("훈련하면 게이지가 바로 오르지 않고 대기하며, 광고를 본 뒤 받아야 오르고, 광고 보너스는 더 없고, 한 번만 받는다")
     void evoGaugeIsClaimedAfterAd() throws Exception {
-        // 이 테스트의 캐릭터를 유체로 만든다 (기본 setUp은 완전체)
+        // 이 테스트의 캐릭터를 낙서로 만든다 (기본 setUp은 완성작)
         var user = userService.createUser("toss_claim_" + System.nanoTime(), "claim");
         tamagotchiRepository.save(Tamagotchi.builder().user(user).name("끄적이")
                 .evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).build());

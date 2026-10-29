@@ -36,7 +36,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("게이지 칸 수는 유체 10, 아이 60이고 알·완전체는 0이다")
+    @DisplayName("게이지 칸 수는 낙서 10, 스케치 60이고 알·완성작은 0이다")
     void gaugeMax() {
         assertThat(EvolutionRules.gaugeMax(EvolutionStage.EGG)).isZero();
         assertThat(EvolutionRules.gaugeMax(EvolutionStage.BABY)).isEqualTo(10);
@@ -54,7 +54,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("알과 완전체는 게이지가 오르지 않는다")
+    @DisplayName("알과 완성작은 게이지가 오르지 않는다")
     void noGaugeForEggAndAdult() {
         Tamagotchi egg = pet(EvolutionStage.EGG, 80, 80, 0);
         Tamagotchi adult = pet(EvolutionStage.ADULT, 80, 80, 0);
@@ -102,7 +102,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("아이 → 완전체는 60칸을 채워야 한다")
+    @DisplayName("스케치 → 완성작은 60칸을 채워야 한다")
     void childNeedsSixtyCells() {
         Tamagotchi p = pet(EvolutionStage.CHILD, 80, 80, 0);
         p.addEvoGauge(59);
@@ -113,7 +113,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("완전체와 사망한 캐릭터는 진화할 수 없다")
+    @DisplayName("완성작과 사망한 캐릭터는 진화할 수 없다")
     void adultAndDeadCannotEvolve() {
         assertThat(full(EvolutionStage.ADULT).isEvolutionReady()).isFalse();
         Tamagotchi dead = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(80)
@@ -122,7 +122,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("부화하면 알이 유체가 되고, 알이 아니면 부화할 수 없다")
+    @DisplayName("부화하면 알이 낙서가 되고, 알이 아니면 부화할 수 없다")
     void hatch() {
         Tamagotchi egg = pet(EvolutionStage.EGG, 80, 80, 0);
         egg.hatch();

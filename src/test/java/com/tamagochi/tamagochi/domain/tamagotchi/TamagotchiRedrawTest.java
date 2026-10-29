@@ -17,7 +17,7 @@ class TamagotchiRedrawTest {
     }
 
     @Test
-    @DisplayName("유체는 하루 2번까지 다시 그릴 수 있고, 다시 그리면 알로 돌아간다")
+    @DisplayName("낙서는 하루 2번까지 다시 그릴 수 있고, 다시 그리면 알로 돌아간다")
     void redraw_twicePerDay() {
         Tamagotchi pet = baby();
         assertThat(pet.redrawsLeft(TODAY)).isEqualTo(2);
@@ -50,7 +50,7 @@ class TamagotchiRedrawTest {
     }
 
     @Test
-    @DisplayName("알이나 아이 단계는 다시 그릴 수 없다")
+    @DisplayName("알이나 스케치 단계는 다시 그릴 수 없다")
     void redraw_onlyBaby() {
         Tamagotchi egg = Tamagotchi.builder().evolutionStage(EvolutionStage.EGG).hunger(50).strength(50).build();
         Tamagotchi child = Tamagotchi.builder().evolutionStage(EvolutionStage.CHILD).hunger(50).strength(50).build();

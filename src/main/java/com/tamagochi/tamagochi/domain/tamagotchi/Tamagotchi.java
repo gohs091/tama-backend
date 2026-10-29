@@ -118,7 +118,7 @@ public class Tamagotchi {
         return Math.max(0, REDRAWS_PER_DAY - used);
     }
 
-    /** 유체일 때만, 하루 횟수 안에서 알로 되돌린다. 그림은 클라이언트가 다시 그린다 */
+    /** 낙서일 때만, 하루 횟수 안에서 알로 되돌린다. 그림은 클라이언트가 다시 그린다 */
     public void redraw(LocalDate today) {
         if (this.evolutionStage != EvolutionStage.BABY || isDead()) {
             throw new IllegalStateException("갓 태어난 끄적이만 다시 그릴 수 있어요.");
@@ -218,7 +218,7 @@ public class Tamagotchi {
         setInkLoadout(null, null, null); // 대표 잉크는 진화마다 새로 고른다
     }
 
-    /** 알 → 유체. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
+    /** 알 → 낙서. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
     public void hatch() {
         if (this.evolutionStage != EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태가 아닙니다.");
@@ -229,7 +229,7 @@ public class Tamagotchi {
     /**
      * 훈련 결과로 받을 수 있는 진화 게이지를 대기시킨다. 게이지는 바로 오르지 않고 광고를 본 뒤 claimEvoGain()으로 오른다.
      * 새 훈련을 하면 아직 받지 않은 이전 대기분은 사라진다(훈련 1번 = 광고 1번).
-     * 진화할 수 없는 단계(알·완전체)이거나 게이지가 이미 가득 차 있으면 받을 것이 없다.
+     * 진화할 수 없는 단계(알·완성작)이거나 게이지가 이미 가득 차 있으면 받을 것이 없다.
      */
     public void offerEvoGain(int gain) {
         int max = EvolutionRules.gaugeMax(this.evolutionStage);
@@ -244,7 +244,7 @@ public class Tamagotchi {
         return this.evoGauge - before;
     }
 
-    /** 게이지를 직접 올린다. 진화할 수 없는 단계(알·완전체)에서는 무시한다. */
+    /** 게이지를 직접 올린다. 진화할 수 없는 단계(알·완성작)에서는 무시한다. */
     public void addEvoGauge(int gain) {
         int max = EvolutionRules.gaugeMax(this.evolutionStage);
         if (max == 0) return;

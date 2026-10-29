@@ -57,7 +57,7 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
 
-        tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 유체로 올린다 (포인트 차감 없음)
+        tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 낙서로 올린다 (포인트 차감 없음)
         log.info("부화 - tamagotchi: {}", tamagotchi.getName());
     }
 
@@ -111,7 +111,7 @@ public class TamagotchiService {
             case EGG   -> EvolutionStage.BABY;
             case BABY  -> EvolutionStage.CHILD;
             case CHILD -> EvolutionStage.ADULT;
-            case ADULT -> throw new IllegalStateException("이미 완전체입니다.");
+            case ADULT -> throw new IllegalStateException("이미 완성작입니다.");
         };
 
         tamagotchi.evolve(next);
@@ -240,7 +240,7 @@ public class TamagotchiService {
         tamagotchi.offerEvoGain(EvolutionRules.gainForTaps(taps));
         int evoGain = tamagotchi.getPendingEvoGain();
 
-        // 완전체의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
+        // 완성작의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
         PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT
                 ? promotionService.evaluate(user, session.getId(), taps)
                 : null;

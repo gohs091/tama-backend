@@ -27,7 +27,7 @@ public class TamagotchiController {
     private final RedrawService redrawService;
     private final EvolutionPromotionService evolutionPromotionService;
 
-    /** 진화 달성 보상(성체 10원·완전체 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
+    /** 진화 달성 보상(스케치 10원·완성작 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
     private void rewardEvolution(User user, Tamagotchi tamagotchi) {
         try {
             evolutionPromotionService.onEvolved(user, tamagotchi.getEvolutionStage());

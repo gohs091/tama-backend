@@ -109,7 +109,7 @@ public class ImageGenerationService {
     }
 
     // ----------------------------------------------------------------
-    // 유체(baby) 생성: 손그림 base64 → Stability AI sketch control
+    // 낙서(baby) 생성: 손그림 base64 → Stability AI sketch control
     // ----------------------------------------------------------------
     public void generateAsync(String jobId, String imageBase64, String faction) {
         generateAsync(jobId, imageBase64, faction, null);
@@ -121,7 +121,7 @@ public class ImageGenerationService {
         generateAsync(jobId, imageBase64, faction, variationSeed, null);
     }
 
-    // tossUserId: 그림 분석 결과를 저장해 두었다가 성체·완전체 진화에서 다시 쓴다 (없으면 저장하지 않는다)
+    // tossUserId: 그림 분석 결과를 저장해 두었다가 스케치·완성작 진화에서 다시 쓴다 (없으면 저장하지 않는다)
     @Async("imageExecutor")
     public void generateAsync(String jobId, String imageBase64, String faction, Long variationSeed, String tossUserId) {
         jobStore.put(jobId, ImageJobResult.pending());
@@ -145,8 +145,8 @@ public class ImageGenerationService {
     }
 
     // ----------------------------------------------------------------
-    // 성체/완전체 생성: S3 URL 또는 base64 → Stability AI sketch control
-    // stage: baby | child(성체) | adult(완전체)
+    // 스케치/완성작 생성: S3 URL 또는 base64 → Stability AI sketch control
+    // stage: baby | child(스케치) | adult(완성작)
     // ----------------------------------------------------------------
     public void generateEvolvedAsync(String jobId, String imageUrl, String imageBase64,
                                      String faction, String stage) {
@@ -242,7 +242,7 @@ public class ImageGenerationService {
         return new Generated(removeBackground(bytes), null);
     }
 
-    // v3: 유체는 그림 그대로 살리고(합체 없음), 진화는 처음 그림의 정체를 이어서 쓴다
+    // v3: 낙서는 그림 그대로 살리고(합체 없음), 진화는 처음 그림의 정체를 이어서 쓴다
     private Generated generateV3(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
                                  String faction, String stage, String absorbedInk, String tossUserId) {
         boolean evolving = referenceBytes != null;
@@ -256,7 +256,7 @@ public class ImageGenerationService {
             subject = describeDoodle(imageBytes, mimeType);
             if (subject != null && !subject.isAbstract()) {
                 saveOrigin(tossUserId, subject);
-                log.info("v3 유체 - subject: {}, kind: {}, bodyPlan: {}, faction: {}", subject.subject(), subject.kind(), subject.bodyPlan(), faction);
+                log.info("v3 낙서 - subject: {}, kind: {}, bodyPlan: {}, faction: {}", subject.subject(), subject.kind(), subject.bodyPlan(), faction);
                 prompt = ImagePromptV3.baby(subject, colors);
             } else {
                 // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다
@@ -511,14 +511,14 @@ public class ImageGenerationService {
     }
 
     // ----------------------------------------------------------------
-    // 팩션 테마 (디지몬 소속 필드 컨셉): 단계가 오를수록 테마 반영이 커진다 (유체 20% → 성체 50% → 완전체 80%)
+    // 팩션 테마 (디지몬 소속 필드 컨셉): 단계가 오를수록 테마 반영이 커진다 (낙서 20% → 스케치 50% → 완성작 80%)
     // 테마는 사용자의 그림을 대체하지 않고 장식·질감·소품으로 입힌다
     // ----------------------------------------------------------------
     String buildThemeText(String faction, String stage) {
         return buildThemeText(faction, stage, false);
     }
 
-    // fused: 그림과 팩션 생물이 따로 존재하는 합체 방식(HELD/FEATURE/MOUNT)의 유체 — 처음부터 팩션 생물이 등장한다
+    // fused: 그림과 팩션 생물이 따로 존재하는 합체 방식(HELD/FEATURE/MOUNT)의 낙서 — 처음부터 팩션 생물이 등장한다
     String buildThemeText(String faction, String stage, boolean fused) {
         String motifs = getFactionThemeMotifs(faction);
         if (fused && !"child".equals(stage) && !"adult".equals(stage)) {

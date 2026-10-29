@@ -20,7 +20,7 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("유체: 그림의 특징·몸 구조를 살리고, 탈것·동반·두 번째 몸을 만들지 않는다")
+    @DisplayName("낙서: 그림의 특징·몸 구조를 살리고, 탈것·동반·두 번째 몸을 만들지 않는다")
     void baby_keepsDrawingAndForbidsFusion() {
         String p = ImagePromptV3.baby(PERSON, COLORS);
 
@@ -32,7 +32,7 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("유체: 물체 그림은 물체 자체에 얼굴을 달아 캐릭터로 만든다")
+    @DisplayName("낙서: 물체 그림은 물체 자체에 얼굴을 달아 캐릭터로 만든다")
     void baby_objectGetsFace() {
         DoodleSubject train = new DoodleSubject("a train engine", "object", "chimney, wheels", "기관차", null, "vehicle");
         String p = ImagePromptV3.baby(train, COLORS);
@@ -42,7 +42,7 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("성체: 직전 모습과 원본 낙서를 함께 보고, 크기만 키우지 않고 특징을 하나 더한다")
+    @DisplayName("스케치: 직전 모습과 원본 낙서를 함께 보고, 크기만 키우지 않고 특징을 하나 더한다")
     void evolveChild_plain() {
         String p = evolve("child", null);
 
@@ -54,7 +54,7 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("완전체: 정규 진화처럼 더 강하고 멋있게 — 체격·표정·디테일·대비가 달라지되 개성은 남긴다")
+    @DisplayName("완성작: 정규 진화처럼 더 강하고 멋있게 — 체격·표정·디테일·대비가 달라지되 개성은 남긴다")
     void evolveAdult_feelsLikeEvolution() {
         String p = evolve("adult", null);
 
@@ -102,7 +102,7 @@ class ImagePromptV3Test {
     }
 
     @Test
-    @DisplayName("성체(한도 50%)에서는 같은 잉크도 부위만 바뀌고 체형 유지 문장이 남는다")
+    @DisplayName("스케치(한도 50%)에서는 같은 잉크도 부위만 바뀌고 체형 유지 문장이 남는다")
     void evolveChild_inkKeepsBodyPlan() {
         String p = evolve("child", LandCatalog.absorbedPrompt("tank", List.of(), "child"));
 

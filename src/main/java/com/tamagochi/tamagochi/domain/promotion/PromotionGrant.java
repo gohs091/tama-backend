@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 완전체 트레이닝 결과로 받을 프로모션(토스 포인트) 지급 기록. 트레이닝 세션 하나당 최대 한 건이다.
+ * 완성작 트레이닝 결과로 받을 프로모션(토스 포인트) 지급 기록. 트레이닝 세션 하나당 최대 한 건이다.
  * RECORDED → SENDING → PENDING → GRANTED 순으로 바뀌고, 영구 오류이거나 재시도를 다 쓰면 FAILED가 된다.
  */
 @Entity

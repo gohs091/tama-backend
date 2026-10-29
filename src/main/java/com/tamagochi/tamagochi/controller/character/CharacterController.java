@@ -52,7 +52,7 @@ public class CharacterController {
     }
 
     /**
-     * 유체(baby) 이미지 생성 — 손그림 base64 → Stability AI sketch control
+     * 낙서(baby) 이미지 생성 — 손그림 base64 → Stability AI sketch control
      */
     @PostMapping("/generate")
     public ResponseEntity<GenerateImageResponse> generate(@RequestBody GenerateImageRequest request) {
@@ -65,7 +65,7 @@ public class CharacterController {
     }
 
     /**
-     * 성체(child) / 완전체(adult) 이미지 생성 — S3 URL 또는 base64 → Stability AI
+     * 스케치(child) / 완성작(adult) 이미지 생성 — S3 URL 또는 base64 → Stability AI
      * Request body: { imageUrl, imageBase64, faction, stage(baby|child|adult) }
      */
     @PostMapping("/generate-evolved")

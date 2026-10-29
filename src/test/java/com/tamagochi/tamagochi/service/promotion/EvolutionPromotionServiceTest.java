@@ -50,7 +50,7 @@ class EvolutionPromotionServiceTest {
     }
 
     @Test
-    @DisplayName("성체가 되면 10원, 완전체가 되면 50원을 기록하고 grant 모드면 지급을 시작한다")
+    @DisplayName("스케치가 되면 10원, 완성작이 되면 50원을 기록하고 grant 모드면 지급을 시작한다")
     void recordsChildAndAdult() {
         EvolutionPromotionService s = service("grant", "2026-10-28T03:00:00Z");
 
@@ -61,14 +61,14 @@ class EvolutionPromotionServiceTest {
         assertThat(saved.get("evolution-ADULT-7-202610-1").getAmount()).isEqualTo(50);
         assertThat(saved.get("evolution-ADULT-7-202610-1").isEvolution()).isTrue();
         verify(events, times(2)).publishEvent(any(PromotionRecordedEvent.class));
-        // 성체는 처음 한 번뿐이라 더 없고, 완전체는 이번 달 3번 남는다
+        // 스케치는 처음 한 번뿐이라 더 없고, 완성작은 이번 달 3번 남는다
         assertThat(s.info(user).rewards().get(0).remaining()).isZero();
         assertThat(s.info(user).rewards().get(0).firstOnly()).isTrue();
         assertThat(s.info(user).rewards().get(1).remaining()).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("성체 보상은 다시 키워도, 달이 바뀌어도 처음 한 번만 준다")
+    @DisplayName("스케치 보상은 다시 키워도, 달이 바뀌어도 처음 한 번만 준다")
     void childOnlyFirstTime() {
         EvolutionPromotionService october = service("grant", "2026-10-28T03:00:00Z");
         october.onEvolved(user, EvolutionStage.CHILD);
@@ -81,7 +81,7 @@ class EvolutionPromotionServiceTest {
     }
 
     @Test
-    @DisplayName("완전체는 다시 키워 또 진화하면 또 주되, 한 달에 4번까지다")
+    @DisplayName("완성작은 다시 키워 또 진화하면 또 주되, 한 달에 4번까지다")
     void adultFourTimesPerMonth() {
         EvolutionPromotionService s = service("grant", "2026-10-28T03:00:00Z");
 
@@ -92,7 +92,7 @@ class EvolutionPromotionServiceTest {
     }
 
     @Test
-    @DisplayName("완전체는 달이 바뀌면 다시 4번 받을 수 있다 (KST 기준)")
+    @DisplayName("완성작은 달이 바뀌면 다시 4번 받을 수 있다 (KST 기준)")
     void adultResetsNextMonth() {
         EvolutionPromotionService october = service("grant", "2026-10-28T03:00:00Z");
         for (int i = 0; i < 4; i++) october.onEvolved(user, EvolutionStage.ADULT);
@@ -111,7 +111,7 @@ class EvolutionPromotionServiceTest {
         s.onEvolved(user, EvolutionStage.CHILD);
         saved.get("evolution-CHILD-7-202610-1").markFailed("test");
 
-        s.onEvolved(user, EvolutionStage.CHILD); // 첫 성체 보상이 실패했으니 다시 받을 수 있다
+        s.onEvolved(user, EvolutionStage.CHILD); // 첫 스케치 보상이 실패했으니 다시 받을 수 있다
 
         assertThat(saved).containsKey("evolution-CHILD-7-202610-2");
         assertThat(s.info(user).rewards().get(0).remaining()).isZero();
@@ -132,7 +132,7 @@ class EvolutionPromotionServiceTest {
     }
 
     @Test
-    @DisplayName("유체로 부화할 때는 보상이 없다")
+    @DisplayName("낙서로 부화할 때는 보상이 없다")
     void noRewardForBaby() {
         service("grant", "2026-10-28T03:00:00Z").onEvolved(user, EvolutionStage.BABY);
         verify(repository, never()).save(any());

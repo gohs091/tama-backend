@@ -41,7 +41,7 @@ class ImageGenerationServiceOpenAiTest {
     // ── 프롬프트 ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("유체 프롬프트: 빈 선화를 색으로 채우고 특징을 유지하라고 지시한다")
+    @DisplayName("낙서 프롬프트: 빈 선화를 색으로 채우고 특징을 유지하라고 지시한다")
     void babyPrompt() {
         String p = service.buildOpenAiPrompt("nightmare-soldiers", "baby", false);
         assertThat(p).contains("empty unfilled interior");
@@ -167,7 +167,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("합체 방식의 유체는 처음부터 팩션 생물이 등장한다 (테마 60%, 그림은 크게 유지)")
+    @DisplayName("합체 방식의 낙서는 처음부터 팩션 생물이 등장한다 (테마 60%, 그림은 크게 유지)")
     void fusedBabyHasFactionCreature() {
         String p = service.buildOpenAiPrompt("nightmare-soldiers", "baby", false, SWORD, FusionMode.HELD);
         assertThat(p).contains("baby creature of this faction").contains("about 60%");
@@ -176,7 +176,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("성체/완전체는 유체와 같은 구도(쥐기·타기·합체)를 유지하며 함께 자란다")
+    @DisplayName("스케치/완성작은 낙서와 같은 구도(쥐기·타기·합체)를 유지하며 함께 자란다")
     void evolvedKeepsComposition() {
         for (String stage : new String[]{"child", "adult"}) {
             String p = service.buildOpenAiPrompt("dragons-roar", stage, true, null, FusionMode.SELF);
@@ -251,7 +251,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("테마 반영 강도는 유체 20% → 성체 50% → 완전체 80%로 커진다")
+    @DisplayName("테마 반영 강도는 낙서 20% → 스케치 50% → 완성작 80%로 커진다")
     void themeIntensityGrowsWithStage() {
         assertThat(service.buildThemeText("metal-empire", "baby")).contains("about 20%").contains("subtle hint");
         assertThat(service.buildThemeText("metal-empire", "child")).contains("about 50%");
@@ -269,7 +269,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("성체는 눈에 띄는 변화, 보조 색 허용")
+    @DisplayName("스케치는 눈에 띄는 변화, 보조 색 허용")
     void childEvolvesVisiblyAndAllowsAccentColors() {
         String p = service.buildOpenAiPrompt("trash", "child", true);
         assertThat(p).contains("clearly EVOLVED form").contains("noticeably bigger").contains("one signature feature");
@@ -287,7 +287,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("유체 생성: OpenAI 결과를 DONE으로 저장하고 Stability는 호출하지 않는다")
+    @DisplayName("낙서 생성: OpenAI 결과를 DONE으로 저장하고 Stability는 호출하지 않는다")
     void baby_openAi_done() throws InterruptedException {
         byte[] png = "fake-png".getBytes();
         mockOpenAi(openAiJson(png));
@@ -327,7 +327,7 @@ class ImageGenerationServiceOpenAiTest {
     }
 
     @Test
-    @DisplayName("v3 유체: 그림을 분석해 정체를 저장하고, 종족 이름을 결과에 담는다")
+    @DisplayName("v3 낙서: 그림을 분석해 정체를 저장하고, 종족 이름을 결과에 담는다")
     void baby_v3_savesOrigin() throws InterruptedException {
         describerReturning(CROW);
         DoodleOriginService origin = mock(DoodleOriginService.class);

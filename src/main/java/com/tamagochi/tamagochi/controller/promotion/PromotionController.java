@@ -26,7 +26,7 @@ public class PromotionController {
     }
     private final UserIdentity userIdentity;
 
-    /** 완전체 트레이닝 프로모션 안내(구간표, 오늘 남은 횟수) */
+    /** 완성작 트레이닝 프로모션 안내(구간표, 오늘 남은 횟수) */
     @GetMapping("/training/{tossUserId}")
     public ResponseEntity<?> trainingInfo(@PathVariable String tossUserId) {
         User user = userIdentity.resolve(tossUserId);

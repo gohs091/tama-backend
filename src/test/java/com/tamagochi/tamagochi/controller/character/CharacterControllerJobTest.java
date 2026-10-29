@@ -49,7 +49,7 @@ class CharacterControllerJobTest {
     }
 
     @Test
-    @DisplayName("유체 생성: 비동기 작업을 넘기기 전에 PENDING을 먼저 저장한다 (큐 대기 중 'Job not found' 방지)")
+    @DisplayName("낙서 생성: 비동기 작업을 넘기기 전에 PENDING을 먼저 저장한다 (큐 대기 중 'Job not found' 방지)")
     void generate_storesPendingBeforeAsync() {
         ResponseEntity<GenerateImageResponse> res = controller.generate(generateRequest());
 
