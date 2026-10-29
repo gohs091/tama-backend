@@ -110,6 +110,13 @@ public class PromotionGranter {
             return;
         }
         String code = codeFor(grant);
+        // 마지막 방어선: 관리자 테스트 건은 어떤 경로로 만들어졌든 TEST_ 코드가 아니면 토스를 부르지 않는다 (실제 포인트 지급 악용 방지)
+        if (grant.isAdminTest() && !code.startsWith("TEST_")) {
+            log.error("관리자 테스트 지급은 TEST_ 코드로만 보낼 수 있어요. grantId: {}", grantId);
+            grant.markFailed("관리자 테스트 지급은 TEST_ 코드로만 보낼 수 있어요");
+            repository.save(grant);
+            return;
+        }
 
         String anonKey = anonKeyOf(grant);
         if (anonKey == null) {

@@ -132,6 +132,26 @@ class PromotionGranterTest {
     }
 
     @Test
+    @DisplayName("관리자 테스트 건은 코드가 TEST_ 가 아니면 토스를 부르지 않고 실패로 끝낸다")
+    void adminTestNeverUsesRealCode() {
+        PromotionGranter real = new PromotionGranter(repository, api,
+                Clock.fixed(Instant.parse("2026-10-26T03:00:00Z"), ZoneId.of("Asia/Seoul")), "grant", "REAL_CODE", "grant", "REAL_EVO");
+        User user = User.builder().id(1L).tossUserId("toss_" + ANON).nickname("n").build();
+
+        PromotionGrant training = new PromotionGrant(user, "admin-test-x", LocalDate.of(1970, 1, 1), 0, 0, 1);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(training));
+        real.grant(1L);
+        assertThat(training.getStatus()).isEqualTo(PromotionGrantStatus.FAILED);
+
+        PromotionGrant evo = PromotionGrant.evolutionTest(user, LocalDate.of(1970, 1, 1), 1);
+        when(repository.findWithUserById(1L)).thenReturn(Optional.of(evo));
+        real.grant(1L);
+        assertThat(evo.getStatus()).isEqualTo(PromotionGrantStatus.FAILED);
+
+        verify(api, never()).getKey();
+    }
+
+    @Test
     @DisplayName("결과가 PENDING이면 접수 중으로 두고 나중에 다시 조회한다")
     void pending() throws Exception {
         when(api.getKey()).thenReturn(ok("{\"key\":\"K1\"}"));
