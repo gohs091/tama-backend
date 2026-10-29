@@ -63,3 +63,10 @@ stability:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+
+point:
+  ad-reward:
+    amount: ${AD_REWARD_AMOUNT:100}            # 광고 한 번 보상(잉크)
+    daily-limit: ${AD_REWARD_DAILY_LIMIT:5}    # 하루(KST) 받을 수 있는 횟수
+    cooldown-seconds: ${AD_REWARD_COOLDOWN_SECONDS:300}  # 한 번 받은 뒤 다음 보상까지(초)
+    min-watch-ms: ${AD_REWARD_MIN_WATCH_MS:0}  # 0이면 끔. 앱이 알려 준 시청 시간이 이보다 짧으면 지급하지 않는다

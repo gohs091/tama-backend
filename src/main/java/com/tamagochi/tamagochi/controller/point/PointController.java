@@ -39,9 +39,16 @@ public class PointController {
 
         PointTransaction transaction = pointService.earnAdReward(
                 user,
-                request.getIdempotencyKey()
+                request.getIdempotencyKey(),
+                request.getWatchMs()
         );
         return ResponseEntity.ok(PointTransactionResponse.from(transaction));
+    }
+
+    /** 광고 보상을 지금 받을 수 있는지, 다음까지 몇 초인지, 오늘 몇 번 남았는지 */
+    @GetMapping("/ad-reward/{tossUserId}")
+    public ResponseEntity<?> adRewardStatus(@PathVariable String tossUserId) {
+        return ResponseEntity.ok(pointService.adRewardStatus(userIdentity.resolve(tossUserId)));
     }
 
     @PostMapping("/purchase")
