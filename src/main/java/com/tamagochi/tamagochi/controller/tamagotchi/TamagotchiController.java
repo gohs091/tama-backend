@@ -116,7 +116,7 @@ public class TamagotchiController {
         User user = userIdentity.resolve(request.getTossUserId());
 
         tamagotchiService.sleep(user);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.getByUserId(user.getId())));
     }
 
     @PostMapping("/wakeup")
@@ -124,7 +124,7 @@ public class TamagotchiController {
         User user = userIdentity.resolve(request.getTossUserId());
 
         tamagotchiService.wakeUp(user);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.getByUserId(user.getId())));
     }
 
     @PostMapping("/clean")

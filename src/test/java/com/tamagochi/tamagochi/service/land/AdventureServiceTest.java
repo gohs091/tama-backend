@@ -134,7 +134,7 @@ class AdventureServiceTest {
         pet.setBathing(true);
         assertThatThrownBy(() -> service.start(user, "nature-spirits")).hasMessageContaining("잉크통");
         pet.setBathing(false);
-        pet.sleep();
+        pet.sleep(java.time.LocalDateTime.of(2026, 10, 23, 3, 0)); // 새벽 3시는 어느 끄적이에게나 졸린 시간
         assertThatThrownBy(() -> service.start(user, "nature-spirits")).hasMessageContaining("자고");
         assertThat(pet.isAdventuring()).isFalse();
     }

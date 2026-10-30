@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TamagotchiVitalsTest {
 
@@ -78,15 +79,51 @@ class TamagotchiVitalsTest {
     }
 
     @Test
-    @DisplayName("수면 중에는 소진되지 않고, 깨어난 직후에도 한꺼번에 깎이지 않는다")
-    void sleeping_pausesDecay() {
-        pet.sleep();
-        pet.applyTime(after(300), RULE);
-        pet.wakeUp();
-        pet.applyTime(after(301), RULE);
-        assertThat(pet.getHunger()).isEqualTo(50);
-        assertThat(pet.getStrength()).isEqualTo(50);
-        assertThat(pet.getPoopCount()).isZero();
+    @DisplayName("자는 동안 응가는 멈추고 포만감·파워는 3배 느리게 준다")
+    void sleeping_slowsDecay() {
+        LocalDateTime night = LocalDateTime.of(2026, 10, 23, 22, 0); // 시작 시각이 없으면 id로 정한다 (id 없음 → 21시)
+        Tamagotchi p = baby(50, 50);
+        p.applyTime(night, RULE);
+        p.sleep(night);
+        p.applyTime(night.plusMinutes(180), RULE);
+        assertThat(p.getHunger()).isEqualTo(60);   // 18분마다 1
+        assertThat(p.getStrength()).isEqualTo(45); // 36분마다 1
+        assertThat(p.getPoopCount()).isZero();
+
+        p.wakeUp();
+        p.applyTime(night.plusMinutes(181), RULE);
+        assertThat(p.getPoopCount()).isZero(); // 깨어난 직후 한꺼번에 생기지 않는다
+    }
+
+    @Test
+    @DisplayName("졸린 시간대가 아니면 불을 꺼도 잠들지 않는다")
+    void sleep_onlyInSleepyTime() {
+        assertThatThrownBy(() -> pet.sleep(T0)).isInstanceOf(IllegalStateException.class);
+        assertThat(pet.isSleeping()).isFalse();
+    }
+
+    @Test
+    @DisplayName("졸린 시간대는 시작 시각부터 8시간이고 자정을 넘어간다")
+    void sleepyTime_wrapsMidnight() {
+        Tamagotchi p = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).sleepyStartHour(23).build();
+        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 23, 22, 59))).isFalse();
+        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 23, 23, 0))).isTrue();
+        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 24, 6, 59))).isTrue();
+        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 24, 7, 0))).isFalse();
+        assertThat(p.isSleepy(LocalDateTime.of(2026, 10, 24, 1, 0))).isTrue();
+    }
+
+    @Test
+    @DisplayName("자다가 먹이면 깬다")
+    void feeding_wakesUp() {
+        LocalDateTime night = LocalDateTime.of(2026, 10, 23, 22, 0);
+        Tamagotchi p = baby(50, 50);
+        p.sleep(night);
+        p.feed();
+        assertThat(p.isSleeping()).isFalse();
+        p.sleep(night);
+        p.addStrength(1);
+        assertThat(p.isSleeping()).isFalse();
     }
 
     @Test

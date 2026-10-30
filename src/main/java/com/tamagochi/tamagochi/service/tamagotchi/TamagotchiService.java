@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -96,6 +98,7 @@ public class TamagotchiService {
                 .hunger(Tamagotchi.INITIAL_HUNGER)
                 .strength(Tamagotchi.INITIAL_STRENGTH)
                 .feedCount(0)
+                .sleepyStartHour(Tamagotchi.randomSleepyStartHour())
                 .build();
 
         return tamagotchiRepository.save(tamagotchi);
@@ -139,8 +142,9 @@ public class TamagotchiService {
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
+        requireHome(tamagotchi);
 
-        tamagotchi.sleep(); // 6시간 체크는 Entity 안에서 처리
+        tamagotchi.sleep(LocalDateTime.now()); // 졸린 시간대인지는 Entity 안에서 확인
     }
 
     @Transactional
@@ -266,9 +270,6 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
         requireHome(tamagotchi);
-        if (tamagotchi.isSleeping()) {
-            throw new IllegalStateException("다마고치가 자고 있어요.");
-        }
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태에서는 알약을 먹을 수 없어요.");
         }
