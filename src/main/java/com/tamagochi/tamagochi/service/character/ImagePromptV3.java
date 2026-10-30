@@ -73,6 +73,26 @@ final class ImagePromptV3 {
                 "Eyes: round dark eyes with a clear white highlight. " + FRAME;
     }
 
+    /**
+     * 자는 모습: 지금 모습 그대로 엎드려 자는 그림. 정체·부위·특징·몸 구조·진영 색을 키워드로 함께 알려 같은 캐릭터로 남게 한다.
+     * 새 부위(날개·뿔·장식)를 만들지 못하게 하고, 눈이 있으면 감는다.
+     */
+    static String sleep(DoodleSubject o, String colors, String themeMotifs) {
+        String based = o == null || blank(o.subject()) ? "" : "It was generated from these keywords: it is based on the player's doodle of " + o.subject() + ". ";
+        String parts = o == null || blank(o.parts()) ? "" : "Its parts: " + o.parts() + ". ";
+        String traits = o == null || blank(o.traits()) ? "" : "Distinctive features that define it: " + o.traits() + ". ";
+        String plan = o == null || blank(o.bodyPlan()) || "other".equalsIgnoreCase(o.bodyPlan()) ? "" : "Body plan: " + o.bodyPlan() + ". ";
+        String theme = blank(themeMotifs) ? "" : "Faction accents: " + themeMotifs + ". ";
+        return "This image is the current pixel art form of a tamagotchi-style pet. " + based + parts + traits + plan +
+                "Color scheme: " + colors + ". " + theme +
+                "Now draw THIS SAME character fast asleep, lying down on its belly with its body low and flat on the ground and its head resting down on its front limbs, " +
+                "face lowered, eyes closed (if it has a face). " +
+                "Keep every listed part, feature, marking and color clearly visible in the new pose, in the same colors as the image. " +
+                "Do NOT add new parts such as wings, horns or accessories, and do not change the species or colors. " +
+                "Keep the exact same 16-bit pixel art style, pixel size, outline style and flat color palette as the image. " +
+                "Single character centered, filling about 70% of the frame, transparent background, no shadow, no glow, no ground, no other characters, no text.";
+    }
+
     /** 도구가 되는 몸 부위. 알 수 없으면 귀로 한다 (길고 얇은 도구가 가장 많아 가장 안전하다) */
     static String toolPart(String attach, String s) {
         String a = attach == null ? "" : attach.trim().toLowerCase();

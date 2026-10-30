@@ -10,11 +10,14 @@ import com.tamagochi.tamagochi.controller.dto.GenerateImageResponse;
 import com.tamagochi.tamagochi.controller.dto.ImageStatusResponse;
 import com.tamagochi.tamagochi.controller.dto.LocalCompositeRequest;
 import com.tamagochi.tamagochi.controller.dto.LocalCompositeResponse;
+import com.tamagochi.tamagochi.controller.dto.SleepImageRequest;
+import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.character.CharacterService;
 import com.tamagochi.tamagochi.service.character.ImageGenerationService;
 import com.tamagochi.tamagochi.service.character.ImageJobResult;
 import com.tamagochi.tamagochi.service.character.ImageQuotaService;
 import com.tamagochi.tamagochi.service.character.LocalImageCompositeService;
+import com.tamagochi.tamagochi.service.character.SleepImageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,6 +41,7 @@ public class CharacterController {
     private final ImageQuotaService imageQuotaService;
     private final UserIdentity userIdentity;
     private final InkLoadoutService inkLoadoutService;
+    private final SleepImageService sleepImageService;
 
     @PostMapping("/analyze")
     public ResponseEntity<CharacterFeaturesResponse> analyze(@RequestBody AnalyzeSketchRequest request) {
@@ -84,6 +88,23 @@ public class CharacterController {
                 absorbedInk(request.getTossUserId(), request.getStage()),
                 request.getTossUserId()
         );
+        return ResponseEntity.ok(new GenerateImageResponse(jobId));
+    }
+
+    /**
+     * 자는 모습 이미지 생성. 첫 번째는 잉크 1000개를 내고, 이후 단계는 무료.
+     * Request body: { tossUserId, imageBase64, faction, stage, idempotencyKey }
+     */
+    @PostMapping("/generate-sleep")
+    public ResponseEntity<GenerateImageResponse> generateSleep(@RequestBody SleepImageRequest request) {
+        ResponseEntity<GenerateImageResponse> rejected = checkQuota(request.getTossUserId());
+        if (rejected != null) return rejected;
+        User user = userIdentity.resolve(request.getTossUserId());
+        SleepImageService.Start start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey());
+        String jobId = UUID.randomUUID().toString();
+        imageGenerationService.storeJob(jobId, ImageJobResult.pending());
+        imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(),
+                () -> sleepImageService.abort(user, start, request.getIdempotencyKey()));
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
     }
 
