@@ -279,6 +279,34 @@ public class ImageGenerationService {
     }
 
     // ----------------------------------------------------------------
+    // 자는 모습: 지금 단계의 캐릭터 이미지를 엎드려 자는 같은 캐릭터로 다시 그린다
+    // 실패하면 onFail 을 부른다 (결제한 잉크를 돌려주는 데 쓴다)
+    // ----------------------------------------------------------------
+    @Async("imageExecutor")
+    public void generateSleepAsync(String jobId, String imageBase64, String faction, String tossUserId, Runnable onFail) {
+        jobStore.put(jobId, ImageJobResult.pending());
+        try {
+            String mimeType = extractMimeType(imageBase64);
+            byte[] spriteBytes = decodeBase64Image(imageBase64);
+            DoodleSubject subject = originFor(tossUserId, spriteBytes, mimeType);
+            String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject,
+                    getFactionPixelColors(faction), getFactionThemeMotifs(faction));
+            byte[] image = binarizeAlpha(callOpenAiEdit(spriteBytes, mimeType, null, null, prompt));
+            if (image == null || image.length == 0) {
+                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                if (onFail != null) onFail.run();
+                return;
+            }
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image)));
+            log.info("Sleep image generation done for job: {}", jobId);
+        } catch (Exception e) {
+            log.error("Sleep image generation failed for job: {}", jobId, e);
+            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            if (onFail != null) onFail.run();
+        }
+    }
+
+    // ----------------------------------------------------------------
     // OpenAI images/edits 호출 (gpt-image 계열)
     // 이미지 순서: 참조(성장 전 캐릭터)가 있으면 1번, 원본 낙서는 그 다음
     // ----------------------------------------------------------------

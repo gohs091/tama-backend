@@ -18,6 +18,8 @@ public class TamagotchiResponse {
     private int strength;
     private int poopCount;
     private boolean sleeping;
+    private boolean sleepImageUnlocked; // 자는 모습 이미지 값을 냈다 (이후 단계는 무료)
+    private java.util.List<String> sleepImageStages; // 자는 모습을 이미 만든 단계 (BABY | CHILD | ADULT)
     private boolean sleepy;         // 졸린 시간대인데 깨어 있다 (불을 끄면 잠든다)
     private int sleepyStartHour;    // 졸린 시간대 시작 시각(0~23시, KST). 여기서부터 8시간 졸리다
     private boolean bathing;       // 잉크통 충전 중 (돌보기·훈련 불가)
@@ -41,6 +43,8 @@ public class TamagotchiResponse {
                 .strength(tamagotchi.getStrength())
                 .poopCount(tamagotchi.getPoopCount())
                 .sleeping(tamagotchi.isSleeping())
+                .sleepImageUnlocked(tamagotchi.isSleepImageUnlocked())
+                .sleepImageStages(tamagotchi.sleepImageStages())
                 .sleepy(tamagotchi.isSleepy(LocalDateTime.now()))
                 .sleepyStartHour(tamagotchi.sleepyStartHour())
                 .bathing(tamagotchi.isBathing())

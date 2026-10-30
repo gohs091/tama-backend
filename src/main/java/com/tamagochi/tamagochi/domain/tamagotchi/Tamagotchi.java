@@ -69,6 +69,45 @@ public class Tamagotchi {
     @Column(nullable = false)
     private boolean sleeping;
 
+    // 자는 모습 이미지를 만든 단계 (비트: BABY 1, CHILD 2, ADULT 4). 하나라도 있으면 값을 낸 것이라 다른 단계는 무료다. 죽어서 새로 시작하면 비운다.
+    @Column(name = "sleep_image_mask")
+    private Integer sleepImageMask;
+
+    private static int sleepBit(EvolutionStage stage) {
+        return switch (stage) {
+            case BABY -> 1;
+            case CHILD -> 2;
+            case ADULT -> 4;
+            default -> 0;
+        };
+    }
+
+    public boolean isSleepImageUnlocked() {
+        return this.sleepImageMask != null && this.sleepImageMask != 0;
+    }
+
+    public boolean hasSleepImage(EvolutionStage stage) {
+        return this.sleepImageMask != null && (this.sleepImageMask & sleepBit(stage)) != 0;
+    }
+
+    /** 이 단계의 자는 모습 만들기를 시작했다고 기록한다 (같은 단계를 두 번 만들 수 없다) */
+    public void markSleepImage(EvolutionStage stage) {
+        this.sleepImageMask = (this.sleepImageMask == null ? 0 : this.sleepImageMask) | sleepBit(stage);
+    }
+
+    /** 만들기에 실패했을 때 되돌린다 */
+    public void clearSleepImage(EvolutionStage stage) {
+        this.sleepImageMask = (this.sleepImageMask == null ? 0 : this.sleepImageMask) & ~sleepBit(stage);
+    }
+
+    public java.util.List<String> sleepImageStages() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (EvolutionStage st : new EvolutionStage[]{EvolutionStage.BABY, EvolutionStage.CHILD, EvolutionStage.ADULT}) {
+            if (hasSleepImage(st)) out.add(st.name());
+        }
+        return out;
+    }
+
     // 졸린 시간대: 끄적이마다 밤 9시~새벽 1시 중 한 시각에 시작해 8시간. 이 동안에만 불을 끄면 잠든다. 기존 행은 null(id로 정한다).
     public static final int[] SLEEPY_START_HOURS = {21, 22, 23, 0, 1};
     public static final int SLEEPY_HOURS = 8;
@@ -428,6 +467,7 @@ public class Tamagotchi {
         this.lastVitalsTickAt = null;
         this.deadAt = null;
         this.sleeping = false;
+        this.sleepImageMask = 0;
         this.bathing = false;
         this.adventuring = false;
         setInkLoadout(null, null, null);

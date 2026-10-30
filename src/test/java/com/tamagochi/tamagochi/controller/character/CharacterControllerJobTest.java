@@ -36,7 +36,7 @@ class CharacterControllerJobTest {
         quota = mock(ImageQuotaService.class);
         when(quota.tryAcquire(anyString())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class));
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class));
     }
 
     private GenerateImageRequest generateRequest() {
