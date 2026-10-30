@@ -152,7 +152,7 @@ public class TamagotchiService {
         Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
-        tamagotchi.wakeUp();
+        tamagotchi.wakeUp(LocalDateTime.now());
     }
 
     @Transactional

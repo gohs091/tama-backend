@@ -20,7 +20,11 @@ public class TamagotchiResponse {
     private boolean sleeping;
     private boolean sleepy;         // 졸린 시간대인데 깨어 있다 (불을 끄면 잠든다)
     private int sleepyStartHour;    // 졸린 시간대 시작 시각(0~23시, KST). 여기서부터 8시간 졸리다
-    private boolean bathing;       // 잉크통 충전 중 (돌보기·훈련 불가)
+    private String personality;     // 진화 때 정해진 성격 키 (앱의 22가지 중 하나, 예: "Jolly"). 첫 진화 전에는 null
+    private int traitGrumpy;        // 지금 쌓이는 성향 0~100: 까칠
+    private int traitGloomy;        // 우울
+    private int traitLively;        // 활기
+    private boolean bathing;      // 잉크통 충전 중 (돌보기·훈련 불가)
     private boolean adventuring;    // 끄적랜드 모험 중 (돌보기·훈련 불가)
     private boolean dead;
     private int feedCount;
@@ -43,6 +47,10 @@ public class TamagotchiResponse {
                 .sleeping(tamagotchi.isSleeping())
                 .sleepy(tamagotchi.isSleepy(LocalDateTime.now()))
                 .sleepyStartHour(tamagotchi.sleepyStartHour())
+                .personality(tamagotchi.getPersonality())
+                .traitGrumpy(tamagotchi.getTraitGrumpy())
+                .traitGloomy(tamagotchi.getTraitGloomy())
+                .traitLively(tamagotchi.getTraitLively())
                 .bathing(tamagotchi.isBathing())
                 .adventuring(tamagotchi.isAdventuring())
                 .dead(tamagotchi.isDead())
