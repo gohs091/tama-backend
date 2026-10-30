@@ -61,16 +61,16 @@ class TrainingSessionServiceTest {
     }
 
     @Test
-    @DisplayName("시작 후 10초가 지나기 전에 결과를 내면 거절한다")
+    @DisplayName("시작 후 5초가 지나기 전에 결과를 내면 거절한다")
     void tooEarly() {
         TrainingSession s = service.start(me);
-        clock.advanceSeconds(9);
+        clock.advanceSeconds(4);
         assertThatThrownBy(() -> service.consume(me, s.getId()))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("끝나지");
     }
 
     @Test
-    @DisplayName("시작 후 10초가 지나면 한 번 제출할 수 있고, 같은 세션을 다시 내면 거절한다")
+    @DisplayName("시작 후 5초가 지나면 한 번 제출할 수 있고, 같은 세션을 다시 내면 거절한다")
     void consumeOnce() {
         TrainingSession s = service.start(me);
         clock.advanceSeconds(10);

@@ -39,6 +39,13 @@ public class DevController {
         return ResponseEntity.ok(TamagotchiResponse.from(pet));
     }
 
+    /** 다음 레벨까지 남은 경험치를 바로 넣는다. 진화 가능 구간·진화 후보 화면 확인용 */
+    @PostMapping("/level-up")
+    public ResponseEntity<?> levelUp(@RequestBody EvolveRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.devLevelUp(user)));
+    }
+
     /** 열린 구역마다 minutes분(기본 4시간) 탐험한 것으로 치고 잉크를 발견한다. 보관함·대표 잉크 화면 확인용 */
     @PostMapping("/land/explore")
     public ResponseEntity<?> landExplore(@RequestBody EvolveRequest request,

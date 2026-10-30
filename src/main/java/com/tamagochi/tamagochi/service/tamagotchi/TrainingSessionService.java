@@ -30,6 +30,12 @@ public class TrainingSessionService {
                 .orElseGet(() -> repository.save(new TrainingSession(UUID.randomUUID().toString(), user, now)));
     }
 
+    /** 내 세션 하나 (설욕전 상대를 가져올 때). 남의 세션이거나 없으면 빈 값 */
+    public java.util.Optional<TrainingSession> findMine(User user, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) return java.util.Optional.empty();
+        return repository.findById(sessionId).filter(s -> s.getUser().getId().equals(user.getId()));
+    }
+
     /** 결과 제출 시 세션을 확인하고 사용 처리한다. 남의 세션이거나 없는 세션, 시간이 맞지 않으면 예외. */
     @Transactional
     public TrainingSession consume(User user, String sessionId) {

@@ -65,13 +65,13 @@ class PromotionServiceTest {
     }
 
     @Test
-    @DisplayName("탭 수 구간: 60 미만 0, 60~79 1, 80 이상 2, 100을 넘는 탭은 잘라낸다")
+    @DisplayName("탭 수 구간(5초): 30 미만 0, 30~39 1, 40 이상 2, 50을 넘는 탭은 잘라낸다")
     void tiers() {
         assertThat(PromotionRules.tierForTaps(0)).isZero();
-        assertThat(PromotionRules.tierForTaps(59)).isZero();
-        assertThat(PromotionRules.tierForTaps(60)).isEqualTo(1);
-        assertThat(PromotionRules.tierForTaps(79)).isEqualTo(1);
-        assertThat(PromotionRules.tierForTaps(80)).isEqualTo(2);
+        assertThat(PromotionRules.tierForTaps(29)).isZero();
+        assertThat(PromotionRules.tierForTaps(30)).isEqualTo(1);
+        assertThat(PromotionRules.tierForTaps(39)).isEqualTo(1);
+        assertThat(PromotionRules.tierForTaps(40)).isEqualTo(2);
         assertThat(PromotionRules.tierForTaps(500)).isEqualTo(2);
         assertThat(PromotionRules.tierForTaps(-5)).isZero();
         assertThat(PromotionRules.amountForTier(0)).isZero();
@@ -91,7 +91,7 @@ class PromotionServiceTest {
         assertThat(info.getRemainingToday()).isEqualTo(PromotionRules.DAILY_LIMIT - 1);
         assertThat(info.getMaxCountedTaps()).isEqualTo(PromotionRules.MAX_COUNTED_TAPS);
         assertThat(info.getTiers()).extracting("minTaps", "amount").containsExactly(
-                org.assertj.core.groups.Tuple.tuple(60, 1), org.assertj.core.groups.Tuple.tuple(80, 2));
+                org.assertj.core.groups.Tuple.tuple(30, 1), org.assertj.core.groups.Tuple.tuple(40, 2));
     }
 
     @Test
@@ -159,7 +159,7 @@ class PromotionServiceTest {
     void belowTier() {
         usedToday(1);
 
-        PromotionOutcome outcome = service("record").evaluate(me, "s1", 40);
+        PromotionOutcome outcome = service("record").evaluate(me, "s1", 20);
 
         assertThat(outcome.getResult()).isEqualTo(PromotionOutcome.Result.BELOW_TIER);
         assertThat(outcome.getAmount()).isZero();

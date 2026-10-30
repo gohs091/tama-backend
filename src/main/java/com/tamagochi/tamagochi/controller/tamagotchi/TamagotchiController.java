@@ -139,7 +139,7 @@ public class TamagotchiController {
     @PostMapping("/training/start")
     public ResponseEntity<?> trainingStart(@RequestBody TrainingStartRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
-        TrainingSession session = tamagotchiService.startTraining(user);
+        TrainingSession session = tamagotchiService.startTraining(user, request.getRematchSessionId());
         return ResponseEntity.ok(TrainingStartResponse.of(session));
     }
 

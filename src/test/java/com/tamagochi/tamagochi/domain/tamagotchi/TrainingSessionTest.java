@@ -19,14 +19,14 @@ class TrainingSessionTest {
     }
 
     @Test
-    @DisplayName("정확히 10초가 지난 시점부터 제출할 수 있다")
-    void boundaryAtTenSeconds() {
+    @DisplayName("정확히 5초가 지난 시점부터 제출할 수 있다")
+    void boundaryAtFiveSeconds() {
         TrainingSession early = session();
-        assertThatThrownBy(() -> early.use(T0.plusSeconds(10).minusNanos(1))).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> early.use(T0.plusSeconds(5).minusNanos(1))).isInstanceOf(IllegalStateException.class);
         assertThat(early.isUsed()).isFalse();
 
         TrainingSession ok = session();
-        ok.use(T0.plusSeconds(10));
+        ok.use(T0.plusSeconds(5));
         assertThat(ok.isUsed()).isTrue();
     }
 

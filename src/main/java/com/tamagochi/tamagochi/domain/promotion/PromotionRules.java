@@ -6,10 +6,10 @@ package com.tamagochi.tamagochi.domain.promotion;
  */
 public final class PromotionRules {
 
-    /** 사람이 칠 수 있는 한계를 넘는 탭 수는 보상 계산에서 잘라낸다 (10초에 10번/초). */
-    public static final int MAX_COUNTED_TAPS = 100;
-    public static final int TIER1_MIN_TAPS = 60;
-    public static final int TIER2_MIN_TAPS = 80;
+    /** 사람이 칠 수 있는 한계를 넘는 탭 수는 보상 계산에서 잘라낸다 (5초에 10번/초). */
+    public static final int MAX_COUNTED_TAPS = 50;
+    public static final int TIER1_MIN_TAPS = 30;
+    public static final int TIER2_MIN_TAPS = 40;
     public static final int TIER1_AMOUNT = 1;
     public static final int TIER2_AMOUNT = 2;
     /** 하루(KST) 프로모션 대상이 되는 트레이닝 횟수 */
