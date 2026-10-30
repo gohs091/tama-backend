@@ -22,10 +22,10 @@ public final class EvolutionRules {
         };
     }
 
-    /** 10초 트레이닝의 탭 수 → 진화 게이지 (30번 미만 1, 30~65번 2, 66번 이상 3) */
+    /** 5초 트레이닝의 탭 수 → 별 (15번 미만 1, 15~32번 2, 33번 이상 3). 꾹 누르기(초당 5번)는 별 2개까지 */
     public static int gainForTaps(int taps) {
-        if (taps > 65) return 3;
-        if (taps >= 30) return 2;
+        if (taps >= 33) return 3;
+        if (taps >= 15) return 2;
         return 1;
     }
 

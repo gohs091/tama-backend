@@ -50,11 +50,30 @@ public class Tamagotchi {
     @Column(nullable = false)
     private int feedCount;
 
+    // 예전 진화 게이지. 레벨이 생기기 전 행의 레벨을 정할 때만 읽는다 (ensureLevel). 새로 쌓지 않는다
     @Column(nullable = false, columnDefinition = "integer default 0")
-    private int evoGauge; // 다음 진화를 향해 쌓은 게이지. 가득 찬 값은 EvolutionRules.gaugeMax(단계)
+    private int evoGauge;
 
     @Column(nullable = false, columnDefinition = "integer default 0")
-    private int pendingEvoGain; // 마지막 훈련으로 받을 수 있게 된 진화 게이지. 광고를 봐야 evoGauge에 더해진다
+    private int pendingEvoGain;
+
+    // 레벨·경험치·무게·위력 (규칙은 LevelRules). 기존 행은 null이고, 처음 읽거나 바꿀 때 ensureLevel()이 채운다
+    @Column(name = "level")
+    private Integer level;
+    @Column(name = "exp")
+    private Integer exp;               // 지금 레벨에서 쌓은 경험치
+    @Column(name = "stage_start_level")
+    private Integer stageStartLevel;   // 지금 단계를 시작한 레벨. 진화 가능 구간은 여기서 LevelRules.zoneSpan만큼 위다
+    @Column(name = "pending_exp")
+    private Integer pendingExp;        // 마지막 훈련으로 받을 수 있게 된 경험치. 광고를 봐야 받는다
+    @Column(name = "weight_dg")
+    private Integer weightDg;          // 무게 (dg, 데이터그램)
+    @Column(name = "might")
+    private Integer might;             // 위력. 레벨 업마다 크게, 트레이닝마다 조금 오른다. 스파링 승패의 가장 큰 변수
+    @Column(name = "spar_wins")
+    private Integer sparWins;          // 스파링 승 (기존 행은 null = 0)
+    @Column(name = "spar_losses")
+    private Integer sparLosses;
 
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
@@ -239,6 +258,10 @@ public class Tamagotchi {
     }
 
     public void feed() {
+        ensureLevel();
+        if (100 - this.hunger >= LevelRules.OVERFEED_AT) { // 배부른데 또 먹으면 살이 찐다
+            this.weightDg = this.weightDg + LevelRules.FEED_WEIGHT_DG;
+        }
         this.sleeping = false; // 먹이면 깬다
         this.hunger = Math.max(0, this.hunger - FEED_AMOUNT);
         this.feedCount++;
@@ -286,7 +309,9 @@ public class Tamagotchi {
     }
 
     public void evolve(EvolutionStage nextStage) {
+        ensureLevel();
         this.evolutionStage = nextStage;
+        this.stageStartLevel = this.level; // 진화 가능 구간은 이 레벨부터 다시 센다
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
         setInkLoadout(null, null, null); // 대표 잉크는 진화마다 새로 고른다
@@ -300,45 +325,128 @@ public class Tamagotchi {
         evolve(EvolutionStage.BABY);
     }
 
+    // ── 레벨 ──
+
+    /** 레벨이 생기기 전 행이면 예전 진화 게이지 진행도로 레벨을 정해 둔다. 한 번 채우면 다시 하지 않는다 */
+    private void ensureLevel() {
+        if (this.level != null) return;
+        int babySpan = LevelRules.zoneSpan(EvolutionStage.BABY);
+        int start = switch (this.evolutionStage) {
+            case CHILD -> LevelRules.START_LEVEL + babySpan;
+            case ADULT -> LevelRules.START_LEVEL + babySpan + LevelRules.zoneSpan(EvolutionStage.CHILD);
+            default -> LevelRules.START_LEVEL;
+        };
+        int max = EvolutionRules.gaugeMax(this.evolutionStage);
+        int progress = max > 0 ? LevelRules.zoneSpan(this.evolutionStage) * Math.min(this.evoGauge, max) / max : 0;
+        this.level = start + progress;
+        this.exp = 0;
+        this.stageStartLevel = start;
+        this.pendingExp = this.pendingEvoGain * LevelRules.EXP_PER_STAR;
+        this.weightDg = LevelRules.START_WEIGHT_DG;
+        this.might = LevelRules.mightForLevel(this.level);
+    }
+
+    public int wins() { return this.sparWins == null ? 0 : this.sparWins; }
+    public int losses() { return this.sparLosses == null ? 0 : this.sparLosses; }
+
+    public int level() { ensureLevel(); return this.level; }
+    public int exp() { ensureLevel(); return this.exp; }
+    public int expToNext() { return expRequired(level()); }
+
+    /** 이 레벨에서 다음 레벨까지 드는 경험치. 진화 가능 구간은 레벨과 상관없이 고정 */
+    private int expRequired(int lv) {
+        int at = evolutionLevel();
+        return at > 0 && lv >= at ? LevelRules.ZONE_EXP_PER_LEVEL : LevelRules.expToNext(lv);
+    }
+    public int pendingExp() { ensureLevel(); return this.pendingExp; }
+    public int weightDg() { ensureLevel(); return this.weightDg; }
+    public int might() { ensureLevel(); return this.might; }
+
+    /** 진화 가능 구간이 시작되는 레벨. 진화할 수 없는 단계(알·완성작)는 0 */
+    public int evolutionLevel() {
+        int span = LevelRules.zoneSpan(this.evolutionStage);
+        if (span == 0) return 0;
+        ensureLevel();
+        return this.stageStartLevel + span;
+    }
+
+    /** 진화 가능 구간이다: 레벨이 오를 때마다 진화 후보 모습을 받고, 원할 때 진화할 수 있다 */
+    public boolean isInEvolutionZone() {
+        int at = evolutionLevel();
+        return at > 0 && !isDead() && level() >= at;
+    }
+
+    /** 트레이닝으로 바로 받은 경험치(승리 보너스 포함)와 그중 승리 보너스 */
+    public record TrainingGain(int exp, int winBonus) {
+    }
+
     /**
-     * 훈련 결과로 받을 수 있는 진화 게이지를 대기시킨다. 게이지는 바로 오르지 않고 광고를 본 뒤 claimEvoGain()으로 오른다.
-     * 새 훈련을 하면 아직 받지 않은 이전 대기분은 사라진다(훈련 1번 = 광고 1번).
-     * 진화할 수 없는 단계(알·완성작)이거나 게이지가 이미 가득 차 있으면 받을 것이 없다.
+     * 트레이닝(스파링) 결과를 반영한다. 기본 경험치(이기면 보너스 더)를 바로 받고,
+     * 광고를 보면 기본 경험치만큼 더 받을 수 있게 대기시킨다(claimExp). 새 트레이닝을 하면 받지 않은 대기분은 사라진다.
+     * 진화 가능 구간에서는 경험치가 줄어든다. 위력·무게·승패도 바로 바뀐다.
      */
-    public void offerEvoGain(int gain) {
+    public TrainingGain train(int taps, boolean win) {
+        ensureLevel();
+        int base = LevelRules.expForTaps(taps, isInEvolutionZone());
+        int bonus = win ? Math.round(base * BattleRules.WIN_EXP_BONUS_PERCENT / 100f) : 0;
+        this.might = this.might + LevelRules.MIGHT_PER_TRAINING;
+        this.weightDg = Math.max(LevelRules.MIN_WEIGHT_DG, this.weightDg - LevelRules.TRAINING_WEIGHT_DG);
+        if (win) this.sparWins = wins() + 1; else this.sparLosses = losses() + 1;
+        addExp(base + bonus);
+        this.pendingExp = base;
+        return new TrainingGain(base + bonus, bonus);
+    }
+
+    /** 대기 중인 경험치를 받는다. 오른 레벨 수를 돌려준다 */
+    public int claimExp() {
+        ensureLevel();
+        int before = this.level;
+        addExp(this.pendingExp);
+        this.pendingExp = 0;
+        return this.level - before;
+    }
+
+    /** 경험치를 더하고, 넘치면 레벨을 올린다 */
+    public void addExp(int amount) {
+        ensureLevel();
+        this.exp = this.exp + Math.max(0, amount);
+        while (this.exp >= expRequired(this.level)) {
+            this.exp -= expRequired(this.level);
+            this.level++;
+            this.might = this.might + LevelRules.MIGHT_PER_LEVEL;
+        }
+    }
+
+    // ── 업데이트 전 앱(진화 게이지 화면)이 읽는 값 ──
+
+    /** 진화 가능 구간까지의 진행도를 예전 게이지 칸 수로 바꾼 값. 구간에 들어서면 가득 */
+    public int legacyEvoGauge() {
         int max = EvolutionRules.gaugeMax(this.evolutionStage);
-        this.pendingEvoGain = (max == 0 || this.evoGauge >= max) ? 0 : gain;
+        int span = LevelRules.zoneSpan(this.evolutionStage);
+        if (max == 0 || span == 0) return 0;
+        return Math.min(max, max * Math.max(0, level() - this.stageStartLevel) / span);
     }
 
-    /** 대기 중인 진화 게이지를 게이지에 더한다(최대 칸 수까지). 실제로 오른 칸 수를 돌려준다. */
-    public int claimEvoGain() {
-        int before = this.evoGauge;
-        addEvoGauge(this.pendingEvoGain);
-        this.pendingEvoGain = 0;
-        return this.evoGauge - before;
+    public int legacyPendingEvoGain() {
+        int pending = pendingExp();
+        return pending > 0 ? Math.max(1, pending / LevelRules.EXP_PER_STAR) : 0;
     }
 
-    /** 게이지를 직접 올린다. 진화할 수 없는 단계(알·완성작)에서는 무시한다. */
-    public void addEvoGauge(int gain) {
-        int max = EvolutionRules.gaugeMax(this.evolutionStage);
-        if (max == 0) return;
-        this.evoGauge = Math.min(max, this.evoGauge + gain);
-    }
-
-    /** 게이지가 가득 차고 컨디션(포만감·파워·응가) 조건을 모두 만족하면 진화할 수 있다. */
+    /** 진화 가능 구간이고 컨디션(포만감·파워·응가) 조건을 모두 만족하면 진화할 수 있다. */
     public boolean isEvolutionReady() {
-        int max = EvolutionRules.gaugeMax(this.evolutionStage);
-        if (max == 0 || isDead()) return false;
-        return this.evoGauge >= max
+        return isInEvolutionZone()
                 && (100 - this.hunger) >= EvolutionRules.MIN_SATIATION
                 && this.strength >= EvolutionRules.MIN_STRENGTH
                 && this.poopCount <= EvolutionRules.MAX_POOP;
     }
 
-    /** 진화 조건을 만족했을 때만 다음 단계로 올린다. */
+    /** 진화 가능 구간에서 컨디션 조건을 만족했을 때만 다음 단계로 올린다. */
     public void evolveIfReady() {
+        if (!isInEvolutionZone()) {
+            throw new IllegalStateException("Lv." + evolutionLevel() + "부터 진화할 수 있어요.");
+        }
         if (!isEvolutionReady()) {
-            throw new IllegalStateException("진화 조건을 만족하지 않았어요.");
+            throw new IllegalStateException("진화하려면 컨디션을 맞춰 주세요. (포만감·파워 50 이상, 응가 없음)");
         }
         evolve(EvolutionRules.next(this.evolutionStage));
     }
@@ -458,6 +566,14 @@ public class Tamagotchi {
         this.feedCount = 0;
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
+        this.level = LevelRules.START_LEVEL;
+        this.exp = 0;
+        this.stageStartLevel = LevelRules.START_LEVEL;
+        this.pendingExp = 0;
+        this.weightDg = LevelRules.START_WEIGHT_DG;
+        this.might = 0;
+        this.sparWins = 0;
+        this.sparLosses = 0;
         this.lastFedAt = null;
         this.lastPoopAt = null;
         this.hungryStartedAt = null;

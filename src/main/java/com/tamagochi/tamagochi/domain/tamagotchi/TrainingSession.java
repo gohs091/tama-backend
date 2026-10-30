@@ -10,8 +10,9 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 10초 트레이닝 한 판. 시작할 때 서버가 발급하고, 결과 제출 때 한 번만 쓸 수 있다.
- * 서버가 시작·제출 시각을 직접 재서 "10초가 지나지 않은 제출"이나 "시작 없이 보낸 결과"를 거절한다.
+ * 5초 트레이닝(스파링) 한 판. 시작할 때 서버가 발급하고, 결과 제출 때 한 번만 쓸 수 있다.
+ * 서버가 시작·제출 시각을 직접 재서 "5초가 지나지 않은 제출"이나 "시작 없이 보낸 결과"를 거절한다.
+ * 스파링 상대와 양쪽의 운도 시작할 때 서버가 정해 두고, 승패는 제출할 때 서버가 판정한다.
  */
 @Entity
 @Table(name = "training_session", indexes = @Index(name = "idx_training_session_user", columnList = "user_id"))
@@ -19,8 +20,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TrainingSession {
 
-    /** 시작 후 이 시간이 지나기 전의 제출은 거절한다 (카운트다운 3초 + 트레이닝 10초 중 트레이닝 시간). */
-    public static final Duration MIN_ELAPSED = Duration.ofSeconds(10);
+    /** 시작 후 이 시간이 지나기 전의 제출은 거절한다 (카운트다운 3초 + 트레이닝 5초 중 트레이닝 시간). */
+    public static final Duration MIN_ELAPSED = Duration.ofSeconds(5);
     /** 시작 후 이 시간이 지나면 만료된다 (네트워크 지연·앱 전환 여유). */
     public static final Duration MAX_ELAPSED = Duration.ofMinutes(2);
 
@@ -36,6 +37,43 @@ public class TrainingSession {
     private LocalDateTime startedAt;
 
     private LocalDateTime usedAt;
+
+    // 스파링 상대 (BattleRules.randomEnemy). 기존 행은 null
+    @Column(name = "enemy_key", length = 20)
+    private String enemyKey;
+    @Column(name = "enemy_level")
+    private Integer enemyLevel;
+    @Column(name = "enemy_might")
+    private Integer enemyMight;
+    @Column(name = "enemy_taps")
+    private Integer enemyTaps;
+    @Column(name = "enemy_condition")
+    private Integer enemyCondition;
+    @Column(name = "enemy_luck")
+    private Integer enemyLuck;  // 천분율 900~1100
+    @Column(name = "my_luck")
+    private Integer myLuck;     // 천분율 900~1100
+
+    public boolean hasEnemy() {
+        return enemyKey != null;
+    }
+
+    /** 새 상대를 정한다. 내 운도 새로 굴린다 */
+    public void setEnemy(BattleRules.Enemy enemy) {
+        this.enemyKey = enemy.key();
+        this.enemyLevel = enemy.level();
+        this.enemyMight = enemy.might();
+        this.enemyTaps = enemy.taps();
+        this.enemyCondition = enemy.condition();
+        this.enemyLuck = enemy.luckPermille();
+        this.myLuck = BattleRules.randomLuckPermille();
+    }
+
+    /** 설욕전: 지난 판의 상대를 그대로 데려온다. 운은 양쪽 모두 새로 굴린다 */
+    public void rematch(TrainingSession previous) {
+        setEnemy(new BattleRules.Enemy(previous.enemyKey, previous.enemyLevel, previous.enemyMight,
+                previous.enemyTaps, previous.enemyCondition, BattleRules.randomLuckPermille()));
+    }
 
     public TrainingSession(String id, User user, LocalDateTime startedAt) {
         this.id = id;

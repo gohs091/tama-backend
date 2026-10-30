@@ -26,10 +26,20 @@ public class TamagotchiResponse {
     private boolean adventuring;    // 끄적랜드 모험 중 (돌보기·훈련 불가)
     private boolean dead;
     private int feedCount;
-    private int evoGauge;
+    private int evoGauge;          // 업데이트 전 앱용: 진화 가능 구간까지의 진행도를 예전 게이지 칸 수로 바꾼 값
     private int evoGaugeMax;       // 0이면 진화할 수 없는 단계(알·완성작)
-    private int pendingEvoGain;      // 마지막 훈련으로 받을 수 있는 진화 게이지 (광고를 보면 받는다)
-    private boolean evolutionReady; // 게이지가 가득 차고 컨디션 조건을 만족해 지금 진화할 수 있음
+    private int pendingEvoGain;    // 업데이트 전 앱용: 받을 수 있는 경험치를 예전 게이지 칸 수로 바꾼 값
+    private boolean evolutionReady; // 진화 가능 구간이고 컨디션 조건을 만족해 지금 진화할 수 있음
+    private int level;
+    private int exp;               // 지금 레벨에서 쌓은 경험치
+    private int expToNext;         // 다음 레벨까지 필요한 경험치
+    private int pendingExp;        // 마지막 훈련으로 받을 수 있는 경험치 (광고를 보면 받는다)
+    private int evolutionLevel;    // 이 레벨부터 진화할 수 있다. 0이면 진화할 수 없는 단계(알·완성작)
+    private boolean inEvolutionZone; // 진화 가능 구간: 레벨이 오를 때마다 새 모습을 받아 진화할지 고른다
+    private int weightDg;          // 무게 (dg)
+    private int might;             // 위력
+    private int wins;              // 스파링 승
+    private int losses;            // 스파링 패
     private LocalDateTime lastFedAt;
     private String currentImageBase64;
 
@@ -51,10 +61,20 @@ public class TamagotchiResponse {
                 .adventuring(tamagotchi.isAdventuring())
                 .dead(tamagotchi.isDead())
                 .feedCount(tamagotchi.getFeedCount())
-                .evoGauge(tamagotchi.getEvoGauge())
+                .evoGauge(tamagotchi.legacyEvoGauge())
                 .evoGaugeMax(EvolutionRules.gaugeMax(tamagotchi.getEvolutionStage()))
-                .pendingEvoGain(tamagotchi.getPendingEvoGain())
+                .pendingEvoGain(tamagotchi.legacyPendingEvoGain())
                 .evolutionReady(tamagotchi.isEvolutionReady())
+                .level(tamagotchi.level())
+                .exp(tamagotchi.exp())
+                .expToNext(tamagotchi.expToNext())
+                .pendingExp(tamagotchi.pendingExp())
+                .evolutionLevel(tamagotchi.evolutionLevel())
+                .inEvolutionZone(tamagotchi.isInEvolutionZone())
+                .weightDg(tamagotchi.weightDg())
+                .might(tamagotchi.might())
+                .wins(tamagotchi.wins())
+                .losses(tamagotchi.losses())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
                 .build();

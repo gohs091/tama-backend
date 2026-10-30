@@ -113,14 +113,16 @@ class TrainingFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("로그인 → 시작 → 너무 이른 제출은 거절 → 10초 뒤 제출은 성공하고 프로모션이 기록되며 → 같은 세션 재제출은 거절")
+    @DisplayName("로그인 → 시작 → 너무 이른 제출은 거절 → 5초 뒤 제출은 성공하고 프로모션이 기록되며 → 같은 세션 재제출은 거절")
     void fullFlow() throws Exception {
         JsonNode started = objectMapper.readTree(startTraining().getResponse().getContentAsString());
         String sessionId = started.path("sessionId").asText();
         assertThat(sessionId).isNotBlank();
-        assertThat(started.path("minSeconds").asLong()).isEqualTo(10);
+        assertThat(started.path("minSeconds").asLong()).isEqualTo(5);
+        assertThat(started.path("enemy").path("key").asText()).isIn("crow", "dog", "person", "train"); // 스파링 상대를 시작할 때 정한다
+        assertThat(started.path("enemy").path("taps").asInt()).isBetween(15, 40);
 
-        submit(sessionId, 90).andExpect(status().isBadRequest()); // 아직 10초가 안 지남
+        submit(sessionId, 90).andExpect(status().isBadRequest()); // 아직 5초가 안 지남
 
         clock.now = clock.now.plusSeconds(11);
         submit(sessionId, 90).andExpect(status().isOk())
@@ -128,7 +130,10 @@ class TrainingFlowIntegrationTest {
                 .andExpect(jsonPath("$.promotion.tier").value(2))
                 .andExpect(jsonPath("$.promotion.amount").value(2))
                 .andExpect(jsonPath("$.promotion.remainingToday").value(2))
-                .andExpect(jsonPath("$.evoGain").value(0)); // 완성작은 진화 게이지가 오르지 않는다
+                .andExpect(jsonPath("$.pendingExp").value(15)) // 완성작도 레벨은 계속 오른다 (탭 90번은 60번으로 잘린다 = 별 3개 = 기본 15, 광고 보면 15 더)
+                .andExpect(jsonPath("$.mightGain").value(1))   // 트레이닝 한 판 = 위력 +1
+                .andExpect(jsonPath("$.win").isBoolean())
+                .andExpect(jsonPath("$.inEvolutionZone").value(false));
 
         submit(sessionId, 90).andExpect(status().isBadRequest()); // 같은 세션은 한 번만
     }
@@ -140,7 +145,7 @@ class TrainingFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(true))
                 .andExpect(jsonPath("$.remainingToday").value(3))
-                .andExpect(jsonPath("$.tiers[0].minTaps").value(60))
+                .andExpect(jsonPath("$.tiers[0].minTaps").value(30))
                 .andExpect(jsonPath("$.tiers[1].amount").value(2));
 
         // 한 번 대상이 되면 남은 횟수가 줄어든다
@@ -155,8 +160,8 @@ class TrainingFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("훈련하면 게이지가 바로 오르지 않고 대기하며, 광고를 본 뒤 받아야 오르고, 광고 보너스는 더 없고, 한 번만 받는다")
-    void evoGaugeIsClaimedAfterAd() throws Exception {
+    @DisplayName("훈련하면 경험치가 바로 오르지 않고 대기하며, 광고를 본 뒤 받아야 오르고(레벨 업), 광고 보너스는 더 없고, 한 번만 받는다")
+    void expIsClaimedAfterAd() throws Exception {
         // 이 테스트의 캐릭터를 낙서로 만든다 (기본 setUp은 완성작)
         var user = userService.createUser("toss_claim_" + System.nanoTime(), "claim");
         tamagotchiRepository.save(Tamagotchi.builder().user(user).name("끄적이")
@@ -165,7 +170,7 @@ class TrainingFlowIntegrationTest {
         String claimBearer = "Bearer " + tokens.issue(tossId);
         String body = "{\"tossUserId\":\"" + tossId + "\"}";
 
-        // 훈련 한 판 (탭 90번 = 3칸): 응답은 "받을 수 있는 게이지 3"이고 게이지는 아직 0
+        // 훈련 한 판 (탭 90번 → 60번으로 잘림 = 별 3개): 기본 경험치 15를 바로 받고(이기면 +8), 광고로 15를 더 받을 수 있다
         String sessionId = objectMapper.readTree(mvc.perform(post("/api/tamagotchi/training/start")
                         .header("Authorization", claimBearer).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("sessionId").asText();
@@ -175,11 +180,15 @@ class TrainingFlowIntegrationTest {
                         .content("{\"tossUserId\":\"" + tossId + "\",\"sessionId\":\"" + sessionId
                                 + "\",\"clickCount\":90,\"idempotencyKey\":\"k-" + System.nanoTime() + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evoGain").value(3))
-                .andExpect(jsonPath("$.evoGauge").value(0));
+                .andExpect(jsonPath("$.pendingExp").value(15))
+                .andExpect(jsonPath("$.level").value(1))
+                .andExpect(jsonPath("$.evoGain").value(3)); // 업데이트 전 앱용 값
         mvc.perform(get("/api/tamagotchi/" + tossId).header("Authorization", claimBearer))
-                .andExpect(jsonPath("$.evoGauge").value(0))
-                .andExpect(jsonPath("$.pendingEvoGain").value(3));
+                .andExpect(jsonPath("$.level").value(1))
+                .andExpect(jsonPath("$.pendingExp").value(15))
+                .andExpect(jsonPath("$.evolutionLevel").value(6))
+                .andExpect(jsonPath("$.weightDg").value(99))
+                .andExpect(jsonPath("$.might").value(1));
 
         // 받기: 토큰 필요, 남의 ID는 403
         mvc.perform(post("/api/tamagotchi/evo-gauge/claim").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -188,14 +197,16 @@ class TrainingFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"tossUserId\":\"toss_someone_else\"}"))
                 .andExpect(status().isForbidden());
 
-        // 받으면 훈련이 정한 3칸만 오른다 (광고를 봤다고 더 얹어 주지 않는다)
+        // 광고를 보고 받으면 기본 경험치 15만 더 오른다 (30 이상 → Lv.1 → 2, 레벨 업 위력 +5)
         mvc.perform(post("/api/tamagotchi/evo-gauge/claim").header("Authorization", claimBearer)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evoGauge").value(3))
-                .andExpect(jsonPath("$.pendingEvoGain").value(0));
+                .andExpect(jsonPath("$.level").value(2))
+                .andExpect(jsonPath("$.might").value(6))
+                .andExpect(jsonPath("$.pendingExp").value(0))
+                .andExpect(jsonPath("$.evoGauge").value(2)); // 업데이트 전 앱용: 10칸 × 1/5
 
-        // 같은 훈련의 게이지는 두 번 받을 수 없다
+        // 같은 훈련의 경험치는 두 번 받을 수 없다
         mvc.perform(post("/api/tamagotchi/evo-gauge/claim").header("Authorization", claimBearer)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());

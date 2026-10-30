@@ -1,6 +1,6 @@
 package com.tamagochi.tamagochi.service.tamagotchi;
 
-import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionRules;
+import com.tamagochi.tamagochi.domain.tamagotchi.BattleRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
 @Slf4j
 public class TamagotchiService {
     private static final int ITEM_COST = 2; // 고기·알약 1회 가격(포인트)
-    private static final int MAX_TRAINING_CLICKS = 120; // 10초 트레이닝에서 사람이 칠 수 있는 상한(클라이언트 값은 신뢰하지 않음)
+    private static final int MAX_TRAINING_CLICKS = 60; // 5초 트레이닝에서 사람이 칠 수 있는 상한(클라이언트 값은 신뢰하지 않음)
+    private static final int TRAINING_COST = 10; // 트레이닝 1번에 줄어드는 포만감·파워 (채우는 데 잉크 40)
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
@@ -176,11 +177,17 @@ public class TamagotchiService {
 
     /** 트레이닝을 시작한다. 시작 시각은 서버가 재고, 결과는 이 세션으로만 제출할 수 있다. */
     @Transactional
-    public TrainingSession startTraining(User user) {
+    public TrainingSession startTraining(User user, String rematchSessionId) {
         Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         requireTrainable(tamagotchi);
-        return trainingSessionService.start(user);
+        TrainingSession session = trainingSessionService.start(user);
+        // 설욕전이면 지난 상대를, 아니면 (아직 상대가 없을 때만) 내 레벨·위력에 맞춘 새 상대를 정한다
+        java.util.Optional<TrainingSession> previous = trainingSessionService.findMine(user, rematchSessionId)
+                .filter(TrainingSession::hasEnemy);
+        if (previous.isPresent()) session.rematch(previous.get());
+        else if (!session.hasEnemy()) session.setEnemy(BattleRules.randomEnemy(tamagotchi.level(), tamagotchi.might()));
+        return session;
     }
 
     // 잉크통에 들어가 있거나 모험을 떠나 있으면 돌보기·훈련을 할 수 없다
@@ -221,8 +228,16 @@ public class TamagotchiService {
         // 서버가 발급한 세션으로, 시작 후 10초가 지난 뒤에만 한 번 제출할 수 있다
         TrainingSession session = trainingSessionService.consume(user, sessionId);
 
-        // 트레이닝 소모
-        tamagotchi.consumeForTraining(20, 20);
+        // 스파링 판정: 컨디션은 트레이닝 소모 전 값. 상대와 운은 시작할 때 정해 둔 값
+        int taps = Math.min(Math.max(clickCount, 0), MAX_TRAINING_CLICKS);
+        if (!session.hasEnemy()) session.setEnemy(BattleRules.randomEnemy(tamagotchi.level(), tamagotchi.might()));
+        int condition = ((100 - tamagotchi.getHunger()) + tamagotchi.getStrength()) / 2;
+        double myPower = BattleRules.power(tamagotchi.might(), taps, condition, session.getMyLuck());
+        double enemyPower = BattleRules.power(session.getEnemyMight(), session.getEnemyTaps(), session.getEnemyCondition(), session.getEnemyLuck());
+        boolean win = myPower > enemyPower;
+
+        // 트레이닝 소모 (포만감·파워 10씩: 채우는 데 잉크 40)
+        tamagotchi.consumeForTraining(TRAINING_COST, TRAINING_COST);
 
         // 리워드 계산 (진화 단계별 + 클릭 수 기반)
         int baseReward = switch (tamagotchi.getEvolutionStage()) {
@@ -232,33 +247,54 @@ public class TamagotchiService {
             default -> 0;
         };
 
-        // 클릭 수 10번당 1포인트 추가
-        int taps = Math.min(Math.max(clickCount, 0), MAX_TRAINING_CLICKS);
-        int bonusReward = taps / 10;
+        // 클릭 수 5번당 1포인트 추가 (5초 트레이닝)
+        int bonusReward = taps / 5;
         int totalReward = baseReward + bonusReward;
 
         // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)
         pointService.earnPoint(user, totalReward, idempotencyKey + "-earn");
 
-        // 진화 게이지: 탭 수로 받을 양을 서버가 정하되, 바로 오르지 않고 광고를 본 뒤 claim으로 오른다
-        tamagotchi.offerEvoGain(EvolutionRules.gainForTaps(taps));
-        int evoGain = tamagotchi.getPendingEvoGain();
+        // 경험치는 바로 받고(이기면 보너스), 광고를 보면 기본 경험치만큼 더 받는다. 위력·무게도 바로 바뀐다
+        int mightBefore = tamagotchi.might();
+        Tamagotchi.TrainingGain gain = tamagotchi.train(taps, win);
 
         // 완성작의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
         PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT
                 ? promotionService.evaluate(user, session.getId(), taps)
                 : null;
 
-        log.info("트레이닝 완료 - tamagotchi: {}, clickCount: {}, reward: {}, evoGain: {}, evoGauge: {}",
-                tamagotchi.getName(), clickCount, totalReward, evoGain, tamagotchi.getEvoGauge());
+        log.info("트레이닝 완료 - tamagotchi: {}, taps: {}, win: {} ({} vs {}), reward: {}, exp: {}, level: {}",
+                tamagotchi.getName(), taps, win, Math.round(myPower), Math.round(enemyPower), totalReward, gain.exp(), tamagotchi.level());
 
         return TrainingResult.builder()
                 .clickCount(clickCount)
                 .reward(totalReward)
-                .evoGain(evoGain)
-                .evoGauge(tamagotchi.getEvoGauge())
+                .evoGain(tamagotchi.legacyPendingEvoGain())
+                .evoGauge(tamagotchi.legacyEvoGauge())
+                .win(win)
+                .enemyTaps(session.getEnemyTaps())
+                .expGain(gain.exp())
+                .winBonus(gain.winBonus())
+                .pendingExp(tamagotchi.pendingExp())
+                .mightGain(tamagotchi.might() - mightBefore)
+                .wins(tamagotchi.wins())
+                .losses(tamagotchi.losses())
+                .level(tamagotchi.level())
+                .exp(tamagotchi.exp())
+                .expToNext(tamagotchi.expToNext())
+                .inEvolutionZone(tamagotchi.isInEvolutionZone())
                 .promotion(promotion)
                 .build();
+    }
+
+    /** 개발용: 다음 레벨까지 남은 경험치를 바로 넣는다 */
+    @Transactional
+    public Tamagotchi devLevelUp(User user) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        tamagotchi.addExp(tamagotchi.expToNext() - tamagotchi.exp());
+        log.info("[TEST] 레벨 업: Lv.{}", tamagotchi.level());
+        return tamagotchi;
     }
 
     @Transactional
