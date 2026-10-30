@@ -131,7 +131,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species()));
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), detectFacing(responseBytes)));
             log.info("Baby image generation done for job: {}", jobId);
 
         } catch (Exception e) {
@@ -197,7 +197,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes)));
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, detectFacing(responseBytes)));
             log.info("Evolved ({}) image generation done for job: {}", stage, jobId);
 
         } catch (Exception e) {
@@ -334,6 +334,11 @@ public class ImageGenerationService {
         builder.part(field, bytes)
                 .header("Content-Disposition", "form-data; name=\"" + field + "\"; filename=\"" + filename + "\"")
                 .header("Content-Type", mime);
+    }
+
+    /** 만들어진 그림이 바라보는 쪽(left | right | front). 분석이 없거나 실패하면 null — 앱은 방향 없이(뒤집지 않고) 보여준다 */
+    private String detectFacing(byte[] png) {
+        return doodleSubjectService == null ? null : doodleSubjectService.facing(png).orElse(null);
     }
 
     private DoodleSubject describeDoodle(byte[] imageBytes, String mimeType) {
