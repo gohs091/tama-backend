@@ -184,4 +184,15 @@ class ImagePromptV3Test {
         assertThat(ImagePromptV3.evolve("adult", null, "desert", "sand", "cactus", "Absorbed ink data: a demon lord's horns")).doesNotContain("blank solid-black oval");
         assertThat(ImagePromptV3.evolve("adult", null, "desert", "sand", "cactus", null)).contains("blank solid-black oval");
     }
+
+    @Test
+    @DisplayName("자는 모습: 지금 모습의 색 그대로. 진영 색·진영 장식을 넣지 않는다 (깊은 바다 진영의 주황 고양이가 파랗게 나오던 문제)")
+    void sleep_keepsImageColorsWithoutFactionPalette() {
+        String p = ImagePromptV3.sleep(PERSON);
+
+        assertThat(p).contains("Use EXACTLY the colors that are in the image").contains("do not recolor anything");
+        assertThat(p).doesNotContain("Color scheme").doesNotContain("Faction accents").doesNotContain("color scheme");
+        assertThat(p).contains("zigzag arms, very large head").contains("fast asleep");
+        assertThat(ImagePromptV3.sleep(null)).contains("Use EXACTLY the colors that are in the image");
+    }
 }

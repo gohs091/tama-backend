@@ -289,8 +289,8 @@ public class ImageGenerationService {
             String mimeType = extractMimeType(imageBase64);
             byte[] spriteBytes = decodeBase64Image(imageBase64);
             DoodleSubject subject = originFor(tossUserId, spriteBytes, mimeType);
-            String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject,
-                    getFactionPixelColors(faction), getFactionThemeMotifs(faction));
+            // 진영 색은 넣지 않는다: 자는 모습은 지금 모습의 색 그대로여야 한다
+            String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject);
             byte[] image = binarizeAlpha(callOpenAiEdit(spriteBytes, mimeType, null, null, prompt));
             if (image == null || image.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
