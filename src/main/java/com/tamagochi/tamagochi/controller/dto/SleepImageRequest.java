@@ -14,4 +14,6 @@ public class SleepImageRequest {
     private String stage;
     /** 같은 요청이 두 번 결제되지 않게 하는 키 (요청마다 새로 만든다) */
     private String idempotencyKey;
+    /** 이미 만든 단계인데 기기에 이미지가 없어 무료로 다시 만든다 (단계마다 한 번) */
+    private boolean redo;
 }

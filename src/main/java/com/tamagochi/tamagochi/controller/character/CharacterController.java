@@ -100,7 +100,7 @@ public class CharacterController {
         ResponseEntity<GenerateImageResponse> rejected = checkQuota(request.getTossUserId());
         if (rejected != null) return rejected;
         User user = userIdentity.resolve(request.getTossUserId());
-        SleepImageService.Start start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey());
+        SleepImageService.Start start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey(), request.isRedo());
         String jobId = UUID.randomUUID().toString();
         imageGenerationService.storeJob(jobId, ImageJobResult.pending());
         imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(),
