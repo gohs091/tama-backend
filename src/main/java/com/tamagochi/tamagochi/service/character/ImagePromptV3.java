@@ -77,18 +77,21 @@ final class ImagePromptV3 {
      * 자는 모습: 지금 모습 그대로 엎드려 자는 그림. 정체·부위·특징·몸 구조·진영 색을 키워드로 함께 알려 같은 캐릭터로 남게 한다.
      * 새 부위(날개·뿔·장식)를 만들지 못하게 하고, 눈이 있으면 감는다.
      */
-    static String sleep(DoodleSubject o, String colors, String themeMotifs) {
+    /**
+     * 자는 모습: 지금 모습의 색을 그대로 써야 한다. 진영 색·진영 장식은 넣지 않는다
+     * (넣으면 "깊은 바다 = 파랑"처럼 진영 색으로 다시 칠해 주황 고양이가 파란 고양이가 됐다).
+     */
+    static String sleep(DoodleSubject o) {
         String based = o == null || blank(o.subject()) ? "" : "It was generated from these keywords: it is based on the player's doodle of " + o.subject() + ". ";
         String parts = o == null || blank(o.parts()) ? "" : "Its parts: " + o.parts() + ". ";
         String traits = o == null || blank(o.traits()) ? "" : "Distinctive features that define it: " + o.traits() + ". ";
         String plan = o == null || blank(o.bodyPlan()) || "other".equalsIgnoreCase(o.bodyPlan()) ? "" : "Body plan: " + o.bodyPlan() + ". ";
-        String theme = blank(themeMotifs) ? "" : "Faction accents: " + themeMotifs + ". ";
         return "This image is the current pixel art form of a tamagotchi-style pet. " + based + parts + traits + plan +
-                "Color scheme: " + colors + ". " + theme +
+                "Use EXACTLY the colors that are in the image (same body color, same markings, same light belly or face patches) — do not recolor anything. " +
                 "Now draw THIS SAME character fast asleep, lying down on its belly with its body low and flat on the ground and its head resting down on its front limbs, " +
                 "face lowered, eyes closed (if it has a face). " +
                 "Keep every listed part, feature, marking and color clearly visible in the new pose, in the same colors as the image. " +
-                "Do NOT add new parts such as wings, horns or accessories, and do not change the species or colors. " +
+                "Do NOT add new parts such as wings, horns or accessories, and do not change the species, colors or color pattern. " +
                 "Keep the exact same 16-bit pixel art style, pixel size, outline style and flat color palette as the image. " +
                 "Single character centered, filling about 70% of the frame, transparent background, no shadow, no glow, no ground, no other characters, no text.";
     }
