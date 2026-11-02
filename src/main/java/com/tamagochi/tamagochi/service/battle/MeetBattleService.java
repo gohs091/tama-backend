@@ -76,6 +76,7 @@ public class MeetBattleService {
     private final SecureRandom random = new SecureRandom();
 
     private final Map<String, Room> roomsByCode = new ConcurrentHashMap<>();
+    private final Map<String, Long> codeIssuedAt = new ConcurrentHashMap<>();
     private final Map<String, Room> roomsByPeer = new ConcurrentHashMap<>();
 
     @Autowired
@@ -121,6 +122,12 @@ public class MeetBattleService {
             peer.close();
             return;
         }
+        Long issued = codeIssuedAt.get(code.toUpperCase());
+        if (issued == null || clock.getAsLong() - issued > CODE_VALID_MS) {
+            error(peer, "QR이 만료됐어요. 친구 화면의 새 QR을 찍어 주세요");
+            peer.close();
+            return;
+        }
         synchronized (room) {
             if (room.phase != Phase.WAITING || room.guest != null) {
                 error(peer, "이미 대결 중인 방이에요");
@@ -134,7 +141,7 @@ public class MeetBattleService {
             }
             room.guest = new Player(peer, userId);
             room.phase = Phase.LOBBY;
-            roomsByCode.remove(room.code);
+            forgetCodes(room);
             roomsByPeer.put(peer.id(), room);
             broadcastRoom(room);
             maybeStartIntro(room);
@@ -213,6 +220,7 @@ public class MeetBattleService {
 
     private void startIntro(Room room) {
         if (room.phase != Phase.LOBBY || room.guest == null) return;
+        if (blocked(room, true)) return;
         room.phase = Phase.INTRO;
         broadcastRoom(room);
         ObjectNode in = obj("intro");
@@ -226,8 +234,46 @@ public class MeetBattleService {
     private void ready(Room room, Player me) {
         if (room.phase != Phase.RESULT || room.guest == null) return;
         me.ready = true;
-        if (room.host.ready && room.guest.ready) startCountdown(room);
-        else broadcastRoom(room);
+        if (!(room.host.ready && room.guest.ready)) { broadcastRoom(room); return; }
+        if (blocked(room, false)) return;
+        startCountdown(room);
+    }
+
+    /**
+     * 무료 판을 다 쓰고 포만감·파워가 모자란 사람이 있으면 시작하지 않고 둘에게 알린다.
+     * 처음(first)이면 방을 닫고, 한 판 더라면 결과 화면에 그대로 둔다.
+     */
+    private boolean blocked(Room room, boolean first) {
+        String hostWhy, guestWhy;
+        try {
+            hostWhy = recorder.blockReason(room.host.userId);
+            guestWhy = recorder.blockReason(room.guest.userId);
+        } catch (Exception e) {
+            log.warn("Meet battle block check failed: {}", e.getMessage());
+            return false;
+        }
+        if (hostWhy == null && guestWhy == null) return false;
+        for (Player p : new Player[]{room.host, room.guest}) {
+            String mine = p == room.host ? hostWhy : guestWhy;
+            String theirs = p == room.host ? guestWhy : hostWhy;
+            String msg = mine != null
+                    ? "오늘 무료 배틀 " + FREE_DAILY_BATTLES + "판을 다 했어요. 내 끄적이가 " + mine + " 배틀할 수 없어요 (고기·알약을 주세요)"
+                    : "친구 끄적이가 " + theirs + " 배틀할 수 없어요";
+            ObjectNode b = obj(first ? "error" : "blocked");
+            b.put("message", msg);
+            send(p.peer, b);
+            p.ready = false;
+        }
+        if (first) {
+            close(room);
+            roomsByPeer.remove(room.host.peer.id());
+            roomsByPeer.remove(room.guest.peer.id());
+            room.host.peer.close();
+            room.guest.peer.close();
+        } else {
+            broadcastRoom(room);
+        }
+        return true;
     }
 
     private void startCountdown(Room room) {
@@ -291,12 +337,13 @@ public class MeetBattleService {
             log.error("Meet battle record failed", e);
             rewards = new MeetBattleRecorder.Rewards(0, 0);
         }
-        sendResult(room.host, winner > 0, winner == 0, hostTaps, guestTaps, rewards.host(), ko, quitter);
-        sendResult(room.guest, winner < 0, winner == 0, guestTaps, hostTaps, rewards.guest(), ko, quitter);
+        sendResult(room.host, winner > 0, winner == 0, hostTaps, guestTaps, rewards.host(), ko, quitter, rewards.hostCharged(), rewards.hostFreeLeft());
+        sendResult(room.guest, winner < 0, winner == 0, guestTaps, hostTaps, rewards.guest(), ko, quitter, rewards.guestCharged(), rewards.guestFreeLeft());
         if (quitter == null) broadcastRoom(room);
     }
 
-    private void sendResult(Player p, boolean win, boolean draw, int me, int foe, int reward, boolean ko, Long quitter) {
+    private void sendResult(Player p, boolean win, boolean draw, int me, int foe, int reward, boolean ko, Long quitter,
+                            boolean charged, int freeLeft) {
         if (p == null || p.userId.equals(quitter)) return;
         ObjectNode r = obj("result");
         r.put("outcome", draw ? "draw" : win ? "win" : "lose");
@@ -305,6 +352,8 @@ public class MeetBattleService {
         r.put("reward", reward);
         r.put("ko", ko);
         r.put("foeQuit", quitter != null);
+        r.put("charged", charged);    // 이번 판에 포만감·파워를 썼다
+        r.put("freeLeft", freeLeft);  // 오늘 남은 무료 판
         send(p.peer, r);
     }
 
@@ -325,7 +374,6 @@ public class MeetBattleService {
     // ── 방 관리 ───────────────────────────────────────────
 
     private void assignCode(Room room) {
-        if (room.code != null) roomsByCode.remove(room.code);
         String code;
         do {
             StringBuilder sb = new StringBuilder(8);
@@ -334,14 +382,29 @@ public class MeetBattleService {
         } while (roomsByCode.putIfAbsent(code, room) != null);
         room.code = code;
         room.codeAt = clock.getAsLong();
+        codeIssuedAt.put(code, room.codeAt);
         ObjectNode c = obj("created");
         c.put("code", code);
         c.put("ttlMs", CODE_TTL_MS);
         send(room.host.peer, c);
     }
 
+    /** 이 방에 낸 코드를 모두 지운다 (친구가 들어왔거나 방이 닫혔다) */
+    private void forgetCodes(Room room) {
+        roomsByCode.entrySet().removeIf(e -> {
+            if (e.getValue() != room) return false;
+            codeIssuedAt.remove(e.getKey());
+            return true;
+        });
+    }
+
     void sweep() {
         long now = clock.getAsLong();
+        codeIssuedAt.entrySet().removeIf(e -> {
+            if (now - e.getValue() <= CODE_VALID_MS) return false;
+            roomsByCode.remove(e.getKey());
+            return true;
+        });
         for (Room room : roomsByPeer.values()) {
             synchronized (room) {
                 if (room.phase != Phase.WAITING) continue;
@@ -360,7 +423,7 @@ public class MeetBattleService {
     private void close(Room room) {
         if (room.tick != null) room.tick.cancel(false);
         if (room.pending != null) room.pending.cancel(false);
-        if (room.code != null) roomsByCode.remove(room.code, room);
+        forgetCodes(room);
         room.phase = Phase.RESULT;
     }
 
