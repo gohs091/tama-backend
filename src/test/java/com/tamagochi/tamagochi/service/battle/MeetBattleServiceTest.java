@@ -161,7 +161,31 @@ class MeetBattleServiceTest {
         service.sweep();
         assertThat(code()).isNotEqualTo(first);
 
+        // 바뀌기 전 코드도 10분 동안은 들어올 수 있다 (앱이 처음인 친구가 끄적이를 그리는 동안)
+        service.join(guest, 2L, first);
+        assertThat(guest.last("error")).isNull();
+        assertThat(guest.last("room").path("phase").asText()).isEqualTo("LOBBY");
+    }
+
+    @Test
+    void 십분이_지난_코드로는_못_들어온다() {
+        service.create(host, 1L);
+        String first = code();
+        now.addAndGet(MeetBattleRules.CODE_VALID_MS + 1);
+        service.sweep();
         service.join(guest, 2L, first);
         assertThat(guest.last("error")).isNotNull();
+    }
+
+    @Test
+    void 컨디션이_모자라면_시작하지_않고_둘에게_알린다() {
+        when(recorder.blockReason(2L)).thenReturn("배가 고파서");
+        service.create(host, 1L);
+        service.join(guest, 2L, code());
+        hello(host);
+        hello(guest);
+        assertThat(host.last("intro")).isNull();
+        assertThat(host.last("error").path("message").asText()).contains("친구 끄적이가 배가 고파서");
+        assertThat(guest.last("error").path("message").asText()).contains("내 끄적이가 배가 고파서");
     }
 }

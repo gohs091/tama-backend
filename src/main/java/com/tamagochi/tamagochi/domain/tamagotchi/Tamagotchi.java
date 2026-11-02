@@ -75,6 +75,12 @@ public class Tamagotchi {
     @Column(name = "spar_losses")
     private Integer sparLosses;
 
+    // 만나서 배틀(친구와 QR 맞대기) 전적. 이번 단계에서만 센다 (진화하면 0부터, 진화할 때 쓴다). 기존 행은 null = 0
+    @Column(name = "battle_wins")
+    private Integer battleWins;
+    @Column(name = "battle_losses")
+    private Integer battleLosses;
+
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
     private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
@@ -338,11 +344,17 @@ public class Tamagotchi {
 
     public void evolve(EvolutionStage nextStage) {
         ensureLevel();
+        // 이번 단계에 친구와 배틀을 잘했으면 진화하며 위력을 더 받는다 (전적은 아래에서 0으로 돌린다)
+        if (this.evolutionStage != EvolutionStage.EGG) {
+            this.might = this.might + BattleRules.championMightBonus(championTier());
+        }
         this.evolutionStage = nextStage;
         this.stageStartLevel = this.level; // 진화 가능 구간은 이 레벨부터 다시 센다
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
         setInkLoadout(null, null, null); // 대표 잉크는 진화마다 새로 고른다
+        this.battleWins = 0;             // 배틀 전적은 단계마다 새로 센다
+        this.battleLosses = 0;
     }
 
     /** 알 → 낙서. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
@@ -376,6 +388,25 @@ public class Tamagotchi {
 
     public int wins() { return this.sparWins == null ? 0 : this.sparWins; }
     public int losses() { return this.sparLosses == null ? 0 : this.sparLosses; }
+
+    public int battleWins() { return this.battleWins == null ? 0 : this.battleWins; }
+    public int battleLosses() { return this.battleLosses == null ? 0 : this.battleLosses; }
+
+    /** 이번 단계 배틀 전적 등급 (0 없음, 1 챔피언, 2 그랜드 챔피언) */
+    public int championTier() { return BattleRules.championTier(battleWins(), battleLosses()); }
+
+    /** 만나서 배틀 한 판의 결과 (1 = 승, -1 = 패, 0 = 무승부는 세지 않는다) */
+    public void recordBattle(int result) {
+        if (result > 0) this.battleWins = battleWins() + 1;
+        else if (result < 0) this.battleLosses = battleLosses() + 1;
+    }
+
+    /** 무료 판을 다 쓴 뒤의 배틀은 트레이닝처럼 포만감·파워를 쓴다. 모자라면 이유를, 되면 null */
+    public String battleShortage(int cost) {
+        if (this.hunger + cost > 100) return "배가 고파서";
+        if (this.strength < cost) return "파워가 부족해서";
+        return null;
+    }
 
     public int level() { ensureLevel(); return this.level; }
     public int exp() { ensureLevel(); return this.exp; }
@@ -602,6 +633,8 @@ public class Tamagotchi {
         this.might = 0;
         this.sparWins = 0;
         this.sparLosses = 0;
+        this.battleWins = 0;
+        this.battleLosses = 0;
         this.lastFedAt = null;
         this.lastPoopAt = null;
         this.hungryStartedAt = null;

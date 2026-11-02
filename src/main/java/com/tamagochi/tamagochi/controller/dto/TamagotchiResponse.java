@@ -41,6 +41,9 @@ public class TamagotchiResponse {
     private int might;             // 위력
     private int wins;              // 스파링 승
     private int losses;            // 스파링 패
+    private int battleWins;        // 만나서 배틀 승 (이번 단계)
+    private int battleLosses;      // 만나서 배틀 패 (이번 단계)
+    private int championTier;      // 지금 진화하면 받는 배틀 등급 (0 없음, 1 챔피언 +15, 2 그랜드 챔피언 +30)
     private LocalDateTime lastFedAt;
     private String currentImageBase64;
 
@@ -77,6 +80,9 @@ public class TamagotchiResponse {
                 .might(tamagotchi.might())
                 .wins(tamagotchi.wins())
                 .losses(tamagotchi.losses())
+                .battleWins(tamagotchi.battleWins())
+                .battleLosses(tamagotchi.battleLosses())
+                .championTier(tamagotchi.championTier())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
                 .build();

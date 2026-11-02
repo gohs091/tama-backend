@@ -1,6 +1,5 @@
 package com.tamagochi.tamagochi.controller.battle;
 
-import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
@@ -24,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 만나서 배틀 WebSocket. 연결 주소의 token으로 로그인한 사람을 확인하고(로컬 개발은 tossUserId),
- * 부화한 끄적이가 있어야 방을 만들거나 들어갈 수 있다.
+ * 끄적이(알 포함)가 있어야 방을 만들거나 들어갈 수 있다. 알은 그린 낙서 그림으로 싸운다.
  */
 @Slf4j
 @Component
@@ -58,8 +57,9 @@ public class MeetBattleSocketHandler extends TextWebSocketHandler {
             return;
         }
         Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
-        if (pet == null || pet.isDead() || pet.getEvolutionStage() == EvolutionStage.EGG) {
-            reject(peer, "부화한 끄적이가 있어야 배틀할 수 있어요");
+        // 알이어도 된다: 앱이 처음인 친구는 끄적이를 그리자마자 그 낙서로 참전한다
+        if (pet == null || pet.isDead()) {
+            reject(peer, pet == null ? "끄적이를 먼저 그려 주세요" : "끄적이가 없어서 배틀할 수 없어요");
             return;
         }
         if (pet.isAdventuring()) {

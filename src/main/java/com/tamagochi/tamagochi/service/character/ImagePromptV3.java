@@ -148,6 +148,16 @@ final class ImagePromptV3 {
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
+    /** 친구와 배틀을 잘한 끄적이는 진화한 모습에 그 기세가 보인다 (같은 생물 그대로, 무기·글자 없이) */
+    static String champion(int tier) {
+        if (tier <= 0) return "";
+        String base = "This creature has won most of its battles against friends: give it a proud, confident champion bearing " +
+                "(a determined gaze, a strong stance) and slightly bolder, sharper details. ";
+        if (tier == 1) return base;
+        return base + "It is a grand champion: also let ONE small trophy-like emblem (a star, a crest or a medal shape) grow out of its own body " +
+                "in its own colors. No crowns, no held objects, no text. ";
+    }
+
     private static final String SAME = "Keep it recognizably the SAME character: the same face, colors, markings and body plan. It only matures.";
     private static final String CLOSE = "Keep its face, hair or markings, color palette and the most distinctive features of image 1 and image 2 " +
             "(do not simplify or drop details that image 1 already has). Its proportions, posture and details may change noticeably.";

@@ -6,8 +6,10 @@ package com.tamagochi.tamagochi.service.battle;
 public final class MeetBattleRules {
     private MeetBattleRules() {}
 
-    /** QR(방 코드)이 유효한 시간. 지나면 새 코드로 바꿔 화면의 QR도 바뀐다 (캡처해서 멀리 보내기 어렵게) */
+    /** 화면의 QR(방 코드)을 새로 바꾸는 간격 (캡처해서 멀리 보내기 어렵게) */
     public static final long CODE_TTL_MS = 60_000;
+    /** 한 번 보여준 코드로 들어올 수 있는 시간. 앱이 처음인 친구가 찍고 끄적이를 그리는 동안에도 들어올 수 있게 넉넉히 */
+    public static final long CODE_VALID_MS = 10 * 60_000;
     /** 친구를 기다리는 방이 아무도 안 오면 닫히는 시간 */
     public static final long WAITING_ROOM_TTL_MS = 10 * 60_000;
     /** QR을 찍자마자 나오는 시작 연출 (걸어 들어와 빙글 돌고 갈라선다) */
@@ -23,6 +25,10 @@ public final class MeetBattleRules {
     public static final int TAP_BURST = 3;
     /** 이만큼 앞서면 바로 이긴다 (줄을 끝까지 당겼다) */
     public static final int KO_LEAD = 30;
+
+    /** 하루(KST) 이만큼은 그냥 배틀하고, 그 뒤로는 한 판에 포만감·파워를 이만큼 쓴다 (트레이닝과 같다) */
+    public static final int FREE_DAILY_BATTLES = 3;
+    public static final int BATTLE_COST = 10;
 
     public static final int WIN_INK = 30;
     public static final int LOSE_INK = 10;

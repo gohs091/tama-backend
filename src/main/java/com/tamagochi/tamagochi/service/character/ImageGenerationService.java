@@ -47,6 +47,10 @@ public class ImageGenerationService {
     // 처음 그린 그림의 분석 결과 저장소 (없으면 진화 때마다 분석)
     @Autowired(required = false)
     private DoodleOriginService doodleOriginService;
+    @Autowired(required = false)
+    private com.tamagochi.tamagochi.repository.user.UserRepository userRepository;
+    @Autowired(required = false)
+    private com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository tamagotchiRepository;
 
     // image.prompt-version: v3(기본, 칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
     @Value("${image.prompt-version:v3}")
@@ -247,7 +251,8 @@ public class ImageGenerationService {
         String prompt;
         if (evolving) {
             subject = originFor(tossUserId, imageBytes, mimeType);
-            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk);
+            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk)
+                    + ImagePromptV3.champion(championTier(tossUserId));
         } else {
             subject = describeDoodle(imageBytes, mimeType);
             if (subject != null && !subject.isAbstract()) {
@@ -264,6 +269,20 @@ public class ImageGenerationService {
     }
 
     /** 저장된 그림 분석을 읽고, 없으면(저장 기능 이전에 만든 유저) 지금 한 번 분석해 저장한다 */
+    /** 이번 단계의 친구 배틀 전적 등급 (진화 그림에 반영). 찾지 못하면 0 */
+    private int championTier(String tossUserId) {
+        if (tossUserId == null || userRepository == null || tamagotchiRepository == null) return 0;
+        try {
+            return userRepository.findByTossUserId(tossUserId)
+                    .flatMap(u -> tamagotchiRepository.findByUserId(u.getId()))
+                    .map(com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi::championTier)
+                    .orElse(0);
+        } catch (Exception e) {
+            log.warn("champion tier lookup failed: {}", e.getMessage());
+            return 0;
+        }
+    }
+
     private DoodleSubject originFor(String tossUserId, byte[] imageBytes, String mimeType) {
         if (doodleOriginService != null) {
             DoodleSubject saved = doodleOriginService.find(tossUserId).orElse(null);
