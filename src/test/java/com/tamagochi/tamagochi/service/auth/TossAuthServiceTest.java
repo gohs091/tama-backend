@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tamagochi.tamagochi.exception.UnauthorizedException;
 import com.tamagochi.tamagochi.service.toss.TossPartnerApiClient;
+import com.tamagochi.tamagochi.domain.user.User;
+import com.tamagochi.tamagochi.service.user.UserProfileService;
 import com.tamagochi.tamagochi.service.user.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,7 +57,11 @@ class TossAuthServiceTest {
         when(client.post(eq(PATH), any())).thenReturn(json("{\"resultType\":\"SUCCESS\",\"success\":{\"anonKey\":\"k1\"}}"));
         when(tokens.issue("toss_k1")).thenReturn("TOKEN");
         when(tokens.getTtlSeconds()).thenReturn(43200L);
-        TossAuthService service = new TossAuthService(client, userService, tokens, new AuthSettings(true));
+        UserProfileService profiles = mock(UserProfileService.class);
+        User user = User.builder().id(1L).tossUserId("toss_k1").nickname("toss_k1").build();
+        when(userService.createUser("toss_k1", "toss_k1")).thenReturn(user);
+        when(profiles.ensureProfile(user)).thenReturn(user);
+        TossAuthService service = new TossAuthService(client, userService, profiles, tokens, new AuthSettings(true));
 
         TossAuthService.LoginResult result = service.login("one-time-code");
 
@@ -64,6 +70,7 @@ class TossAuthServiceTest {
         assertThat(result.expiresInSeconds()).isEqualTo(43200L);
         verify(client).post(PATH, Map.of("code", "one-time-code"));
         verify(userService).createUser("toss_k1", "toss_k1");
+        verify(profiles).ensureProfile(user); // 유저 코드·닉네임을 채운다
     }
 
     @Test
@@ -71,8 +78,8 @@ class TossAuthServiceTest {
     void rejectsWithoutCallingToss() {
         TossPartnerApiClient client = mock(TossPartnerApiClient.class);
         AuthTokenService tokens = mock(AuthTokenService.class);
-        TossAuthService enabled = new TossAuthService(client, mock(UserService.class), tokens, new AuthSettings(true));
-        TossAuthService disabled = new TossAuthService(client, mock(UserService.class), tokens, new AuthSettings(false));
+        TossAuthService enabled = new TossAuthService(client, mock(UserService.class), mock(UserProfileService.class), tokens, new AuthSettings(true));
+        TossAuthService disabled = new TossAuthService(client, mock(UserService.class), mock(UserProfileService.class), tokens, new AuthSettings(false));
 
         assertThatThrownBy(() -> enabled.login(" ")).isInstanceOf(UnauthorizedException.class);
         assertThatThrownBy(() -> enabled.login(null)).isInstanceOf(UnauthorizedException.class);

@@ -57,7 +57,7 @@ class PointServiceIapTest {
 
         service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797");
 
-        assertThat(wallet.getBalance()).isEqualTo(2200);
+        assertThat(wallet.getBalance()).isEqualTo(4500);
     }
 
     @Test
@@ -81,7 +81,7 @@ class PointServiceIapTest {
     @Test
     @DisplayName("이미 지급된 주문을 다시 보내면 중복 지급 없이 기존 내역을 돌려준다")
     void duplicateOrderIsIdempotent() {
-        PointTransaction existing = PointTransaction.builder().user(user).idempotencyKey("iap-order-1").amount(2200).build();
+        PointTransaction existing = PointTransaction.builder().user(user).idempotencyKey("iap-order-1").amount(4500).build();
         when(transactionRepository.findByIdempotencyKey("iap-order-1")).thenReturn(Optional.of(existing));
 
         PointTransaction result = service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797");
@@ -95,7 +95,7 @@ class PointServiceIapTest {
     @DisplayName("다른 유저가 이미 처리된 주문 번호를 보내면 거절한다")
     void rejectsOtherUsersOrder() {
         User other = User.builder().id(2L).tossUserId("toss_u2").nickname("u2").build();
-        PointTransaction existing = PointTransaction.builder().user(other).idempotencyKey("iap-order-1").amount(2200).build();
+        PointTransaction existing = PointTransaction.builder().user(other).idempotencyKey("iap-order-1").amount(4500).build();
         when(transactionRepository.findByIdempotencyKey("iap-order-1")).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797"))
