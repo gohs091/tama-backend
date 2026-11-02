@@ -30,12 +30,12 @@ public final class BattleRules {
     public static final int WIN_EXP_BONUS_PERCENT = 50; // 이기면 기본 경험치의 50%를 더 준다 (광고 2배에는 포함하지 않는다)
 
     // ── 친구와 만나서 배틀 전적으로 진화할 때 받는 것 (이번 단계 전적) ──
-    // 챔피언: 5판 이상 60% 이상 → 위력 +15, 진화 그림이 더 자신감 있고 강해 보인다
-    // 그랜드 챔피언: 10판 이상 80% 이상 → 위력 +30, 몸에서 자라난 작은 트로피 같은 장식까지
-    public static final int CHAMPION_MIN_GAMES = 5;
+    // 챔피언: 30판 이상 60% 이상 → 위력 +15, 진화 그림이 더 자신감 있고 강해 보인다
+    // 그랜드 챔피언: 100판 이상 80% 이상 → 위력 +30, 몸에서 자라난 작은 트로피 같은 장식까지
+    public static final int CHAMPION_MIN_GAMES = 30;
     public static final int CHAMPION_WIN_PERCENT = 60;
     public static final int CHAMPION_MIGHT_BONUS = 15;
-    public static final int GRAND_CHAMPION_MIN_GAMES = 10;
+    public static final int GRAND_CHAMPION_MIN_GAMES = 100;
     public static final int GRAND_CHAMPION_WIN_PERCENT = 80;
     public static final int GRAND_CHAMPION_MIGHT_BONUS = 30;
 
