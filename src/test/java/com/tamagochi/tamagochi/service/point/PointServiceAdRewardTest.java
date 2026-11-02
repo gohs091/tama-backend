@@ -53,11 +53,11 @@ class PointServiceAdRewardTest {
     }
 
     @Test
-    @DisplayName("기본 설정: 광고 한 번에 잉크 100, 다음 보상은 5분 뒤, 하루 5번")
+    @DisplayName("기본 설정: 광고 한 번에 잉크 200, 다음 보상은 5분 뒤, 하루 10번")
     void defaults() {
         service.earnAdReward(user, "k1", 20_000L);
 
-        assertThat(wallet.getBalance()).isEqualTo(100);
+        assertThat(wallet.getBalance()).isEqualTo(200);
         verify(ops).setIfAbsent(eq("point:ad-cooldown:1"), eq("1"), eq(300L), eq(TimeUnit.SECONDS));
     }
 
@@ -74,7 +74,7 @@ class PointServiceAdRewardTest {
     @Test
     @DisplayName("하루 한도를 넘으면 거절하고, 쿨다운은 풀어 준다")
     void dailyLimitBlocks() {
-        when(ops.increment(anyString())).thenReturn(6L);
+        when(ops.increment(anyString())).thenReturn(11L);
 
         assertThatThrownBy(() -> service.earnAdReward(user, "k3", 20_000L))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("모두 받았어요");
@@ -83,13 +83,13 @@ class PointServiceAdRewardTest {
     }
 
     @Test
-    @DisplayName("하루 마지막(5번째)까지는 받는다")
+    @DisplayName("하루 마지막(10번째)까지는 받는다")
     void lastOneAllowed() {
-        when(ops.increment(anyString())).thenReturn(5L);
+        when(ops.increment(anyString())).thenReturn(10L);
 
         service.earnAdReward(user, "k4", 20_000L);
 
-        assertThat(wallet.getBalance()).isEqualTo(100);
+        assertThat(wallet.getBalance()).isEqualTo(200);
     }
 
     @Test
@@ -103,7 +103,7 @@ class PointServiceAdRewardTest {
         verify(ops, never()).setIfAbsent(eq("point:ad-cooldown:1"), anyString(), anyLong(), any()); // 쿨다운도 쓰지 않는다
 
         service.earnAdReward(user, "k6", null);   // 이전 버전 앱은 시간을 못 보낸다
-        assertThat(wallet.getBalance()).isEqualTo(100);
+        assertThat(wallet.getBalance()).isEqualTo(200);
     }
 
     @Test
@@ -114,9 +114,9 @@ class PointServiceAdRewardTest {
 
         PointService.AdRewardStatus s = service.adRewardStatus(user);
 
-        assertThat(s.amount()).isEqualTo(100);
-        assertThat(s.dailyLimit()).isEqualTo(5);
-        assertThat(s.remainingToday()).isEqualTo(3);
+        assertThat(s.amount()).isEqualTo(200);
+        assertThat(s.dailyLimit()).isEqualTo(10);
+        assertThat(s.remainingToday()).isEqualTo(8);
         assertThat(s.nextInSeconds()).isEqualTo(123);
     }
 
@@ -128,7 +128,7 @@ class PointServiceAdRewardTest {
 
         PointService.AdRewardStatus s = service.adRewardStatus(user);
 
-        assertThat(s.remainingToday()).isEqualTo(5);
+        assertThat(s.remainingToday()).isEqualTo(10);
         assertThat(s.nextInSeconds()).isZero();
     }
 }
