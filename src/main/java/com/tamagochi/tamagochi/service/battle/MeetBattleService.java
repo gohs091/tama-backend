@@ -67,7 +67,9 @@ public class MeetBattleService {
         Player foe(Peer p) { return isHost(p) ? guest : host; }
     }
 
-    private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    /** 방 코드: 숫자 6자리. QR 대신 친구 화면을 보고 바로 입력할 수 있게 짧게 둔다 */
+    private static final String CODE_CHARS = "0123456789";
+    private static final int CODE_LENGTH = 6;
 
     private final ObjectMapper mapper;
     private final MeetBattleRecorder recorder;
@@ -376,8 +378,8 @@ public class MeetBattleService {
     private void assignCode(Room room) {
         String code;
         do {
-            StringBuilder sb = new StringBuilder(8);
-            for (int i = 0; i < 8; i++) sb.append(CODE_CHARS.charAt(random.nextInt(CODE_CHARS.length())));
+            StringBuilder sb = new StringBuilder(CODE_LENGTH);
+            for (int i = 0; i < CODE_LENGTH; i++) sb.append(CODE_CHARS.charAt(random.nextInt(CODE_CHARS.length())));
             code = sb.toString();
         } while (roomsByCode.putIfAbsent(code, room) != null);
         room.code = code;
