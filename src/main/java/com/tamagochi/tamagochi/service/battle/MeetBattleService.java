@@ -148,7 +148,12 @@ public class MeetBattleService {
             broadcastRoom(room);
             maybeStartIntro(room);
             // 그림이 늦게 와도 기다리지 않고 시작한다
-            scheduler.schedule(() -> { synchronized (room) { if (room.phase == Phase.LOBBY) startIntro(room); } },
+            scheduler.schedule(() -> { synchronized (room) {
+                        if (room.phase != Phase.LOBBY) return;
+                        log.info("Meet battle started without waiting for profile: hostProfile={}, guestProfile={}",
+                                room.host.profile != null, room.guest != null && room.guest.profile != null);
+                        startIntro(room);
+                    } },
                     PROFILE_WAIT_MS, TimeUnit.MILLISECONDS);
         }
     }
@@ -207,7 +212,13 @@ public class MeetBattleService {
         if (!profile.isObject()) return;
         ObjectNode p = mapper.createObjectNode();
         String image = profile.path("image").asText("");
-        p.put("image", image.startsWith("data:image/") && image.length() <= THUMB_MAX_CHARS ? image : "");
+        boolean imageOk = image.startsWith("data:image/") && image.length() <= THUMB_MAX_CHARS;
+        if (!imageOk) {
+            // 상대 화면에 끄적이가 안 보이는 원인을 찾기 위한 로그 (그림 내용은 남기지 않는다)
+            log.warn("Meet battle profile image dropped: user={}, stage={}, length={}, dataUrl={}",
+                    me.userId, profile.path("stage").asText(""), image.length(), image.startsWith("data:image/"));
+        }
+        p.put("image", imageOk ? image : "");
         p.put("level", Math.max(1, Math.min(999, profile.path("level").asInt(1))));
         p.put("stage", profile.path("stage").asText("BABY").replaceAll("[^A-Z]", ""));
         p.put("facing", "left".equals(profile.path("facing").asText()) ? "left" : "right");
