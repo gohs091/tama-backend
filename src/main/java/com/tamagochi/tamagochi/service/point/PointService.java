@@ -34,10 +34,10 @@ public class PointService {
     private static final long IDEMPOTENCY_TTL = 24 * 60 * 60; // 24시간
 
     // 광고 보상은 잉크 결제를 대신할 만큼 쉽게 쌓이면 안 되므로 설정(point.ad-reward.*)으로 조절한다
-    @Value("${point.ad-reward.amount:100}")
-    private int adRewardAmount = 100;
-    @Value("${point.ad-reward.daily-limit:5}")
-    private int adDailyLimit = 5;                 // 하루(KST) 받을 수 있는 횟수
+    @Value("${point.ad-reward.amount:200}")
+    private int adRewardAmount = 200;
+    @Value("${point.ad-reward.daily-limit:10}")
+    private int adDailyLimit = 10;                 // 하루(KST) 받을 수 있는 횟수
     @Value("${point.ad-reward.cooldown-seconds:300}")
     private long adCooldownSeconds = 300;         // 한 번 받은 뒤 다음 보상까지
     @Value("${point.ad-reward.min-watch-ms:0}")
