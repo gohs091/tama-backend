@@ -344,6 +344,10 @@ public class Tamagotchi {
 
     public void evolve(EvolutionStage nextStage) {
         ensureLevel();
+        // 이번 단계에 친구와 배틀을 잘했으면 진화하며 위력을 더 받는다 (전적은 아래에서 0으로 돌린다)
+        if (this.evolutionStage != EvolutionStage.EGG) {
+            this.might = this.might + BattleRules.championMightBonus(championTier());
+        }
         this.evolutionStage = nextStage;
         this.stageStartLevel = this.level; // 진화 가능 구간은 이 레벨부터 다시 센다
         this.evoGauge = 0;
@@ -387,6 +391,9 @@ public class Tamagotchi {
 
     public int battleWins() { return this.battleWins == null ? 0 : this.battleWins; }
     public int battleLosses() { return this.battleLosses == null ? 0 : this.battleLosses; }
+
+    /** 이번 단계 배틀 전적 등급 (0 없음, 1 챔피언, 2 그랜드 챔피언) */
+    public int championTier() { return BattleRules.championTier(battleWins(), battleLosses()); }
 
     /** 만나서 배틀 한 판의 결과 (1 = 승, -1 = 패, 0 = 무승부는 세지 않는다) */
     public void recordBattle(int result) {
