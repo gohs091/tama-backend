@@ -23,7 +23,7 @@ public class EvolutionGaugeClaimService {
 
     @Transactional
     public Tamagotchi claim(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         if (tamagotchi.isDead()) {
             throw new IllegalStateException("다마고치가 죽었어요.");

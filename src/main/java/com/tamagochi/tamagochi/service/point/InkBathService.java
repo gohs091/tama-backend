@@ -60,7 +60,7 @@ public class InkBathService {
             throw new IllegalStateException("잉크통 충전은 하루에 한 번만 할 수 있어요.");
         }
         // 잉크통에 있는 동안은 시간이 멈추고(잠잘 때처럼) 돌보기·훈련을 할 수 없다
-        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet != null) {
             if (pet.isDead()) throw new IllegalStateException("끄적이가 죽어서 잉크통에 들어갈 수 없어요.");
             if (pet.isSleeping()) throw new IllegalStateException("자고 있을 땐 잉크통에 들어갈 수 없어요.");
@@ -90,7 +90,7 @@ public class InkBathService {
         String key = "ink-bath-" + user.getId() + "-" + wallet.getBathStartedAt().toEpochMilli();
         if (ink > 0) pointService.earnPoint(user, ink, key);
         wallet.settleBath();
-        tamagotchiRepository.findByUserId(user.getId()).ifPresent(p -> p.setBathing(false));
+        tamagotchiRepository.findActiveByUserId(user.getId()).ifPresent(p -> p.setBathing(false));
         return ink;
     }
 

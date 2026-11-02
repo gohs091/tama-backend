@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 public class TamagotchiResponse {
     private Long id;
+    private String publicId;       // 밖으로 보이는 끄적이 ID (그림 경로 등). 새로 시작하면 바뀐다
     private String name;
     private String evolutionStage;
     private String faction;
@@ -50,6 +51,7 @@ public class TamagotchiResponse {
     public static TamagotchiResponse from(Tamagotchi tamagotchi) {
         return TamagotchiResponse.builder()
                 .id(tamagotchi.getId())
+                .publicId(tamagotchi.getPublicId())
                 .name(tamagotchi.getName())
                 .evolutionStage(tamagotchi.getEvolutionStage().name())
                 .faction(tamagotchi.getFaction())

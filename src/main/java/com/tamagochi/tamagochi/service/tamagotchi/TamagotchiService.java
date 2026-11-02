@@ -33,7 +33,7 @@ public class TamagotchiService {
     @Transactional
     public void feed(User user, String idempotencyKey) {
 
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         if (tamagotchi.isDead()) {
@@ -50,7 +50,7 @@ public class TamagotchiService {
 
     @Transactional
     public void hatch(User user, String idempotencyKey) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         if (tamagotchi.getEvolutionStage() != EvolutionStage.EGG) {
@@ -67,7 +67,7 @@ public class TamagotchiService {
     /** 게이지가 가득 차고 컨디션 조건을 만족했을 때만 다음 단계로 진화시킨다. 판정은 서버가 한다. */
     @Transactional
     public Tamagotchi evolve(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         EvolutionStage from = tamagotchi.getEvolutionStage();
         tamagotchi.evolveIfReady();
@@ -81,7 +81,7 @@ public class TamagotchiService {
      */
     @Transactional
     public Tamagotchi reset(User user) {
-        Tamagotchi existing = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        Tamagotchi existing = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (existing == null) {
             return create(user, "끄적이", null);
         }
@@ -89,11 +89,22 @@ public class TamagotchiService {
         return existing;
     }
 
+    /** 지금 키우는 끄적이 이름 짓기·바꾸기 */
+    @Transactional
+    public Tamagotchi rename(User user, String rawName) {
+        String name = PetNameRules.clean(rawName);
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        tamagotchi.rename(name);
+        log.info("끄적이 이름 - user={}, pet={}", user.getId(), tamagotchi.getPublicId());
+        return tamagotchi;
+    }
+
     @Transactional
     public Tamagotchi create(User user, String name, String faction) {
         Tamagotchi tamagotchi = Tamagotchi.builder()
                 .user(user)
-                .name(name)
+                .name(name == null || name.isBlank() ? Tamagotchi.DEFAULT_NAME : PetNameRules.clean(name))
                 .faction(faction)
                 .evolutionStage(EvolutionStage.EGG)
                 .hunger(Tamagotchi.INITIAL_HUNGER)
@@ -108,7 +119,7 @@ public class TamagotchiService {
     /** 테스트 전용: 피드 횟수 없이 다음 진화 단계로 즉시 이동 */
     @Transactional
     public Tamagotchi forceEvolve(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         EvolutionStage next = switch (tamagotchi.getEvolutionStage()) {
@@ -125,19 +136,19 @@ public class TamagotchiService {
 
     @Transactional
     public void saveImage(User user, String stage, String imageBase64) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         tamagotchi.saveStageImage(stage, imageBase64);
     }
 
     @Transactional()
     public Tamagotchi getByUserId(Long userId) {
-        return tamagotchiRepository.findByUserId(userId)
+        return tamagotchiRepository.findActiveByUserId(userId)
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
     }
     @Transactional
     public void sleep(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         if (tamagotchi.isDead()) {
@@ -150,7 +161,7 @@ public class TamagotchiService {
 
     @Transactional
     public void wakeUp(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         tamagotchi.wakeUp();
@@ -158,7 +169,7 @@ public class TamagotchiService {
 
     @Transactional
     public void clean(User user, String idempotencyKey) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         if (tamagotchi.isDead()) {
@@ -178,7 +189,7 @@ public class TamagotchiService {
     /** 트레이닝을 시작한다. 시작 시각은 서버가 재고, 결과는 이 세션으로만 제출할 수 있다. */
     @Transactional
     public TrainingSession startTraining(User user, String rematchSessionId) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         requireTrainable(tamagotchi);
         TrainingSession session = trainingSessionService.start(user);
@@ -221,7 +232,7 @@ public class TamagotchiService {
 
     @Transactional
     public TrainingResult training(User user, String sessionId, int clickCount, String idempotencyKey) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         requireTrainable(tamagotchi);
@@ -290,7 +301,7 @@ public class TamagotchiService {
     /** 개발용: 다음 레벨까지 남은 경험치를 바로 넣는다 */
     @Transactional
     public Tamagotchi devLevelUp(User user) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         tamagotchi.addExp(tamagotchi.expToNext() - tamagotchi.exp());
         log.info("[TEST] 레벨 업: Lv.{}", tamagotchi.level());
@@ -299,7 +310,7 @@ public class TamagotchiService {
 
     @Transactional
     public void eatPill(User user, String idempotencyKey) {
-        Tamagotchi tamagotchi = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         if (tamagotchi.isDead()) {

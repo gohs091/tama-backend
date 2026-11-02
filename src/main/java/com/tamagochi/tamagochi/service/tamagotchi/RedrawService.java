@@ -34,7 +34,7 @@ public class RedrawService {
     }
 
     private Tamagotchi pet(User user) {
-        return tamagotchiRepository.findByUserId(user.getId())
+        return tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
     }
 }

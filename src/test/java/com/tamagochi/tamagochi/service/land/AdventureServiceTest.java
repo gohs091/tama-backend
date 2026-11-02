@@ -60,7 +60,7 @@ class AdventureServiceTest {
     void setUp() {
         when(user.getId()).thenReturn(1L);
         when(walletRepo.findByUserId(1L)).thenReturn(Optional.of(wallet));
-        when(petRepo.findByUserId(1L)).thenReturn(Optional.of(pet));
+        when(petRepo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
         when(adventureRepo.findByUserId(1L)).thenAnswer(i -> Optional.ofNullable(adventure[0]));
         when(adventureRepo.save(any())).thenAnswer(i -> adventure[0] = i.getArgument(0));
         when(progressRepo.findByUserIdAndRegionId(eq(1L), anyString())).thenAnswer(i -> Optional.ofNullable(progress.get(i.<String>getArgument(1))));

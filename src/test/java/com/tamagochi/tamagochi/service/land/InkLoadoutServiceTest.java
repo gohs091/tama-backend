@@ -29,7 +29,7 @@ class InkLoadoutServiceTest {
     @BeforeEach
     void setUp() {
         when(user.getId()).thenReturn(1L);
-        when(petRepo.findByUserId(1L)).thenReturn(Optional.of(pet));
+        when(petRepo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
         when(inkRepo.findByUserIdOrderByFoundAtAsc(1L)).thenReturn(List.of(
                 owned("cat"), owned("family.spirit"), owned("family.flower"), owned("family.beast")));
     }

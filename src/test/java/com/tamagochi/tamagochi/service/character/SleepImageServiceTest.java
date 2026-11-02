@@ -32,7 +32,7 @@ class SleepImageServiceTest {
     @BeforeEach
     void setUp() {
         when(user.getId()).thenReturn(1L);
-        when(repo.findByUserId(1L)).thenReturn(Optional.of(pet));
+        when(repo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
         when(pet.getEvolutionStage()).thenReturn(EvolutionStage.CHILD);
     }
 

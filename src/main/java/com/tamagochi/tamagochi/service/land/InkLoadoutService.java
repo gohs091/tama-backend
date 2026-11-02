@@ -71,7 +71,7 @@ public class InkLoadoutService {
     /** 진화 이미지에 넣을 문장. 고른 잉크가 없으면 null (지금까지와 같은 진화) */
     @Transactional
     public String promptFor(User user, String stage) {
-        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet == null) return null;
         return LandCatalog.absorbedPrompt(pet.getInkMain(),
                 java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList(), stage);
@@ -85,7 +85,7 @@ public class InkLoadoutService {
     }
 
     private Tamagotchi pet(User user) {
-        return tamagotchiRepository.findByUserId(user.getId())
+        return tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("끄적이가 없어요."));
     }
 

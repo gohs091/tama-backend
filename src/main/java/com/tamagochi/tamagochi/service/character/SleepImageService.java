@@ -36,7 +36,7 @@ public class SleepImageService {
     @Transactional
     public Start begin(User user, String stageName, String idempotencyKey, boolean redo) {
         EvolutionStage stage = parse(stageName);
-        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("끄적이를 찾을 수 없어요."));
         if (pet.isDead()) throw new IllegalStateException("끄적이가 죽어서 만들 수 없어요.");
         if (pet.getEvolutionStage() != stage) throw new IllegalStateException("지금 단계의 모습만 만들 수 있어요.");
@@ -58,7 +58,7 @@ public class SleepImageService {
     /** 만들기에 실패했을 때: 단계 기록을 지우고, 이번에 잉크를 냈다면 돌려준다 */
     @Transactional
     public void abort(User user, Start start, String idempotencyKey) {
-        tamagotchiRepository.findByUserId(user.getId()).ifPresent(pet -> {
+        tamagotchiRepository.findActiveByUserId(user.getId()).ifPresent(pet -> {
             if (start.redo()) pet.clearSleepImageRedo(start.stage());
             else pet.clearSleepImage(start.stage());
         });
