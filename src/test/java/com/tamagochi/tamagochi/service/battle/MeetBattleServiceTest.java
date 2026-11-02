@@ -81,7 +81,7 @@ class MeetBattleServiceTest {
     @Test
     void 방을_만들면_QR_코드를_받고_친구가_그_코드로_들어온다() {
         service.create(host, 1L);
-        assertThat(code()).hasSize(8);
+        assertThat(code()).matches("\\d{6}"); // 친구가 바로 입력할 수 있는 숫자 6자리
 
         service.join(guest, 2L, code().toLowerCase());
 
