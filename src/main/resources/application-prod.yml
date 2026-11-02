@@ -65,3 +65,12 @@ point:
     daily-limit: ${AD_REWARD_DAILY_LIMIT:10}    # 하루(KST) 받을 수 있는 횟수
     cooldown-seconds: ${AD_REWARD_COOLDOWN_SECONDS:300}  # 한 번 받은 뒤 다음 보상까지(초)
     min-watch-ms: ${AD_REWARD_MIN_WATCH_MS:0}  # 0이면 끔. 앱이 알려 준 시청 시간이 이보다 짧으면 지급하지 않는다
+
+# 끄적이 그림 저장소. 켜면 그림을 DB(base64) 대신 S3에 올리고 DB에는 키만 남긴다. 권한은 EC2 역할(IAM Role)로 받는다 (키 파일 없음)
+storage:
+  s3:
+    enabled: ${S3_ENABLED:false}
+    bucket: ${S3_BUCKET:doodle-image}
+    region: ${S3_REGION:ap-northeast-2}
+    migrate: ${S3_MIGRATE_EXISTING:false}   # 켜면 서버가 뜰 때 DB에 남은 base64 그림을 S3로 옮기고 DB에서 지운다
+  cdn-base: ${CDN_BASE_URL:https://d1k9cezbye963n.cloudfront.net}

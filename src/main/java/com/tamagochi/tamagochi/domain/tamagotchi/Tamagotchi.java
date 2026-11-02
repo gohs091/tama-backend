@@ -300,6 +300,35 @@ public class Tamagotchi {
         this.faction = faction;
     }
 
+    // S3에 올린 그림의 키 (CDN 주소는 서버 설정으로 붙인다). 키가 생기면 같은 단계의 base64는 지운다
+    @Column(name = "baby_image_key", length = 200)
+    private String babyImageKey;
+
+    @Column(name = "child_image_key", length = 200)
+    private String childImageKey;
+
+    @Column(name = "adult_image_key", length = 200)
+    private String adultImageKey;
+
+    /** S3에 올린 그림의 키를 저장하고, 같은 단계의 base64 원본은 DB에서 지운다 */
+    public void saveStageImageKey(String stage, String key) {
+        switch (stage) {
+            case "baby"  -> { this.babyImageKey = key;  this.babyImageBase64 = null; }
+            case "child" -> { this.childImageKey = key; this.childImageBase64 = null; }
+            case "adult" -> { this.adultImageKey = key; this.adultImageBase64 = null; }
+            default -> throw new IllegalArgumentException("알 수 없는 단계예요.");
+        }
+    }
+
+    /** 현재 진화 단계 그림의 S3 키 (없으면 null) */
+    public String getCurrentImageKey() {
+        return switch (this.evolutionStage) {
+            case EGG, BABY -> babyImageKey;
+            case CHILD     -> childImageKey;
+            case ADULT     -> adultImageKey;
+        };
+    }
+
     public void saveStageImage(String stage, String imageBase64) {
         switch (stage) {
             case "baby"  -> this.babyImageBase64  = imageBase64;
@@ -689,5 +718,9 @@ public class Tamagotchi {
         this.babyImageBase64 = null;
         this.childImageBase64 = null;
         this.adultImageBase64 = null;
+        // S3의 예전 그림은 지우지 않는다 (공개 ID가 바뀌어 새 그림과 섞이지 않는다)
+        this.babyImageKey = null;
+        this.childImageKey = null;
+        this.adultImageKey = null;
     }
 }

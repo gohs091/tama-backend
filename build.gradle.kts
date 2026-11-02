@@ -23,6 +23,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-websocket")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	implementation(platform("software.amazon.awssdk:bom:2.29.52")) // 끄적이 그림 S3 저장 (EC2 역할 권한 사용)
+	implementation("software.amazon.awssdk:s3")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testRuntimeOnly("com.h2database:h2")
