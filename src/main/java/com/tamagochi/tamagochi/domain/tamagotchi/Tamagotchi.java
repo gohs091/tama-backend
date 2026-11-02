@@ -92,6 +92,11 @@ public class Tamagotchi {
     @Column(name = "sleep_image_mask")
     private Integer sleepImageMask;
 
+    // 자는 모습을 무료로 다시 만든 단계 (같은 비트). 이미지는 기기에만 저장되어, 만드는 도중 앱을 닫거나 저장 공간이 모자라면
+    // 값은 냈는데 이미지가 없을 수 있다. 그때 단계마다 한 번 무료로 다시 만들 수 있다. 죽어서 새로 시작하면 비운다.
+    @Column(name = "sleep_image_redo_mask")
+    private Integer sleepImageRedoMask;
+
     private static int sleepBit(EvolutionStage stage) {
         return switch (stage) {
             case BABY -> 1;
@@ -117,6 +122,29 @@ public class Tamagotchi {
     /** 만들기에 실패했을 때 되돌린다 */
     public void clearSleepImage(EvolutionStage stage) {
         this.sleepImageMask = (this.sleepImageMask == null ? 0 : this.sleepImageMask) & ~sleepBit(stage);
+    }
+
+    public boolean hasSleepImageRedo(EvolutionStage stage) {
+        return this.sleepImageRedoMask != null && (this.sleepImageRedoMask & sleepBit(stage)) != 0;
+    }
+
+    /** 이 단계의 자는 모습을 무료로 다시 만들기 시작했다고 기록한다 (단계마다 한 번) */
+    public void markSleepImageRedo(EvolutionStage stage) {
+        this.sleepImageRedoMask = (this.sleepImageRedoMask == null ? 0 : this.sleepImageRedoMask) | sleepBit(stage);
+    }
+
+    /** 다시 만들기에 실패했을 때 되돌린다 (다시 시도할 수 있게) */
+    public void clearSleepImageRedo(EvolutionStage stage) {
+        this.sleepImageRedoMask = (this.sleepImageRedoMask == null ? 0 : this.sleepImageRedoMask) & ~sleepBit(stage);
+    }
+
+    /** 무료로 다시 만들 수 있는 단계: 이미 만들었고 아직 다시 만들지 않은 단계 */
+    public java.util.List<String> sleepImageRedoStages() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (EvolutionStage st : new EvolutionStage[]{EvolutionStage.BABY, EvolutionStage.CHILD, EvolutionStage.ADULT}) {
+            if (hasSleepImage(st) && !hasSleepImageRedo(st)) out.add(st.name());
+        }
+        return out;
     }
 
     public java.util.List<String> sleepImageStages() {
@@ -584,6 +612,7 @@ public class Tamagotchi {
         this.deadAt = null;
         this.sleeping = false;
         this.sleepImageMask = 0;
+        this.sleepImageRedoMask = 0;
         this.bathing = false;
         this.adventuring = false;
         setInkLoadout(null, null, null);

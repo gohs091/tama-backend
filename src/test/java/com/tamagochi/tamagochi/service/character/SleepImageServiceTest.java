@@ -66,6 +66,35 @@ class SleepImageServiceTest {
     }
 
     @Test
+    void 잃어버린_이미지는_단계마다_한_번_무료로_다시_만든다() {
+        when(pet.hasSleepImage(EvolutionStage.CHILD)).thenReturn(true);
+
+        SleepImageService.Start start = service.begin(user, "child", "r1", true);
+
+        assertThat(start.charged()).isFalse();
+        assertThat(start.redo()).isTrue();
+        verify(pet).markSleepImageRedo(EvolutionStage.CHILD);
+        verify(points, never()).usePoint(any(User.class), anyInt(), anyString());
+    }
+
+    @Test
+    void 다시_만들기는_한_번뿐이다() {
+        when(pet.hasSleepImage(EvolutionStage.CHILD)).thenReturn(true);
+        when(pet.hasSleepImageRedo(EvolutionStage.CHILD)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.begin(user, "child", "r2", true)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void 다시_만들다_실패하면_다시_만들기_기록만_지운다() {
+        service.abort(user, new SleepImageService.Start(EvolutionStage.CHILD, false, true), "r3");
+
+        verify(pet).clearSleepImageRedo(EvolutionStage.CHILD);
+        verify(pet, never()).clearSleepImage(any());
+        verify(points, never()).earnPoint(any(User.class), anyInt(), anyString());
+    }
+
+    @Test
     void 지금_단계가_아니면_만들_수_없다() {
         assertThatThrownBy(() -> service.begin(user, "adult", "k4")).isInstanceOf(IllegalStateException.class);
     }
