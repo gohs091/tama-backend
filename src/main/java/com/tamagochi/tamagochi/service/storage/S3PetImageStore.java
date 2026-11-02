@@ -35,6 +35,7 @@ public class S3PetImageStore implements PetImageStore {
         this.bucket = bucket;
         this.cdnBase = cdnBase.endsWith("/") ? cdnBase.substring(0, cdnBase.length() - 1) : cdnBase;
         PetImageUrls.setCdnBase(this.cdnBase);
+        PetImageUrls.setUploadEnabled(enabled);
         this.s3 = enabled ? S3Client.builder().region(Region.of(region)).build() : null;
         log.info("끄적이 그림 저장소: {}", enabled ? "S3 " + bucket : "DB(base64)");
     }

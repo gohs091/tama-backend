@@ -7,12 +7,22 @@ package com.tamagochi.tamagochi.service.storage;
 public final class PetImageUrls {
 
     private static volatile String cdnBase = "";
+    private static volatile boolean uploadEnabled = false;
 
     private PetImageUrls() {
     }
 
     static void setCdnBase(String base) {
         cdnBase = base == null ? "" : (base.endsWith("/") ? base.substring(0, base.length() - 1) : base);
+    }
+
+    static void setUploadEnabled(boolean enabled) {
+        uploadEnabled = enabled;
+    }
+
+    /** 앱이 그림을 서버에 올려도 되는지 (S3가 켜져 있을 때만. 꺼져 있으면 DB가 커지지 않게 올리지 않는다) */
+    public static boolean uploadEnabled() {
+        return uploadEnabled;
     }
 
     /** 키가 없거나 CDN 주소가 설정되지 않았으면 null */
