@@ -56,7 +56,7 @@ public class MeetBattleSocketHandler extends TextWebSocketHandler {
             reject(peer, "로그인이 필요해요");
             return;
         }
-        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId()).orElse(null);
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         // 알이어도 된다: 앱이 처음인 친구는 끄적이를 그리자마자 그 낙서로 참전한다
         if (pet == null || pet.isDead()) {
             reject(peer, pet == null ? "끄적이를 먼저 그려 주세요" : "끄적이가 없어서 배틀할 수 없어요");

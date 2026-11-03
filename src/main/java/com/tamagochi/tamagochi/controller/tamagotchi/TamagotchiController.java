@@ -63,6 +63,20 @@ public class TamagotchiController {
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 
+    @lombok.Getter
+    @lombok.NoArgsConstructor
+    public static class RenameRequest {
+        private String tossUserId;
+        private String name;
+    }
+
+    /** 지금 키우는 끄적이 이름 짓기·바꾸기 (1~10글자, 다른 끄적이와 같아도 된다) */
+    @PostMapping("/name")
+    public ResponseEntity<?> rename(@RequestBody RenameRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.rename(user, request.getName())));
+    }
+
     @PostMapping("/image")
     public ResponseEntity<?> saveImage(@RequestBody SaveImageRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());

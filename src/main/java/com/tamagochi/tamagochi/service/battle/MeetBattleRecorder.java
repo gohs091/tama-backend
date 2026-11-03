@@ -47,7 +47,7 @@ public class MeetBattleRecorder {
     @Transactional(readOnly = true)
     public String blockReason(Long userId) {
         if (battlesToday(userId) < FREE_DAILY_BATTLES) return null;
-        return tamagotchiRepository.findByUserId(userId).map(p -> p.battleShortage(BATTLE_COST)).orElse(null);
+        return tamagotchiRepository.findActiveByUserId(userId).map(p -> p.battleShortage(BATTLE_COST)).orElse(null);
     }
 
     /** 저장 시각(created_at)은 서버 시간대라, 오늘(KST) 0시를 서버 시간대로 바꿔 비교한다 */
@@ -89,7 +89,7 @@ public class MeetBattleRecorder {
 
     /** 끄적이에 전적을 남기고, 무료 판을 다 썼으면 포만감·파워를 쓴다. 썼으면 true */
     private boolean settle(Long userId, int result, long battlesBefore) {
-        Tamagotchi pet = tamagotchiRepository.findByUserId(userId).orElse(null);
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(userId).orElse(null);
         if (pet == null) return false;
         pet.recordBattle(result);
         if (battlesBefore < FREE_DAILY_BATTLES || pet.battleShortage(BATTLE_COST) != null) return false;

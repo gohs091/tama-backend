@@ -87,7 +87,7 @@ public class AdventureService {
                 .orElseThrow(() -> new IllegalArgumentException("알 수 없는 구역이에요."));
         if (!region.open()) throw new IllegalStateException("아직 준비 중인 구역이에요.");
 
-        Tamagotchi pet = tamagotchiRepository.findByUserId(user.getId())
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("끄적이가 없어요."));
         if (pet.isDead()) throw new IllegalStateException("끄적이가 죽어서 모험을 떠날 수 없어요.");
         if (pet.getEvolutionStage() == EvolutionStage.EGG) throw new IllegalStateException("알이 깨어나면 모험을 떠날 수 있어요.");
@@ -156,7 +156,7 @@ public class AdventureService {
         if (net < 0) pointService.usePoint(user, -net, key);
         progress(user, adventure.getRegionId()).explore(live.progress.minutes());
         adventure.finish(live.progress.minutes(), net, reason);
-        tamagotchiRepository.findByUserId(user.getId()).ifPresent(p -> p.setAdventuring(false));
+        tamagotchiRepository.findActiveByUserId(user.getId()).ifPresent(p -> p.setAdventuring(false));
     }
 
     /** 누적 탐험 시간까지 발견된 잉크 중 보관함에 없는 것을 넣는다 */

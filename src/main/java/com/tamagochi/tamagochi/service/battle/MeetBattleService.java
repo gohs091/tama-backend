@@ -208,6 +208,15 @@ public class MeetBattleService {
         }
     }
 
+    /** 상대 화면 이름표에 보일 끄적이 이름. 규칙에 맞지 않으면 빈 값(앱이 "친구 끄적이"로 보여준다) */
+    static String battleName(String raw) {
+        try {
+            return com.tamagochi.tamagochi.service.tamagotchi.PetNameRules.clean(raw);
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
+    }
+
     private void hello(Room room, Player me, JsonNode profile) {
         if (!profile.isObject()) return;
         ObjectNode p = mapper.createObjectNode();
@@ -222,6 +231,7 @@ public class MeetBattleService {
         p.put("level", Math.max(1, Math.min(999, profile.path("level").asInt(1))));
         p.put("stage", profile.path("stage").asText("BABY").replaceAll("[^A-Z]", ""));
         p.put("facing", "left".equals(profile.path("facing").asText()) ? "left" : "right");
+        p.put("name", battleName(profile.path("name").asText("")));
         me.profile = p;
         broadcastRoom(room);
         maybeStartIntro(room);

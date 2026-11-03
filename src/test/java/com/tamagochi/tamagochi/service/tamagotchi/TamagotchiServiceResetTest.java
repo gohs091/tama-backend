@@ -52,7 +52,7 @@ class TamagotchiServiceResetTest {
     void reset_resetsInPlace_noDeleteInsert() {
         Tamagotchi pet = deadPet();
         assertThat(pet.isDead()).isTrue();
-        when(repository.findByUserId(1L)).thenReturn(Optional.of(pet));
+        when(repository.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
 
         Tamagotchi result = service.reset(user);
 
@@ -65,14 +65,14 @@ class TamagotchiServiceResetTest {
         assertThat(result.getFaction()).isEqualTo("dragons-roar"); // 팩션 유지
         assertThat(result.getBabyImageBase64()).isNull();          // 이전 이미지 제거
         assertThat(result.getChildImageBase64()).isNull();
-        verify(repository, never()).deleteByUserId(any());
+        verify(repository, never()).delete(any());
         verify(repository, never()).save(any());
     }
 
     @Test
     @DisplayName("다마고치가 없으면 새로 만든다")
     void reset_withoutExisting_creates() {
-        when(repository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(repository.findActiveByUserId(1L)).thenReturn(Optional.empty());
         when(repository.save(any(Tamagotchi.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tamagotchi result = service.reset(user);

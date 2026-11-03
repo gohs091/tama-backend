@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Entity
-@Table(name = "tamagotchi")
+@Table(name = "tamagotchi", indexes = @Index(name = "idx_tamagotchi_user", columnList = "user_id"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
@@ -22,17 +22,47 @@ public class Tamagotchi {
     public static final int INITIAL_STRENGTH = 50;
     public static final int FEED_AMOUNT = 1;  // 고기 1회 포만감 회복량
     public static final int PILL_AMOUNT = 1;  // 알약 1회 파워 회복량
+    public static final String DEFAULT_NAME = "끄적이";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    // 한 유저가 여러 마리를 가질 수 있게 다대일. 지금 키우는 끄적이는 status = ACTIVE인 가장 최근 행이다
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(nullable = false)
     private String name;
+
+    /**
+     * 밖으로 보이는 끄적이 ID (무작위 32자). S3 그림 경로·배틀 등 외부에는 DB 번호나 tossUserId 대신 이 값만 쓴다.
+     * 새로 시작(reset)하면 새 끄적이로 보고 새 값을 받는다. 예전 행은 null이었다가 서버가 켜질 때 채운다 (PetIdentityMigration).
+     */
+    @Column(name = "public_id", length = 32, unique = true)
+    @Builder.Default
+    private String publicId = newPublicId();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10, columnDefinition = "varchar(10) not null default 'ACTIVE'")
+    @Builder.Default
+    private PetStatus status = PetStatus.ACTIVE;
+
+    public static String newPublicId() {
+        return java.util.UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /** 예전 행 채우기용 */
+    public boolean assignPublicIdIfMissing() {
+        if (this.publicId != null) return false;
+        this.publicId = newPublicId();
+        return true;
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -618,6 +648,10 @@ public class Tamagotchi {
     }
 
     public void reset() {
+        // 새로 그린 그림은 새 끄적이다: 밖으로 보이는 ID와 이름을 새로 받는다 (예전 그림 경로와 섞이지 않게)
+        this.publicId = newPublicId();
+        this.name = DEFAULT_NAME;
+        this.status = PetStatus.ACTIVE;
         this.evolutionStage = EvolutionStage.EGG;
         this.hunger = 50;
         this.strength = INITIAL_STRENGTH;

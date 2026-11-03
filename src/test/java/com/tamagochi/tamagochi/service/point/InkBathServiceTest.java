@@ -41,7 +41,7 @@ class InkBathServiceTest {
     void setUp() {
         when(user.getId()).thenReturn(1L);
         when(repo.findByUserId(1L)).thenReturn(Optional.of(wallet));
-        when(petRepo.findByUserId(1L)).thenReturn(Optional.of(pet));
+        when(petRepo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
     }
 
     @Test

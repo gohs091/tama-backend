@@ -51,8 +51,8 @@ class MeetBattleRecorderTest {
     @Test
     void 하루_세_판까지는_포만감_파워를_쓰지_않고_전적만_남긴다() {
         Tamagotchi a = mock(Tamagotchi.class), b = mock(Tamagotchi.class);
-        when(pets.findByUserId(1L)).thenReturn(Optional.of(a));
-        when(pets.findByUserId(2L)).thenReturn(Optional.of(b));
+        when(pets.findActiveByUserId(1L)).thenReturn(Optional.of(a));
+        when(pets.findActiveByUserId(2L)).thenReturn(Optional.of(b));
         when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(repo.countBattles(anyLong(), any())).thenReturn(2L); // 이번이 세 번째 판
 
@@ -68,7 +68,7 @@ class MeetBattleRecorderTest {
     @Test
     void 네_번째_판부터는_포만감_파워를_쓴다() {
         Tamagotchi a = mock(Tamagotchi.class);
-        when(pets.findByUserId(1L)).thenReturn(Optional.of(a));
+        when(pets.findActiveByUserId(1L)).thenReturn(Optional.of(a));
         when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(repo.countBattles(eq(1L), any())).thenReturn(3L);
 
@@ -81,7 +81,7 @@ class MeetBattleRecorderTest {
     @Test
     void 무료_판을_다_쓰고_컨디션이_모자라면_막는다() {
         Tamagotchi a = mock(Tamagotchi.class);
-        when(pets.findByUserId(1L)).thenReturn(Optional.of(a));
+        when(pets.findActiveByUserId(1L)).thenReturn(Optional.of(a));
         when(a.battleShortage(MeetBattleRules.BATTLE_COST)).thenReturn("배가 고파서");
         when(repo.countBattles(eq(1L), any())).thenReturn(2L);
         assertThat(recorder.blockReason(1L)).isNull();          // 아직 무료

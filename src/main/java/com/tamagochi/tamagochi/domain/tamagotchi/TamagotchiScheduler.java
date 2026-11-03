@@ -45,7 +45,7 @@ public class TamagotchiScheduler {
                 Duration.ofMinutes(maxTickGapMinutes));
         LocalDateTime now = LocalDateTime.now();
 
-        for (Tamagotchi tamagotchi : tamagotchiRepository.findAll()) {
+        for (Tamagotchi tamagotchi : tamagotchiRepository.findAllByStatus(com.tamagochi.tamagochi.domain.tamagotchi.PetStatus.ACTIVE)) {
             boolean wasDead = tamagotchi.isDead();
             tamagotchi.applyTime(now, rule);
             if (!wasDead && tamagotchi.isDead()) {

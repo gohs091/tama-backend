@@ -274,7 +274,7 @@ public class ImageGenerationService {
         if (tossUserId == null || userRepository == null || tamagotchiRepository == null) return 0;
         try {
             return userRepository.findByTossUserId(tossUserId)
-                    .flatMap(u -> tamagotchiRepository.findByUserId(u.getId()))
+                    .flatMap(u -> tamagotchiRepository.findActiveByUserId(u.getId()))
                     .map(com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi::championTier)
                     .orElse(0);
         } catch (Exception e) {
