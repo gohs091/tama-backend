@@ -37,6 +37,27 @@ public final class SparRoster {
     }
 
     private static final Map<String, Enemy> ENEMIES = load();
+    /** 잉크 id → 그 잉크를 떨어뜨리는 상대 (나오는 레벨이 낮은 순) */
+    private static final Map<String, List<Enemy>> DROPPERS = droppers();
+
+    /** 이 잉크를 떨어뜨리는 상대 (나오는 레벨이 낮은 순). 없으면 빈 목록 */
+    public static List<Enemy> droppersOf(String inkId) {
+        return DROPPERS.getOrDefault(inkId, List.of());
+    }
+
+    /** 이 잉크를 떨어뜨리는 상대들의 진영 (처음 나오는 순서, 중복 없음) */
+    public static List<String> factionsOf(String inkId) {
+        return droppersOf(inkId).stream().map(Enemy::faction).distinct().toList();
+    }
+
+    private static Map<String, List<Enemy>> droppers() {
+        Map<String, List<Enemy>> map = new LinkedHashMap<>();
+        for (Enemy e : ENEMIES.values()) for (String ink : e.drops()) map.computeIfAbsent(ink, k -> new ArrayList<>()).add(e);
+        map.replaceAll((k, list) -> list.stream()
+                .sorted(java.util.Comparator.comparingInt(Enemy::minLevel).thenComparingInt(Enemy::maxLevel))
+                .toList());
+        return Collections.unmodifiableMap(map);
+    }
 
     private SparRoster() {
     }

@@ -66,10 +66,14 @@ public class LandService {
                 found, r.inks().size(), r.open() ? LandCatalog.costPerMinute(minutes) : 0);
     }
 
+    /** 이 잉크가 나오는 곳: 탐험으로 찾는 구역 + 떨어뜨리는 스파링 상대의 진영 (구역 키 = 진영 키) */
     private static List<String> regionsOf(String inkId) {
-        return LandCatalog.regions().stream()
-                .filter(r -> r.inks().stream().anyMatch(i -> i.id().equals(inkId)))
-                .map(LandCatalog.Region::id).toList();
+        return java.util.stream.Stream.concat(
+                        LandCatalog.regions().stream()
+                                .filter(r -> r.inks().stream().anyMatch(i -> i.id().equals(inkId)))
+                                .map(LandCatalog.Region::id),
+                        com.tamagochi.tamagochi.domain.spar.SparRoster.factionsOf(inkId).stream())
+                .distinct().toList();
     }
 
     private Map<String, Integer> explored(User user) {
