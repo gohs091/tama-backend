@@ -1,0 +1,25 @@
+{
+  "id": "trash",
+  "emoji": "🗑️",
+  "name": "매립지",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"can","emoji":"🥫","name":"깡통의 잉크","grade":"COMMON","family":"junk","prompt":"a tin can's cylindrical metal body with a pull-tab"},
+    {"id":"rat","emoji":"🐀","name":"쥐의 잉크","grade":"COMMON","family":"beast","prompt":"a rat's round ears and long thin tail"},
+    {"id":"scrap-golem","emoji":"🔧","name":"고철 골렘의 잉크","grade":"RARE","family":"junk","prompt":"a scrap golem's bolted-together metal plates and pipes","part":"bolted metal plates"},
+    {"id":"sock","emoji":"🧦","name":"양말의 잉크","grade":"COMMON","family":"junk","prompt":"a lost sock's striped knitted fabric"},
+    {"id":"bottle","emoji":"🧴","name":"페트병의 잉크","grade":"COMMON","family":"junk","prompt":"a plastic bottle's clear body and screw cap"},
+    {"id":"cardboard","emoji":"📦","name":"종이상자의 잉크","grade":"COMMON","family":"junk","prompt":"a cardboard box's flaps and tape strips"},
+    {"id":"pigeon","emoji":"🕊️","name":"비둘기의 잉크","grade":"COMMON","family":"bird","prompt":"a pigeon's iridescent neck feathers and plump body"},
+    {"id":"umbrella","emoji":"☂️","name":"우산의 잉크","grade":"COMMON","family":"junk","prompt":"an umbrella's canopy and hooked handle"},
+    {"id":"junk-robot","emoji":"📻","name":"폐품 로봇의 잉크","grade":"COMMON","family":"junk","prompt":"a junk robot's mismatched scrap limbs and dented can head"},
+    {"id":"magnet-crane","emoji":"🧲","name":"자석 크레인의 잉크","grade":"RARE","family":"junk","prompt":"a magnet crane's big round electromagnet","part":"a big round electromagnet","body":"TANK"},
+    {"id":"junk-king","emoji":"🪑","name":"고물왕의 잉크","grade":"LEGEND","family":"junk","prompt":"a junk king's bottle-cap crown and patched scrap-metal throne cape","part":"a bottle-cap crown"},
+    {"id":"ribbon-robot","emoji":"🎀","name":"리본 로봇의 잉크","grade":"RARE","family":"junk","prompt":"a ribbon robot's big bow and pastel metal body","part":"a big ribbon bow"},
+    {"id":"recycle-fairy-queen","emoji":"♻️","name":"재활용 요정 여왕의 잉크","grade":"LEGEND","family":"junk","prompt":"a recycle fairy queen's bottle-cap crown and colorful recycled-material gown","part":"a bottle-cap crown"},
+    {"id":"bottle-dress","emoji":"👗","name":"페트병 드레스의 잉크","grade":"COMMON","family":"junk","prompt":"a dress made of shiny plastic bottles"},
+    {"id":"foil-diva","emoji":"✨","name":"은박 디바의 잉크","grade":"RARE","family":"junk","prompt":"a foil diva's shiny silver foil dress","part":"a shiny silver foil collar"},
+    {"id":"scrap-rose-queen","emoji":"🥀","name":"고철 장미 여왕의 잉크","grade":"LEGEND","family":"junk","prompt":"a scrap rose queen's metal rose crown and riveted gown","part":"a metal rose crown"}
+  ]
+}

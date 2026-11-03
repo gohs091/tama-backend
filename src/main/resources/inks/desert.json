@@ -1,0 +1,28 @@
+{
+  "id": "desert",
+  "emoji": "🏜️",
+  "name": "사막",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"fennec","emoji":"🦊","name":"사막여우의 잉크","grade":"COMMON","family":"beast","prompt":"a fennec fox's enormous ears and sandy fur"},
+    {"id":"camel","emoji":"🐫","name":"낙타의 잉크","grade":"COMMON","family":"beast","prompt":"a camel's humps and long eyelashes"},
+    {"id":"scorpion","emoji":"🦂","name":"전갈의 잉크","grade":"COMMON","family":"insect","prompt":"a scorpion's curled stinger tail and pincers"},
+    {"id":"cobra","emoji":"🐍","name":"코브라의 잉크","grade":"RARE","family":"reptile","prompt":"a cobra's wide patterned hood","part":"a wide cobra hood behind the head","body":"LEGLESS"},
+    {"id":"sphinx","emoji":"🏺","name":"스핑크스의 잉크","grade":"LEGEND","family":"beast","prompt":"a sphinx's royal striped headdress and lion body","part":"a striped royal headdress","body":"QUAD"},
+    {"id":"sand-lizard","emoji":"🦎","name":"모래 도마뱀의 잉크","grade":"COMMON","family":"reptile","prompt":"a sand lizard's sandy scales and frilled neck"},
+    {"id":"cactus","emoji":"🌵","name":"선인장의 잉크","grade":"COMMON","family":"plant","prompt":"a cactus's green ribbed arms and little spines with a flower"},
+    {"id":"meerkat","emoji":"🐿️","name":"미어캣의 잉크","grade":"COMMON","family":"beast","prompt":"a meerkat's upright pose and dark eye patches"},
+    {"id":"armadillo","emoji":"🛡️","name":"아르마딜로의 잉크","grade":"COMMON","family":"beast","prompt":"an armadillo's banded armored shell"},
+    {"id":"vulture","emoji":"🦅","name":"대머리수리의 잉크","grade":"COMMON","family":"bird","prompt":"a vulture's bald head and dark ragged wings"},
+    {"id":"desert-merchant","emoji":"🧳","name":"사막 상인의 잉크","grade":"COMMON","family":"beast","prompt":"a desert merchant's turban, scarf and pack of goods"},
+    {"id":"djinn","emoji":"🪔","name":"램프 정령의 잉크","grade":"RARE","family":"spirit","prompt":"a lamp genie's smoky trailing lower body and golden arm bands","part":"golden arm bands","body":"LEGLESS"},
+    {"id":"sandworm","emoji":"🪱","name":"모래벌레의 잉크","grade":"RARE","family":"insect","prompt":"a sandworm's segmented body and round toothy mouth","part":"a round toothy mouth","body":"LEGLESS"},
+    {"id":"pharaoh","emoji":"☀️","name":"파라오의 잉크","grade":"LEGEND","family":"spirit","prompt":"a pharaoh's striped nemes headdress, golden collar and crook","part":"a striped nemes headdress"},
+    {"id":"sand-fairy","emoji":"⏳","name":"모래 요정의 잉크","grade":"RARE","family":"spirit","prompt":"a sand fairy's golden sand wings and veil","part":"small golden sand wings"},
+    {"id":"oasis-princess","emoji":"🌴","name":"오아시스 공주의 잉크","grade":"LEGEND","family":"spirit","prompt":"an oasis princess's turquoise jewelry and flowing desert gown","part":"turquoise jewelry"},
+    {"id":"desert-dancer","emoji":"🔔","name":"사막 무희의 잉크","grade":"COMMON","family":"spirit","prompt":"a desert dancer's coin-trimmed veil and flowing skirt"},
+    {"id":"snake-charmer","emoji":"🐍","name":"황금 뱀 무희의 잉크","grade":"RARE","family":"reptile","prompt":"a golden snake charmer's coiled golden snake ornaments","part":"a coiled golden snake ornament"},
+    {"id":"sun-queen","emoji":"🌞","name":"태양의 여왕의 잉크","grade":"LEGEND","family":"spirit","prompt":"a sun queen's radiant sun crown and golden gown","part":"a radiant sun crown"}
+  ]
+}
