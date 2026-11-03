@@ -70,13 +70,28 @@ public final class SparRoster {
         return List.copyOf(ENEMIES.values());
     }
 
-    /**
-     * 이 레벨에 나오는 상대 중 하나를 고른다. 범위에 드는 상대가 없으면(최고 레벨보다 높을 때 등) 범위가 가장 가까운 상대들 중에서 고른다.
-     */
+    /** 스파링에서 보스를 만날 확률. 보스 등장 규칙은 나중에 다시 정한다 */
+    public static final double BOSS_CHANCE = 0.01;
+
+    /** 이 레벨에 맞는 상대를 고른다. BOSS_CHANCE 확률로 보스, 아니면 일반 상대 */
     public static Enemy pick(int level, RandomGenerator random) {
+        return pick(level, random, BOSS_CHANCE);
+    }
+
+    /**
+     * bossChance 확률로 보스 중에서, 아니면 일반 상대 중에서 고른다.
+     * 각 무리 안에서는 레벨 범위에 드는 상대를, 없으면(최고 레벨보다 높을 때 등) 범위가 가장 가까운 상대들 중에서 고른다.
+     */
+    public static Enemy pick(int level, RandomGenerator random, double bossChance) {
+        boolean boss = random.nextDouble() < bossChance;
+        return nearest(level, random, e -> e.boss() == boss);
+    }
+
+    private static Enemy nearest(int level, RandomGenerator random, java.util.function.Predicate<Enemy> filter) {
         List<Enemy> best = new ArrayList<>();
         int bestGap = Integer.MAX_VALUE;
         for (Enemy e : ENEMIES.values()) {
+            if (!filter.test(e)) continue;
             int gap = level < e.minLevel() ? e.minLevel() - level : Math.max(0, level - e.maxLevel());
             if (gap < bestGap) {
                 bestGap = gap;
