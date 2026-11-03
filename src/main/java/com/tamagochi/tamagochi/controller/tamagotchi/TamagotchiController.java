@@ -26,6 +26,7 @@ public class TamagotchiController {
     private final UserIdentity userIdentity;
     private final RedrawService redrawService;
     private final EvolutionPromotionService evolutionPromotionService;
+    private final com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
 
     /** 진화 달성 보상(스케치 10원·완성작 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
     private void rewardEvolution(User user, Tamagotchi tamagotchi) {
@@ -80,7 +81,7 @@ public class TamagotchiController {
     @PostMapping("/image")
     public ResponseEntity<?> saveImage(@RequestBody SaveImageRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
-        tamagotchiService.saveImage(user, request.getStage(), request.getImageBase64());
+        petImageService.saveImage(user, request.getStage(), request.getImageBase64());
         return ResponseEntity.ok().build();
     }
 

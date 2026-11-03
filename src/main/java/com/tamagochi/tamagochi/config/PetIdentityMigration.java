@@ -22,6 +22,7 @@ import java.util.List;
  *    (지금은 유저당 한 마리라 유일 인덱스가 남아 있어도 동작에는 문제가 없다).
  */
 @Component
+@org.springframework.core.annotation.Order(1)
 @RequiredArgsConstructor
 @Slf4j
 public class PetIdentityMigration implements ApplicationRunner {

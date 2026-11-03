@@ -22,6 +22,8 @@ services:
       EVOLUTION_PROMOTION_MODE: ${EVOLUTION_PROMOTION_MODE:-off}
       EVOLUTION_PROMOTION_CODE: ${EVOLUTION_PROMOTION_CODE:-}
       ADMIN_KEY: ${ADMIN_KEY:-}
+      S3_ENABLED: ${S3_ENABLED:-false}                     # 끄적이 그림을 S3에 저장 (EC2 역할 권한 필요)
+      S3_MIGRATE_EXISTING: ${S3_MIGRATE_EXISTING:-false}   # 켜면 DB에 남은 base64 그림을 S3로 옮긴다 (끝나면 다시 false)
     volumes:
       - ./certs/iap-client.p12:/certs/iap-client.p12:ro   # 토스 IAP mTLS 인증서 (서버에만 두고 저장소/이미지에 넣지 않는다)
     depends_on:

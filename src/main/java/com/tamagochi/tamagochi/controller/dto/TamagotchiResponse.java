@@ -46,7 +46,9 @@ public class TamagotchiResponse {
     private int battleLosses;      // 만나서 배틀 패 (이번 단계)
     private int championTier;      // 지금 진화하면 받는 배틀 등급 (0 없음, 1 챔피언 +15, 2 그랜드 챔피언 +30)
     private LocalDateTime lastFedAt;
-    private String currentImageBase64;
+    private String currentImageBase64; // S3로 옮기기 전 그림 (옮긴 뒤에는 null)
+    private String currentImageUrl;    // S3에 올린 지금 단계 그림 주소 (CDN). 있으면 이것을 쓴다
+    private boolean imageUploadEnabled; // 앱이 단계 그림을 서버(S3)에 올려도 되는지
 
     public static TamagotchiResponse from(Tamagotchi tamagotchi) {
         return TamagotchiResponse.builder()
@@ -87,6 +89,8 @@ public class TamagotchiResponse {
                 .championTier(tamagotchi.championTier())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
+                .currentImageUrl(com.tamagochi.tamagochi.service.storage.PetImageUrls.of(tamagotchi.getCurrentImageKey()))
+                .imageUploadEnabled(com.tamagochi.tamagochi.service.storage.PetImageUrls.uploadEnabled())
                 .build();
     }
 }
