@@ -1,0 +1,2502 @@
+{
+ "families": [
+  {
+   "key": "ghost",
+   "name": "으스스",
+   "emoji": "👻",
+   "prompt": "ghostly traits: a pale wispy trailing hem, hollow round eyes, a soft spooky sheet-like silhouette"
+  },
+  {
+   "key": "wind",
+   "name": "바람",
+   "emoji": "🍃",
+   "prompt": "wind traits: swirling breeze lines, fluttering ribbons and leaves, a light airy feathered look"
+  },
+  {
+   "key": "heraldry",
+   "name": "문장",
+   "emoji": "🚩",
+   "prompt": "heraldic traits: a small shield emblem, a tabard with a crest, banner ribbons, polished buckles"
+  },
+  {
+   "key": "scale",
+   "name": "비늘",
+   "emoji": "🐲",
+   "prompt": "dragon scale traits: overlapping dragon scales, small horns, a spiked ridge along the back"
+  },
+  {
+   "key": "shadow",
+   "name": "그림자",
+   "emoji": "🌑",
+   "prompt": "shadow traits: dark purple tones, small curled horns, a tattered dark cape edge, glowing eyes"
+  },
+  {
+   "key": "junk",
+   "name": "고물",
+   "emoji": "🧷",
+   "prompt": "junk traits: patched-together scraps, bolts and bottle caps, mismatched recycled parts"
+  },
+  {
+   "key": "cosmic",
+   "name": "별빛",
+   "emoji": "✨",
+   "prompt": "cosmic traits: a starry night-sky pattern, tiny planets and stars, a smooth space-suit sheen"
+  },
+  {
+   "key": "ice",
+   "name": "서리",
+   "emoji": "🧊",
+   "prompt": "frost traits: icy pale-blue tones, frost crystals, snowflake patterns, a cool glassy sheen"
+  },
+  {
+   "key": "fire",
+   "name": "불씨",
+   "emoji": "🔥",
+   "prompt": "fire traits: warm ember colors, flame-shaped tufts, glowing coal-like cracks"
+  },
+  {
+   "key": "sweet",
+   "name": "과자",
+   "emoji": "🍬",
+   "prompt": "candy traits: pastel candy colors, sprinkles, frosting drips, a glossy sugary sheen"
+  },
+  {
+   "key": "mask",
+   "name": "복면",
+   "emoji": "🎭",
+   "prompt": "ninja traits: a cloth mask scarf, a tied headband, dark wrapped cloth, small throwing stars"
+  },
+  {
+   "key": "stardust",
+   "name": "별가루",
+   "emoji": "🌟",
+   "prompt": "magic traits: a pointed wizard hat, star-patterned robes, a tiny wand, twinkling star dust"
+  }
+ ],
+ "inks": [
+  {
+   "id": "crow",
+   "emoji": "🐦‍⬛",
+   "name": "까마귀의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a crow's glossy black feathers and sharp beak"
+  },
+  {
+   "id": "sheet-ghost",
+   "emoji": "👻",
+   "name": "보자기 유령의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a bedsheet ghost's flowing white sheet body and two round eye holes"
+  },
+  {
+   "id": "bat",
+   "emoji": "🦇",
+   "name": "박쥐의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a bat's leathery wings and big pointed ears"
+  },
+  {
+   "id": "jack-o-lantern",
+   "emoji": "🎃",
+   "name": "호박등의 잉크",
+   "grade": "COMMON",
+   "family": "plant",
+   "prompt": "a carved jack-o'-lantern pumpkin head with a grinning face"
+  },
+  {
+   "id": "mummy",
+   "emoji": "🧟",
+   "name": "미라의 잉크",
+   "grade": "RARE",
+   "family": "ghost",
+   "prompt": "a mummy's wrapped bandages with loose trailing ends"
+  },
+  {
+   "id": "vampire",
+   "emoji": "🧛",
+   "name": "뱀파이어의 잉크",
+   "grade": "LEGEND",
+   "family": "ghost",
+   "prompt": "a vampire's high-collared black cape with red lining and small fangs"
+  },
+  {
+   "id": "duck",
+   "emoji": "🦆",
+   "name": "오리의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a duck's flat orange bill and webbed feet"
+  },
+  {
+   "id": "kingfisher",
+   "emoji": "🐦",
+   "name": "물총새의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a kingfisher's bright blue-and-orange feathers and long pointed beak"
+  },
+  {
+   "id": "crane",
+   "emoji": "🕊️",
+   "name": "학의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a crane's long elegant neck and a red crown patch"
+  },
+  {
+   "id": "eagle",
+   "emoji": "🦅",
+   "name": "독수리의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "an eagle's broad powerful wings and hooked beak"
+  },
+  {
+   "id": "bonghwang",
+   "emoji": "🪶",
+   "name": "봉황의 잉크",
+   "grade": "LEGEND",
+   "family": "bird",
+   "prompt": "a bonghwang phoenix's long multi-colored tail plumes and an elegant crest"
+  },
+  {
+   "id": "horse",
+   "emoji": "🐴",
+   "name": "말의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a horse's flowing mane and sturdy hooves"
+  },
+  {
+   "id": "unicorn",
+   "emoji": "🦄",
+   "name": "유니콘의 잉크",
+   "grade": "RARE",
+   "family": "beast",
+   "prompt": "a unicorn's spiral horn and pastel flowing mane"
+  },
+  {
+   "id": "griffin",
+   "emoji": "🦅",
+   "name": "그리폰의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a griffin's eagle head and feathered wings on a lion body"
+  },
+  {
+   "id": "paladin",
+   "emoji": "🛡️",
+   "name": "성기사의 잉크",
+   "grade": "LEGEND",
+   "family": "heraldry",
+   "prompt": "a paladin's shining holy plate armor and winged helmet"
+  },
+  {
+   "id": "salamander",
+   "emoji": "🦎",
+   "name": "불도마뱀의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a fire salamander's spotted orange skin and flame-tipped tail"
+  },
+  {
+   "id": "wyvern",
+   "emoji": "🐲",
+   "name": "와이번의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a wyvern's bat-like dragon wings and barbed tail"
+  },
+  {
+   "id": "blue-dragon",
+   "emoji": "🐉",
+   "name": "청룡의 잉크",
+   "grade": "LEGEND",
+   "family": "scale",
+   "prompt": "an eastern blue dragon's long serpentine body, whiskers and antler horns"
+  },
+  {
+   "id": "red-dragon",
+   "emoji": "🔥",
+   "name": "드래곤의 잉크",
+   "grade": "LEGEND",
+   "family": "scale",
+   "prompt": "a red dragon's great horned head, big wings and fiery scales"
+  },
+  {
+   "id": "gargoyle",
+   "emoji": "🗿",
+   "name": "가고일의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a gargoyle's stone-gray skin, small horns and stone wings"
+  },
+  {
+   "id": "demon-lord",
+   "emoji": "😈",
+   "name": "마왕의 잉크",
+   "grade": "LEGEND",
+   "family": "shadow",
+   "prompt": "a demon lord's large curved horns, a dark royal cape and a jagged crown"
+  },
+  {
+   "id": "can",
+   "emoji": "🥫",
+   "name": "깡통의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a tin can's cylindrical metal body with a pull-tab"
+  },
+  {
+   "id": "rat",
+   "emoji": "🐀",
+   "name": "쥐의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a rat's round ears and long thin tail"
+  },
+  {
+   "id": "scrap-golem",
+   "emoji": "🔧",
+   "name": "고철 골렘의 잉크",
+   "grade": "RARE",
+   "family": "junk",
+   "prompt": "a scrap golem's bolted-together metal plates and pipes"
+  },
+  {
+   "id": "alien",
+   "emoji": "👽",
+   "name": "외계인의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a little alien's antennae and big glossy eyes"
+  },
+  {
+   "id": "ufo",
+   "emoji": "🛸",
+   "name": "비행접시의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a flying saucer's round domed disc with little lights around the rim"
+  },
+  {
+   "id": "comet",
+   "emoji": "☄️",
+   "name": "혜성의 잉크",
+   "grade": "RARE",
+   "family": "cosmic",
+   "prompt": "a comet's blazing tail streaking behind"
+  },
+  {
+   "id": "star-whale",
+   "emoji": "🌌",
+   "name": "별고래의 잉크",
+   "grade": "LEGEND",
+   "family": "cosmic",
+   "prompt": "a star whale's huge body patterned with a starry night sky"
+  },
+  {
+   "id": "fennec",
+   "emoji": "🦊",
+   "name": "사막여우의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a fennec fox's enormous ears and sandy fur"
+  },
+  {
+   "id": "camel",
+   "emoji": "🐫",
+   "name": "낙타의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a camel's humps and long eyelashes"
+  },
+  {
+   "id": "scorpion",
+   "emoji": "🦂",
+   "name": "전갈의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "a scorpion's curled stinger tail and pincers"
+  },
+  {
+   "id": "cobra",
+   "emoji": "🐍",
+   "name": "코브라의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "a cobra's wide patterned hood"
+  },
+  {
+   "id": "sphinx",
+   "emoji": "🏺",
+   "name": "스핑크스의 잉크",
+   "grade": "LEGEND",
+   "family": "beast",
+   "prompt": "a sphinx's royal striped headdress and lion body"
+  },
+  {
+   "id": "snowman",
+   "emoji": "⛄",
+   "name": "눈사람의 잉크",
+   "grade": "COMMON",
+   "family": "ice",
+   "prompt": "a snowman's round snowball body, a carrot nose and a scarf"
+  },
+  {
+   "id": "arctic-fox",
+   "emoji": "🦊",
+   "name": "북극여우의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "an arctic fox's thick snow-white fur and fluffy tail"
+  },
+  {
+   "id": "polar-bear",
+   "emoji": "🐻‍❄️",
+   "name": "북극곰의 잉크",
+   "grade": "RARE",
+   "family": "beast",
+   "prompt": "a polar bear's heavy white fur and big paws"
+  },
+  {
+   "id": "mammoth",
+   "emoji": "🦣",
+   "name": "매머드의 잉크",
+   "grade": "RARE",
+   "family": "beast",
+   "prompt": "a mammoth's long curved tusks and shaggy brown fur"
+  },
+  {
+   "id": "yeti",
+   "emoji": "❄️",
+   "name": "설인의 잉크",
+   "grade": "LEGEND",
+   "family": "ice",
+   "prompt": "a yeti's shaggy white fur and big frosty feet"
+  },
+  {
+   "id": "lava",
+   "emoji": "🌋",
+   "name": "용암의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "glowing molten lava cracks running across the skin"
+  },
+  {
+   "id": "magma-golem",
+   "emoji": "🪨",
+   "name": "마그마 골렘의 잉크",
+   "grade": "RARE",
+   "family": "fire",
+   "prompt": "a magma golem's rocky plates with glowing lava seams"
+  },
+  {
+   "id": "phoenix",
+   "emoji": "🐦‍🔥",
+   "name": "불사조의 잉크",
+   "grade": "LEGEND",
+   "family": "fire",
+   "prompt": "a phoenix's flaming wings and long fiery tail feathers"
+  },
+  {
+   "id": "gummy-bear",
+   "emoji": "🧸",
+   "name": "젤리곰의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a gummy bear's glossy translucent jelly body"
+  },
+  {
+   "id": "gingerbread",
+   "emoji": "🍪",
+   "name": "쿠키의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a gingerbread cookie's icing-trimmed edges and gumdrop buttons"
+  },
+  {
+   "id": "cotton-candy",
+   "emoji": "🍭",
+   "name": "솜사탕의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "fluffy pastel cotton-candy puffs"
+  },
+  {
+   "id": "ice-cream",
+   "emoji": "🍦",
+   "name": "아이스크림의 잉크",
+   "grade": "RARE",
+   "family": "sweet",
+   "prompt": "an ice cream cone's scoops with dripping cream and a cherry"
+  },
+  {
+   "id": "candy-queen",
+   "emoji": "👑",
+   "name": "사탕 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "sweet",
+   "prompt": "a candy queen's lollipop scepter, candy crown and swirl-patterned gown"
+  },
+  {
+   "id": "toad",
+   "emoji": "🐸",
+   "name": "두꺼비의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a toad's bumpy skin and wide mouth"
+  },
+  {
+   "id": "tengu",
+   "emoji": "👺",
+   "name": "텐구의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a tengu's long red nose, feathered wings and a small black cap"
+  },
+  {
+   "id": "ninja-master",
+   "emoji": "🥷",
+   "name": "닌자 마스터의 잉크",
+   "grade": "LEGEND",
+   "family": "mask",
+   "prompt": "a ninja master's long scarf, sword on the back and a calm masked face"
+  },
+  {
+   "id": "spellbook",
+   "emoji": "📖",
+   "name": "마법책의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a flying spellbook's flapping pages and glowing runes"
+  },
+  {
+   "id": "wizard",
+   "emoji": "🧙",
+   "name": "마법사의 잉크",
+   "grade": "RARE",
+   "family": "stardust",
+   "prompt": "a wizard's star-patterned robe, pointed hat and wooden staff"
+  },
+  {
+   "id": "archmage",
+   "emoji": "🔮",
+   "name": "대마법사의 잉크",
+   "grade": "LEGEND",
+   "family": "stardust",
+   "prompt": "an archmage's long beard, flowing robes and an ornate crystal staff"
+  },
+  {
+   "id": "sparrow",
+   "emoji": "🐦",
+   "name": "참새의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a sparrow's small brown speckled wings and short beak"
+  },
+  {
+   "id": "snail",
+   "emoji": "🐌",
+   "name": "달팽이의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "a snail's spiral shell and little eye stalks"
+  },
+  {
+   "id": "mole",
+   "emoji": "🕳️",
+   "name": "두더지의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a mole's tiny eyes, pink nose and big digging claws"
+  },
+  {
+   "id": "tree-frog",
+   "emoji": "🐸",
+   "name": "청개구리의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a tree frog's bright green skin and round sticky toe pads"
+  },
+  {
+   "id": "fox-kit",
+   "emoji": "🦊",
+   "name": "아기 여우의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a fox kit's oversized ears and a fluffy little tail"
+  },
+  {
+   "id": "butterfly",
+   "emoji": "🦋",
+   "name": "나비의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "a butterfly's colorful patterned wings"
+  },
+  {
+   "id": "magpie",
+   "emoji": "🐦‍⬛",
+   "name": "까치의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a magpie's black-and-white feathers and long tail"
+  },
+  {
+   "id": "bear-cub",
+   "emoji": "🧸",
+   "name": "아기 곰의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a bear cub's round little ears and soft brown fur"
+  },
+  {
+   "id": "badger",
+   "emoji": "🦡",
+   "name": "오소리의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a badger's striped black-and-white face"
+  },
+  {
+   "id": "wolf-pup",
+   "emoji": "🐺",
+   "name": "꼬마 늑대의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a wolf pup's pointed ears and fluffy gray fur"
+  },
+  {
+   "id": "mushroom",
+   "emoji": "🍄",
+   "name": "버섯 정령의 잉크",
+   "grade": "COMMON",
+   "family": "spirit",
+   "prompt": "a mushroom cap with white spots on the head"
+  },
+  {
+   "id": "tiger-cub",
+   "emoji": "🐯",
+   "name": "새끼 호랑이의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a tiger cub's soft orange stripes and big paws"
+  },
+  {
+   "id": "flower-fairy",
+   "emoji": "🌼",
+   "name": "꽃요정의 잉크",
+   "grade": "COMMON",
+   "family": "spirit",
+   "prompt": "a flower fairy's petal skirt and small translucent wings"
+  },
+  {
+   "id": "eagle-owl",
+   "emoji": "🦉",
+   "name": "수리부엉이의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "an eagle owl's large ear tufts and fierce orange eyes"
+  },
+  {
+   "id": "mountain-sage",
+   "emoji": "⛰️",
+   "name": "산신령의 잉크",
+   "grade": "LEGEND",
+   "family": "spirit",
+   "prompt": "a mountain sage's long white beard, gnarled staff and cloud-like robes"
+  },
+  {
+   "id": "shrimp",
+   "emoji": "🦐",
+   "name": "새우의 잉크",
+   "grade": "COMMON",
+   "family": "crustacean",
+   "prompt": "a shrimp's curled segmented body and long feelers"
+  },
+  {
+   "id": "starfish",
+   "emoji": "⭐",
+   "name": "불가사리의 잉크",
+   "grade": "COMMON",
+   "family": "marine",
+   "prompt": "a starfish's five-pointed body with bumpy texture"
+  },
+  {
+   "id": "sea-urchin",
+   "emoji": "🌰",
+   "name": "성게의 잉크",
+   "grade": "COMMON",
+   "family": "crustacean",
+   "prompt": "a sea urchin's round body covered in spines"
+  },
+  {
+   "id": "baby-octopus",
+   "emoji": "🐙",
+   "name": "꼬마 문어의 잉크",
+   "grade": "COMMON",
+   "family": "tentacle",
+   "prompt": "a baby octopus's little curly tentacles"
+  },
+  {
+   "id": "flounder",
+   "emoji": "🐟",
+   "name": "넙치의 잉크",
+   "grade": "COMMON",
+   "family": "fish",
+   "prompt": "a flounder's flat body with both eyes on one side"
+  },
+  {
+   "id": "shark-pup",
+   "emoji": "🦈",
+   "name": "아기 상어의 잉크",
+   "grade": "COMMON",
+   "family": "fish",
+   "prompt": "a baby shark's small dorsal fin and toothy grin"
+  },
+  {
+   "id": "electric-eel",
+   "emoji": "⚡",
+   "name": "전기뱀장어의 잉크",
+   "grade": "COMMON",
+   "family": "fish",
+   "prompt": "an electric eel's long body with yellow spark markings"
+  },
+  {
+   "id": "nautilus",
+   "emoji": "🐚",
+   "name": "앵무조개의 잉크",
+   "grade": "COMMON",
+   "family": "tentacle",
+   "prompt": "a nautilus's striped coiled shell"
+  },
+  {
+   "id": "swordfish",
+   "emoji": "🗡️",
+   "name": "황새치의 잉크",
+   "grade": "RARE",
+   "family": "fish",
+   "prompt": "a swordfish's long sharp bill and tall dorsal fin"
+  },
+  {
+   "id": "hammerhead",
+   "emoji": "🔨",
+   "name": "망치상어의 잉크",
+   "grade": "RARE",
+   "family": "fish",
+   "prompt": "a hammerhead shark's wide hammer-shaped head"
+  },
+  {
+   "id": "narwhal",
+   "emoji": "🦄",
+   "name": "일각고래의 잉크",
+   "grade": "RARE",
+   "family": "marine",
+   "prompt": "a narwhal's long spiral tusk"
+  },
+  {
+   "id": "mermaid",
+   "emoji": "🧜",
+   "name": "인어 전사의 잉크",
+   "grade": "RARE",
+   "family": "fish",
+   "prompt": "a merfolk warrior's scaled fish tail, shell armor and trident"
+  },
+  {
+   "id": "giant-squid",
+   "emoji": "🦑",
+   "name": "대왕오징어의 잉크",
+   "grade": "RARE",
+   "family": "tentacle",
+   "prompt": "a giant squid's long tentacles and huge eyes"
+  },
+  {
+   "id": "sea-king",
+   "emoji": "🔱",
+   "name": "심해의 왕의 잉크",
+   "grade": "LEGEND",
+   "family": "marine",
+   "prompt": "a sea king's coral crown, kelp cape and royal trident"
+  },
+  {
+   "id": "gecko",
+   "emoji": "🦎",
+   "name": "도마뱀붙이의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a gecko's sticky toe pads and spotted skin"
+  },
+  {
+   "id": "ant",
+   "emoji": "🐜",
+   "name": "개미의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "an ant's segmented body and bent antennae"
+  },
+  {
+   "id": "lemur",
+   "emoji": "🐒",
+   "name": "여우원숭이의 잉크",
+   "grade": "COMMON",
+   "family": "primate",
+   "prompt": "a lemur's ringed black-and-white tail and big round eyes"
+  },
+  {
+   "id": "lion-cub",
+   "emoji": "🦁",
+   "name": "아기 사자의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a lion cub's fuzzy beginning mane"
+  },
+  {
+   "id": "baby-dino",
+   "emoji": "🦕",
+   "name": "아기 공룡의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a baby dinosaur's stubby tail and eggshell bits"
+  },
+  {
+   "id": "iguana",
+   "emoji": "🦎",
+   "name": "이구아나의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "an iguana's spiky back crest and dewlap"
+  },
+  {
+   "id": "baby-croc",
+   "emoji": "🐊",
+   "name": "꼬마 악어의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a baby crocodile's bumpy green back and toothy snout"
+  },
+  {
+   "id": "zebra",
+   "emoji": "🦓",
+   "name": "얼룩말의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a zebra's bold black-and-white stripes"
+  },
+  {
+   "id": "orangutan",
+   "emoji": "🦧",
+   "name": "오랑우탄의 잉크",
+   "grade": "COMMON",
+   "family": "primate",
+   "prompt": "an orangutan's shaggy orange hair and long arms"
+  },
+  {
+   "id": "giraffe",
+   "emoji": "🦒",
+   "name": "기린의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a giraffe's long neck, small ossicones and patchwork spots"
+  },
+  {
+   "id": "anaconda",
+   "emoji": "🐍",
+   "name": "아나콘다의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "an anaconda's thick coiling patterned body"
+  },
+  {
+   "id": "velociraptor",
+   "emoji": "🦖",
+   "name": "랩터의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "a raptor's sickle claws and feathered crest"
+  },
+  {
+   "id": "pteranodon",
+   "emoji": "🦅",
+   "name": "프테라노돈의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "a pteranodon's long head crest and leathery wings"
+  },
+  {
+   "id": "stegosaurus",
+   "emoji": "🦕",
+   "name": "스테고사우루스의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "a stegosaurus's row of back plates and spiked tail"
+  },
+  {
+   "id": "spinosaurus",
+   "emoji": "🦖",
+   "name": "스피노사우루스의 잉크",
+   "grade": "LEGEND",
+   "family": "reptile",
+   "prompt": "a spinosaurus's tall sail fin and long crocodile-like jaws"
+  },
+  {
+   "id": "toy-car",
+   "emoji": "🚙",
+   "name": "장난감 자동차의 잉크",
+   "grade": "COMMON",
+   "family": "engine",
+   "prompt": "a toy car's bright plastic wheels and wind-up key"
+  },
+  {
+   "id": "bicycle",
+   "emoji": "🚲",
+   "name": "자전거의 잉크",
+   "grade": "COMMON",
+   "family": "engine",
+   "prompt": "bicycle wheels, handlebars and a little bell"
+  },
+  {
+   "id": "robot-vacuum",
+   "emoji": "🧹",
+   "name": "로봇청소기의 잉크",
+   "grade": "COMMON",
+   "family": "electric",
+   "prompt": "a robot vacuum's round disc body and spinning brushes"
+  },
+  {
+   "id": "tin-soldier",
+   "emoji": "💂",
+   "name": "양철 병정의 잉크",
+   "grade": "COMMON",
+   "family": "clockwork",
+   "prompt": "a tin soldier's tall hat, painted uniform and wind-up key"
+  },
+  {
+   "id": "forklift",
+   "emoji": "🏗️",
+   "name": "지게차의 잉크",
+   "grade": "COMMON",
+   "family": "steel",
+   "prompt": "a forklift's lifting forks and caution stripes"
+  },
+  {
+   "id": "garbage-truck",
+   "emoji": "🚛",
+   "name": "청소차의 잉크",
+   "grade": "COMMON",
+   "family": "engine",
+   "prompt": "a garbage truck's boxy green bin body"
+  },
+  {
+   "id": "ambulance",
+   "emoji": "🚑",
+   "name": "구급차의 잉크",
+   "grade": "COMMON",
+   "family": "engine",
+   "prompt": "an ambulance's white body, red cross and siren light"
+  },
+  {
+   "id": "kart",
+   "emoji": "🏁",
+   "name": "카트의 잉크",
+   "grade": "COMMON",
+   "family": "engine",
+   "prompt": "a racing kart's low frame, steering wheel and number decal"
+  },
+  {
+   "id": "crane-truck",
+   "emoji": "🏗️",
+   "name": "크레인의 잉크",
+   "grade": "COMMON",
+   "family": "steel",
+   "prompt": "a crane truck's long folding boom arm and hook"
+  },
+  {
+   "id": "assembly-robot",
+   "emoji": "🦾",
+   "name": "조립 로봇의 잉크",
+   "grade": "COMMON",
+   "family": "steel",
+   "prompt": "an assembly robot's jointed mechanical arm and gripper"
+  },
+  {
+   "id": "guard-robot",
+   "emoji": "🤖",
+   "name": "경비 로봇의 잉크",
+   "grade": "RARE",
+   "family": "steel",
+   "prompt": "a guard robot's sturdy armor plating and scanning visor"
+  },
+  {
+   "id": "battleship",
+   "emoji": "🚢",
+   "name": "전함의 잉크",
+   "grade": "RARE",
+   "family": "steel",
+   "prompt": "a battleship's gray hull plating and gun turrets"
+  },
+  {
+   "id": "stealth-jet",
+   "emoji": "🛩️",
+   "name": "스텔스기의 잉크",
+   "grade": "RARE",
+   "family": "engine",
+   "prompt": "a stealth jet's sharp angular black wings"
+  },
+  {
+   "id": "robot-general",
+   "emoji": "🎖️",
+   "name": "로봇 장군의 잉크",
+   "grade": "LEGEND",
+   "family": "steel",
+   "prompt": "a robot general's heavy commander armor, cape and shoulder cannons"
+  },
+  {
+   "id": "kid",
+   "emoji": "🧒",
+   "name": "꼬마의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a little squire's tiny wooden sword and oversized helmet"
+  },
+  {
+   "id": "apprentice",
+   "emoji": "📜",
+   "name": "견습생의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a knight apprentice's simple tunic and practice shield"
+  },
+  {
+   "id": "jester",
+   "emoji": "🃏",
+   "name": "광대의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a jester's two-pointed bell hat and diamond-patterned outfit"
+  },
+  {
+   "id": "gatekeeper",
+   "emoji": "🚪",
+   "name": "성문지기의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a gatekeeper's tall halberd and sturdy helmet"
+  },
+  {
+   "id": "archer",
+   "emoji": "🏹",
+   "name": "궁수의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "an archer's feathered cap, longbow and quiver"
+  },
+  {
+   "id": "wanderer",
+   "emoji": "🗡️",
+   "name": "떠돌이 칼잡이의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a wandering swordsman's travel cloak and worn sword"
+  },
+  {
+   "id": "musa",
+   "emoji": "⚔️",
+   "name": "무사의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a warrior's lamellar armor and sturdy sword"
+  },
+  {
+   "id": "knight",
+   "emoji": "🛡️",
+   "name": "기사의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a knight's plate armor, plumed helmet and kite shield"
+  },
+  {
+   "id": "baron",
+   "emoji": "🎩",
+   "name": "남작의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a baron's fur-trimmed cloak and family crest brooch"
+  },
+  {
+   "id": "count",
+   "emoji": "🌹",
+   "name": "백작의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a count's high collar, sash and medal"
+  },
+  {
+   "id": "marquis",
+   "emoji": "🎖️",
+   "name": "후작의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a marquis's ornate embroidered coat and feathered hat"
+  },
+  {
+   "id": "grand-duke",
+   "emoji": "💎",
+   "name": "대공의 잉크",
+   "grade": "LEGEND",
+   "family": "heraldry",
+   "prompt": "a grand duke's ermine mantle and ducal coronet"
+  },
+  {
+   "id": "king",
+   "emoji": "👑",
+   "name": "왕의 잉크",
+   "grade": "LEGEND",
+   "family": "heraldry",
+   "prompt": "a king's golden crown, royal red mantle and scepter"
+  },
+  {
+   "id": "candle-ghost",
+   "emoji": "🕯️",
+   "name": "촛대 유령의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a candelabra's three little flames"
+  },
+  {
+   "id": "skeleton",
+   "emoji": "💀",
+   "name": "해골의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a skeleton's bone-white ribs and skull face"
+  },
+  {
+   "id": "cursed-doll",
+   "emoji": "🪆",
+   "name": "태엽 인형의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a wind-up doll's porcelain face, button eyes and a key on the back"
+  },
+  {
+   "id": "zombie",
+   "emoji": "🧟",
+   "name": "좀비의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a zombie's patched clothes and stitched green skin"
+  },
+  {
+   "id": "witch-apprentice",
+   "emoji": "🧹",
+   "name": "견습 마녀의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "an apprentice witch's floppy pointed hat and small broom"
+  },
+  {
+   "id": "wailing-ghost",
+   "emoji": "👻",
+   "name": "통곡 유령의 잉크",
+   "grade": "RARE",
+   "family": "ghost",
+   "prompt": "a wailing ghost's long tattered robe and floating hair"
+  },
+  {
+   "id": "werewolf",
+   "emoji": "🌕",
+   "name": "늑대인간의 잉크",
+   "grade": "RARE",
+   "family": "beast",
+   "prompt": "a werewolf's shaggy fur, wolf ears and torn clothes"
+  },
+  {
+   "id": "reaper",
+   "emoji": "⚰️",
+   "name": "사신의 잉크",
+   "grade": "LEGEND",
+   "family": "ghost",
+   "prompt": "a grim reaper's hooded black cloak and great scythe"
+  },
+  {
+   "id": "dragonfly",
+   "emoji": "🪰",
+   "name": "잠자리의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "a dragonfly's long thin body and four clear wings"
+  },
+  {
+   "id": "salmon",
+   "emoji": "🐟",
+   "name": "연어의 잉크",
+   "grade": "COMMON",
+   "family": "fish",
+   "prompt": "a salmon's pink speckled scales and strong tail"
+  },
+  {
+   "id": "heron",
+   "emoji": "🪿",
+   "name": "왜가리의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a heron's long legs, long neck and spear-like beak"
+  },
+  {
+   "id": "hawk",
+   "emoji": "🦅",
+   "name": "매의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a hawk's sharp talons and barred wing feathers"
+  },
+  {
+   "id": "wind-sprite",
+   "emoji": "🌬️",
+   "name": "바람 요정의 잉크",
+   "grade": "COMMON",
+   "family": "wind",
+   "prompt": "a wind sprite's swirling breeze wisps and leaf wings"
+  },
+  {
+   "id": "falconer",
+   "emoji": "🧤",
+   "name": "매사냥꾼의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a falconer's leather glove, hood and a falcon companion"
+  },
+  {
+   "id": "thunderbird",
+   "emoji": "🌩️",
+   "name": "천둥새의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a thunderbird's storm-dark wings with lightning patterns"
+  },
+  {
+   "id": "wind-god",
+   "emoji": "🌪️",
+   "name": "바람 신장의 잉크",
+   "grade": "LEGEND",
+   "family": "wind",
+   "prompt": "a wind god's billowing wind bag, flowing scarves and divine armor"
+  },
+  {
+   "id": "kobold",
+   "emoji": "⛏️",
+   "name": "코볼트의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a kobold's small scaly snout and tiny horns"
+  },
+  {
+   "id": "baby-dragon",
+   "emoji": "🐣",
+   "name": "꼬마용의 잉크",
+   "grade": "COMMON",
+   "family": "scale",
+   "prompt": "a baby dragon's stubby wings and little horns"
+  },
+  {
+   "id": "dragon-tamer",
+   "emoji": "🍖",
+   "name": "용사육사의 잉크",
+   "grade": "COMMON",
+   "family": "scale",
+   "prompt": "a dragon tamer's leather gear and dragon-scale whip"
+  },
+  {
+   "id": "drake",
+   "emoji": "🦎",
+   "name": "드레이크의 잉크",
+   "grade": "COMMON",
+   "family": "scale",
+   "prompt": "a drake's sturdy four-legged dragon build and armored scales"
+  },
+  {
+   "id": "frost-wyvern",
+   "emoji": "🧊",
+   "name": "서리 와이번의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a frost wyvern's icy blue wings and frosted scales"
+  },
+  {
+   "id": "dragon-knight",
+   "emoji": "🏇",
+   "name": "용기사의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a dragon knight's dragon-scale armor and dragon-head helmet"
+  },
+  {
+   "id": "hydra",
+   "emoji": "🐍",
+   "name": "히드라의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a hydra's several serpent heads"
+  },
+  {
+   "id": "dragon-king",
+   "emoji": "🐲",
+   "name": "용왕의 잉크",
+   "grade": "LEGEND",
+   "family": "scale",
+   "prompt": "a dragon king's royal crown, long whiskers and golden dragon robes"
+  },
+  {
+   "id": "slime",
+   "emoji": "🟣",
+   "name": "슬라임의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "a slime's glossy wobbly jelly body"
+  },
+  {
+   "id": "goblin",
+   "emoji": "👺",
+   "name": "고블린의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "a goblin's long pointy ears, green skin and crude dagger"
+  },
+  {
+   "id": "dark-apprentice",
+   "emoji": "📕",
+   "name": "어둠 견습생의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "a dark apprentice's hooded black robe and small cursed book"
+  },
+  {
+   "id": "orc",
+   "emoji": "🪓",
+   "name": "오크의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "an orc's tusks, green skin and spiked shoulder pads"
+  },
+  {
+   "id": "hellhound",
+   "emoji": "🐕",
+   "name": "지옥견의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a hellhound's dark fur, spiked collar and ember eyes"
+  },
+  {
+   "id": "dark-knight",
+   "emoji": "⚔️",
+   "name": "흑기사의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a dark knight's black spiked armor and horned helmet"
+  },
+  {
+   "id": "lich",
+   "emoji": "☠️",
+   "name": "리치의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a lich's skeletal face, tattered robes and soul-gem staff"
+  },
+  {
+   "id": "sock",
+   "emoji": "🧦",
+   "name": "양말의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a lost sock's striped knitted fabric"
+  },
+  {
+   "id": "bottle",
+   "emoji": "🧴",
+   "name": "페트병의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a plastic bottle's clear body and screw cap"
+  },
+  {
+   "id": "cardboard",
+   "emoji": "📦",
+   "name": "종이상자의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a cardboard box's flaps and tape strips"
+  },
+  {
+   "id": "pigeon",
+   "emoji": "🕊️",
+   "name": "비둘기의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a pigeon's iridescent neck feathers and plump body"
+  },
+  {
+   "id": "umbrella",
+   "emoji": "☂️",
+   "name": "우산의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "an umbrella's canopy and hooked handle"
+  },
+  {
+   "id": "junk-robot",
+   "emoji": "📻",
+   "name": "폐품 로봇의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a junk robot's mismatched scrap limbs and dented can head"
+  },
+  {
+   "id": "magnet-crane",
+   "emoji": "🧲",
+   "name": "자석 크레인의 잉크",
+   "grade": "RARE",
+   "family": "junk",
+   "prompt": "a magnet crane's big round electromagnet"
+  },
+  {
+   "id": "junk-king",
+   "emoji": "🪑",
+   "name": "고물왕의 잉크",
+   "grade": "LEGEND",
+   "family": "junk",
+   "prompt": "a junk king's bottle-cap crown and patched scrap-metal throne cape"
+  },
+  {
+   "id": "astronaut-kid",
+   "emoji": "👶",
+   "name": "꼬마 우주인의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a little astronaut's round bubble helmet and backpack"
+  },
+  {
+   "id": "moon-rabbit",
+   "emoji": "🌙",
+   "name": "달토끼의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a moon rabbit's long ears and rice-cake mallet"
+  },
+  {
+   "id": "satellite",
+   "emoji": "🛰️",
+   "name": "위성의 잉크",
+   "grade": "COMMON",
+   "family": "electric",
+   "prompt": "a satellite's solar panel wings and dish antenna"
+  },
+  {
+   "id": "space-jelly",
+   "emoji": "🪼",
+   "name": "우주 해파리의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a space jellyfish's star-speckled bell and trailing tendrils"
+  },
+  {
+   "id": "meteorite",
+   "emoji": "🌑",
+   "name": "운석의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a meteorite's cratered rocky surface"
+  },
+  {
+   "id": "astronaut",
+   "emoji": "🧑‍🚀",
+   "name": "우주 비행사의 잉크",
+   "grade": "RARE",
+   "family": "cosmic",
+   "prompt": "an astronaut's white space suit, visor helmet and jetpack"
+  },
+  {
+   "id": "alien-warrior",
+   "emoji": "🔫",
+   "name": "외계 전투병의 잉크",
+   "grade": "RARE",
+   "family": "cosmic",
+   "prompt": "an alien warrior's sleek armor and ray blaster"
+  },
+  {
+   "id": "black-hole",
+   "emoji": "🕳️",
+   "name": "블랙홀의 잉크",
+   "grade": "LEGEND",
+   "family": "cosmic",
+   "prompt": "a swirling black hole vortex with a bright ring around it"
+  },
+  {
+   "id": "sand-lizard",
+   "emoji": "🦎",
+   "name": "모래 도마뱀의 잉크",
+   "grade": "COMMON",
+   "family": "reptile",
+   "prompt": "a sand lizard's sandy scales and frilled neck"
+  },
+  {
+   "id": "cactus",
+   "emoji": "🌵",
+   "name": "선인장의 잉크",
+   "grade": "COMMON",
+   "family": "plant",
+   "prompt": "a cactus's green ribbed arms and little spines with a flower"
+  },
+  {
+   "id": "meerkat",
+   "emoji": "🐿️",
+   "name": "미어캣의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a meerkat's upright pose and dark eye patches"
+  },
+  {
+   "id": "armadillo",
+   "emoji": "🛡️",
+   "name": "아르마딜로의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "an armadillo's banded armored shell"
+  },
+  {
+   "id": "vulture",
+   "emoji": "🦅",
+   "name": "대머리수리의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a vulture's bald head and dark ragged wings"
+  },
+  {
+   "id": "desert-merchant",
+   "emoji": "🧳",
+   "name": "사막 상인의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a desert merchant's turban, scarf and pack of goods"
+  },
+  {
+   "id": "djinn",
+   "emoji": "🪔",
+   "name": "램프 정령의 잉크",
+   "grade": "RARE",
+   "family": "spirit",
+   "prompt": "a lamp genie's smoky trailing lower body and golden arm bands"
+  },
+  {
+   "id": "sandworm",
+   "emoji": "🪱",
+   "name": "모래벌레의 잉크",
+   "grade": "RARE",
+   "family": "insect",
+   "prompt": "a sandworm's segmented body and round toothy mouth"
+  },
+  {
+   "id": "pharaoh",
+   "emoji": "☀️",
+   "name": "파라오의 잉크",
+   "grade": "LEGEND",
+   "family": "spirit",
+   "prompt": "a pharaoh's striped nemes headdress, golden collar and crook"
+  },
+  {
+   "id": "snow-hare",
+   "emoji": "🐇",
+   "name": "눈토끼의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a snow hare's white fur and dark ear tips"
+  },
+  {
+   "id": "baby-seal",
+   "emoji": "🦭",
+   "name": "아기 물범의 잉크",
+   "grade": "COMMON",
+   "family": "marine",
+   "prompt": "a baby seal's fluffy white coat and round black eyes"
+  },
+  {
+   "id": "snowy-owl",
+   "emoji": "🦉",
+   "name": "흰올빼미의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a snowy owl's white speckled feathers and golden eyes"
+  },
+  {
+   "id": "reindeer",
+   "emoji": "🦌",
+   "name": "순록의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a reindeer's large branching antlers"
+  },
+  {
+   "id": "walrus",
+   "emoji": "🦭",
+   "name": "바다코끼리의 잉크",
+   "grade": "COMMON",
+   "family": "marine",
+   "prompt": "a walrus's long tusks and bristly whiskers"
+  },
+  {
+   "id": "ice-golem",
+   "emoji": "🧊",
+   "name": "얼음 골렘의 잉크",
+   "grade": "RARE",
+   "family": "ice",
+   "prompt": "an ice golem's crystal-clear ice block body"
+  },
+  {
+   "id": "snow-queen",
+   "emoji": "👸",
+   "name": "눈의 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "ice",
+   "prompt": "a snow queen's ice crystal crown and long frost-white gown"
+  },
+  {
+   "id": "charcoal",
+   "emoji": "⚫",
+   "name": "숯의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "glowing charcoal chunks with ember edges"
+  },
+  {
+   "id": "fire-ant",
+   "emoji": "🐜",
+   "name": "불개미의 잉크",
+   "grade": "COMMON",
+   "family": "insect",
+   "prompt": "a fire ant's red segmented body and strong jaws"
+  },
+  {
+   "id": "smith-apprentice",
+   "emoji": "🔨",
+   "name": "견습 대장장이의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "a blacksmith's leather apron, hammer and soot smudges"
+  },
+  {
+   "id": "fire-fox",
+   "emoji": "🦊",
+   "name": "불여우의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "a fire fox's flame-tipped tail and ember fur"
+  },
+  {
+   "id": "fire-spirit",
+   "emoji": "🔥",
+   "name": "불의 정령의 잉크",
+   "grade": "RARE",
+   "family": "fire",
+   "prompt": "a fire spirit's flickering flame body"
+  },
+  {
+   "id": "fire-giant",
+   "emoji": "🌋",
+   "name": "불거인의 잉크",
+   "grade": "RARE",
+   "family": "fire",
+   "prompt": "a fire giant's huge rocky body with blazing hair"
+  },
+  {
+   "id": "volcano-lord",
+   "emoji": "👹",
+   "name": "화산 군주의 잉크",
+   "grade": "LEGEND",
+   "family": "fire",
+   "prompt": "a volcano lord's obsidian crown and lava-cracked armor"
+  },
+  {
+   "id": "lollipop",
+   "emoji": "🍭",
+   "name": "막대사탕의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a big swirl lollipop"
+  },
+  {
+   "id": "macaron",
+   "emoji": "🧁",
+   "name": "마카롱의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a macaron's two pastel shells with a cream filling"
+  },
+  {
+   "id": "donut",
+   "emoji": "🍩",
+   "name": "도넛의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a donut's ring shape with icing and sprinkles"
+  },
+  {
+   "id": "pudding",
+   "emoji": "🍮",
+   "name": "푸딩의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a pudding's wobbly caramel-topped body"
+  },
+  {
+   "id": "chocolate",
+   "emoji": "🍫",
+   "name": "초콜릿의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a chocolate bar's grid of squares"
+  },
+  {
+   "id": "cake",
+   "emoji": "🍰",
+   "name": "케이크의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a layered cake with frosting and a strawberry on top"
+  },
+  {
+   "id": "patissier",
+   "emoji": "👨‍🍳",
+   "name": "파티시에의 잉크",
+   "grade": "RARE",
+   "family": "sweet",
+   "prompt": "a pastry chef's tall white hat, apron and whisk"
+  },
+  {
+   "id": "candy-dragon",
+   "emoji": "🐉",
+   "name": "사탕 용의 잉크",
+   "grade": "RARE",
+   "family": "sweet",
+   "prompt": "a candy dragon's striped candy-cane horns and lollipop scales"
+  },
+  {
+   "id": "genin",
+   "emoji": "🥷",
+   "name": "하급 닌자의 잉크",
+   "grade": "COMMON",
+   "family": "mask",
+   "prompt": "a junior ninja's short headband and simple ninja garb"
+  },
+  {
+   "id": "tanuki",
+   "emoji": "🦝",
+   "name": "둔갑 너구리의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a tanuki's leaf on the head and round striped tail"
+  },
+  {
+   "id": "ronin",
+   "emoji": "⚔️",
+   "name": "낭인의 잉크",
+   "grade": "COMMON",
+   "family": "mask",
+   "prompt": "a ronin's straw hat and worn kimono with a katana"
+  },
+  {
+   "id": "ninja",
+   "emoji": "🌀",
+   "name": "닌자의 잉크",
+   "grade": "RARE",
+   "family": "mask",
+   "prompt": "a ninja's full dark garb, mask and katana"
+  },
+  {
+   "id": "samurai-general",
+   "emoji": "🏯",
+   "name": "사무라이 장군의 잉크",
+   "grade": "RARE",
+   "family": "mask",
+   "prompt": "a samurai general's ornate kabuto helmet and armor"
+  },
+  {
+   "id": "oni",
+   "emoji": "👹",
+   "name": "오니의 잉크",
+   "grade": "LEGEND",
+   "family": "mask",
+   "prompt": "an oni's horns, fierce tusks and spiked club"
+  },
+  {
+   "id": "broom",
+   "emoji": "🧹",
+   "name": "빗자루의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a flying broom's bristle tail"
+  },
+  {
+   "id": "student",
+   "emoji": "🎒",
+   "name": "마법 학생의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a magic student's school robe, tie and wand"
+  },
+  {
+   "id": "potion",
+   "emoji": "🧪",
+   "name": "물약의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a potion bottle's corked round flask with bubbling liquid"
+  },
+  {
+   "id": "fortune-teller",
+   "emoji": "🔮",
+   "name": "점술사의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a fortune teller's veil, coin jewelry and crystal ball"
+  },
+  {
+   "id": "alchemist",
+   "emoji": "⚗️",
+   "name": "연금술사의 잉크",
+   "grade": "RARE",
+   "family": "stardust",
+   "prompt": "an alchemist's goggles, flasks and pouch belt"
+  },
+  {
+   "id": "witch",
+   "emoji": "🧙‍♀️",
+   "name": "마녀의 잉크",
+   "grade": "RARE",
+   "family": "stardust",
+   "prompt": "a witch's tall pointed hat and long dark robe"
+  },
+  {
+   "id": "headmaster",
+   "emoji": "🏫",
+   "name": "교장의 잉크",
+   "grade": "LEGEND",
+   "family": "stardust",
+   "prompt": "a headmaster's grand robe, tall hat and long beard"
+  },
+  {
+   "id": "rose-fairy",
+   "emoji": "🌹",
+   "name": "장미 요정의 잉크",
+   "grade": "RARE",
+   "family": "spirit",
+   "prompt": "a rose fairy's rose-petal dress and delicate wings"
+  },
+  {
+   "id": "fairy-queen",
+   "emoji": "🧚",
+   "name": "요정 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "spirit",
+   "prompt": "a fairy queen's tall flower crown, long petal gown and sparkling wings"
+  },
+  {
+   "id": "forest-dancer",
+   "emoji": "🍃",
+   "name": "숲의 무희의 잉크",
+   "grade": "COMMON",
+   "family": "spirit",
+   "prompt": "a forest dancer's leaf dress and flowing vine ribbons"
+  },
+  {
+   "id": "moon-deer",
+   "emoji": "🌙",
+   "name": "달빛 사슴의 잉크",
+   "grade": "RARE",
+   "family": "beast",
+   "prompt": "a moonlight deer's silver antlers and crescent-moon markings"
+  },
+  {
+   "id": "pearl-mermaid",
+   "emoji": "🫧",
+   "name": "진주 인어의 잉크",
+   "grade": "RARE",
+   "family": "fish",
+   "prompt": "a pearl mermaid's shimmering tail and pearl jewelry"
+  },
+  {
+   "id": "sea-princess",
+   "emoji": "👑",
+   "name": "바다의 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "marine",
+   "prompt": "a sea princess's shell tiara, flowing seafoam gown and mermaid tail"
+  },
+  {
+   "id": "coral-dancer",
+   "emoji": "🪸",
+   "name": "산호 무희의 잉크",
+   "grade": "COMMON",
+   "family": "fish",
+   "prompt": "a coral dancer's coral hair ornaments and flowing sea-silk skirt"
+  },
+  {
+   "id": "siren",
+   "emoji": "🎶",
+   "name": "세이렌의 잉크",
+   "grade": "RARE",
+   "family": "fish",
+   "prompt": "a siren's elegant shell crown, long wavy hair and scaled tail"
+  },
+  {
+   "id": "foam-queen",
+   "emoji": "🌊",
+   "name": "물거품 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "marine",
+   "prompt": "a seafoam queen's bubble crown and long foam-white train"
+  },
+  {
+   "id": "capybara",
+   "emoji": "🍊",
+   "name": "카피바라의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a capybara's calm face and blocky brown body"
+  },
+  {
+   "id": "red-panda",
+   "emoji": "🐼",
+   "name": "레서판다의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a red panda's ringed tail and russet fur"
+  },
+  {
+   "id": "jungle-princess",
+   "emoji": "🌺",
+   "name": "정글 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "flower",
+   "prompt": "a jungle princess's flower crown, leaf gown and vine bracelets"
+  },
+  {
+   "id": "flamingo",
+   "emoji": "🦩",
+   "name": "플라밍고의 잉크",
+   "grade": "COMMON",
+   "family": "bird",
+   "prompt": "a flamingo's pink feathers and long thin legs"
+  },
+  {
+   "id": "peacock",
+   "emoji": "🦚",
+   "name": "공작새의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a peacock's fanned tail of eye-patterned feathers"
+  },
+  {
+   "id": "paradise-queen",
+   "emoji": "🪶",
+   "name": "극락조 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "bird",
+   "prompt": "a bird-of-paradise queen's long ribbon tail plumes and jeweled crest"
+  },
+  {
+   "id": "robo-puppy",
+   "emoji": "🐕",
+   "name": "로봇 강아지의 잉크",
+   "grade": "COMMON",
+   "family": "electric",
+   "prompt": "a robot puppy's metal floppy ears and antenna tail"
+  },
+  {
+   "id": "robo-cat",
+   "emoji": "🐈",
+   "name": "로봇 고양이의 잉크",
+   "grade": "RARE",
+   "family": "electric",
+   "prompt": "a robot cat's sleek metal ears and LED whiskers"
+  },
+  {
+   "id": "music-box-princess",
+   "emoji": "🎠",
+   "name": "오르골 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "clockwork",
+   "prompt": "a music box princess's wind-up key, tutu dress and tiny tiara"
+  },
+  {
+   "id": "stage-light",
+   "emoji": "💡",
+   "name": "무대 조명의 잉크",
+   "grade": "COMMON",
+   "family": "electric",
+   "prompt": "a stage spotlight's round lamp head"
+  },
+  {
+   "id": "android-diva",
+   "emoji": "🎤",
+   "name": "안드로이드 디바의 잉크",
+   "grade": "RARE",
+   "family": "steel",
+   "prompt": "an android diva's chrome headset, sleek stage dress and LED accents"
+  },
+  {
+   "id": "platinum-empress",
+   "emoji": "💠",
+   "name": "백금 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "steel",
+   "prompt": "a platinum empress's silver crown and armored royal gown"
+  },
+  {
+   "id": "little-maid",
+   "emoji": "🫖",
+   "name": "꼬마 시녀의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a little maid's frilly apron and headband"
+  },
+  {
+   "id": "princess",
+   "emoji": "👸",
+   "name": "공주의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a princess's tiara and puffy ball gown"
+  },
+  {
+   "id": "queen",
+   "emoji": "👑",
+   "name": "여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "heraldry",
+   "prompt": "a queen's tall jeweled crown and royal ermine-trimmed gown"
+  },
+  {
+   "id": "ball-lady",
+   "emoji": "🪭",
+   "name": "무도회 아가씨의 잉크",
+   "grade": "COMMON",
+   "family": "heraldry",
+   "prompt": "a ball lady's lace fan and ribbon ball gown"
+  },
+  {
+   "id": "rose-knight",
+   "emoji": "🌹",
+   "name": "장미 기사의 잉크",
+   "grade": "RARE",
+   "family": "heraldry",
+   "prompt": "a rose knight's rose-engraved armor and rose-red cape"
+  },
+  {
+   "id": "moon-lady",
+   "emoji": "🌙",
+   "name": "달의 귀부인의 잉크",
+   "grade": "LEGEND",
+   "family": "heraldry",
+   "prompt": "a moon lady's crescent tiara and silver-blue evening gown"
+  },
+  {
+   "id": "baby-bat",
+   "emoji": "🦇",
+   "name": "아기 박쥐의 잉크",
+   "grade": "COMMON",
+   "family": "beast",
+   "prompt": "a baby bat's tiny wings and fluffy round body"
+  },
+  {
+   "id": "pumpkin-witch",
+   "emoji": "🎃",
+   "name": "호박 마녀의 잉크",
+   "grade": "RARE",
+   "family": "ghost",
+   "prompt": "a pumpkin witch's pumpkin hat and orange-and-purple dress"
+  },
+  {
+   "id": "ghost-princess",
+   "emoji": "🕯️",
+   "name": "유령 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "ghost",
+   "prompt": "a ghost princess's translucent veil, little crown and floating gown"
+  },
+  {
+   "id": "masquerade",
+   "emoji": "🎭",
+   "name": "가면 무도회의 잉크",
+   "grade": "COMMON",
+   "family": "ghost",
+   "prompt": "a masquerade's ornate eye mask and feathered hat"
+  },
+  {
+   "id": "vampire-lady",
+   "emoji": "💍",
+   "name": "뱀파이어 귀부인의 잉크",
+   "grade": "RARE",
+   "family": "ghost",
+   "prompt": "a vampire lady's high-collared gothic gown and rose brooch"
+  },
+  {
+   "id": "dandelion",
+   "emoji": "🌼",
+   "name": "민들레의 잉크",
+   "grade": "COMMON",
+   "family": "wind",
+   "prompt": "a dandelion's white fluffy seed puff"
+  },
+  {
+   "id": "cloud-sheep",
+   "emoji": "☁️",
+   "name": "구름 양의 잉크",
+   "grade": "RARE",
+   "family": "wind",
+   "prompt": "a cloud sheep's fluffy cloud-wool body"
+  },
+  {
+   "id": "rainbow-spirit",
+   "emoji": "🌈",
+   "name": "무지개 정령의 잉크",
+   "grade": "LEGEND",
+   "family": "wind",
+   "prompt": "a rainbow spirit's rainbow-arched ribbons and pastel flowing hair"
+  },
+  {
+   "id": "wind-dancer",
+   "emoji": "🎐",
+   "name": "바람 무희의 잉크",
+   "grade": "COMMON",
+   "family": "wind",
+   "prompt": "a wind dancer's fluttering silk scarves"
+  },
+  {
+   "id": "crane-maiden",
+   "emoji": "🕊️",
+   "name": "학 선녀의 잉크",
+   "grade": "RARE",
+   "family": "bird",
+   "prompt": "a crane maiden's white feather robe and red-crowned hair ornament"
+  },
+  {
+   "id": "sky-nymph",
+   "emoji": "🌤️",
+   "name": "하늘 선녀의 잉크",
+   "grade": "LEGEND",
+   "family": "wind",
+   "prompt": "a sky nymph's floating heavenly sashes and cloud hairpin"
+  },
+  {
+   "id": "blossom-dragon",
+   "emoji": "🌸",
+   "name": "꽃비늘 용의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a blossom dragon's petal-shaped scales and flower horns"
+  },
+  {
+   "id": "gem-dragon-princess",
+   "emoji": "💎",
+   "name": "보석 용 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "scale",
+   "prompt": "a gem dragon princess's jeweled horns, gem scales and royal gown"
+  },
+  {
+   "id": "scale-dancer",
+   "emoji": "🧣",
+   "name": "용비늘 무희의 잉크",
+   "grade": "COMMON",
+   "family": "scale",
+   "prompt": "a scale dancer's shimmering dragon-scale dress"
+  },
+  {
+   "id": "dragon-priestess",
+   "emoji": "🔔",
+   "name": "용의 무녀의 잉크",
+   "grade": "RARE",
+   "family": "scale",
+   "prompt": "a dragon priestess's ceremonial robes and dragon-horn headdress"
+  },
+  {
+   "id": "dragon-empress",
+   "emoji": "🐉",
+   "name": "용의 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "scale",
+   "prompt": "a dragon empress's horned crown and long scale-patterned royal robe"
+  },
+  {
+   "id": "imp",
+   "emoji": "😈",
+   "name": "꼬마 악동의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "an imp's small horns, pointed tail and mischievous grin"
+  },
+  {
+   "id": "brat-witch",
+   "emoji": "🧹",
+   "name": "악동 마녀의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a bratty witch's crooked hat and candy-colored broom"
+  },
+  {
+   "id": "dark-princess",
+   "emoji": "🖤",
+   "name": "어둠의 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "shadow",
+   "prompt": "a dark princess's black tiara and violet gothic gown"
+  },
+  {
+   "id": "black-rose",
+   "emoji": "🥀",
+   "name": "검은 장미의 잉크",
+   "grade": "COMMON",
+   "family": "shadow",
+   "prompt": "a black rose with dark velvet petals"
+  },
+  {
+   "id": "dark-lady",
+   "emoji": "🪶",
+   "name": "어둠의 귀부인의 잉크",
+   "grade": "RARE",
+   "family": "shadow",
+   "prompt": "a dark lady's black lace veil and long dark gown"
+  },
+  {
+   "id": "queen-of-night",
+   "emoji": "🌌",
+   "name": "밤의 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "shadow",
+   "prompt": "a queen of the night's starry black crown and midnight gown"
+  },
+  {
+   "id": "ribbon-robot",
+   "emoji": "🎀",
+   "name": "리본 로봇의 잉크",
+   "grade": "RARE",
+   "family": "junk",
+   "prompt": "a ribbon robot's big bow and pastel metal body"
+  },
+  {
+   "id": "recycle-fairy-queen",
+   "emoji": "♻️",
+   "name": "재활용 요정 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "junk",
+   "prompt": "a recycle fairy queen's bottle-cap crown and colorful recycled-material gown"
+  },
+  {
+   "id": "bottle-dress",
+   "emoji": "👗",
+   "name": "페트병 드레스의 잉크",
+   "grade": "COMMON",
+   "family": "junk",
+   "prompt": "a dress made of shiny plastic bottles"
+  },
+  {
+   "id": "foil-diva",
+   "emoji": "✨",
+   "name": "은박 디바의 잉크",
+   "grade": "RARE",
+   "family": "junk",
+   "prompt": "a foil diva's shiny silver foil dress"
+  },
+  {
+   "id": "scrap-rose-queen",
+   "emoji": "🥀",
+   "name": "고철 장미 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "junk",
+   "prompt": "a scrap rose queen's metal rose crown and riveted gown"
+  },
+  {
+   "id": "star-candy-alien",
+   "emoji": "🍬",
+   "name": "별사탕 외계인의 잉크",
+   "grade": "RARE",
+   "family": "cosmic",
+   "prompt": "a star-candy alien's star-shaped candy antennae"
+  },
+  {
+   "id": "moon-princess",
+   "emoji": "🌙",
+   "name": "달의 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "cosmic",
+   "prompt": "a moon princess's crescent tiara and moonlit flowing gown"
+  },
+  {
+   "id": "nebula-dancer",
+   "emoji": "🌀",
+   "name": "성운 무희의 잉크",
+   "grade": "COMMON",
+   "family": "cosmic",
+   "prompt": "a nebula dancer's swirling galaxy-colored skirt"
+  },
+  {
+   "id": "galaxy-idol",
+   "emoji": "🌟",
+   "name": "은하 아이돌의 잉크",
+   "grade": "RARE",
+   "family": "cosmic",
+   "prompt": "a galaxy idol's star microphone and sparkling stage outfit"
+  },
+  {
+   "id": "star-empress",
+   "emoji": "💫",
+   "name": "별의 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "cosmic",
+   "prompt": "a star empress's constellation crown and starry royal cape"
+  },
+  {
+   "id": "sand-fairy",
+   "emoji": "⏳",
+   "name": "모래 요정의 잉크",
+   "grade": "RARE",
+   "family": "spirit",
+   "prompt": "a sand fairy's golden sand wings and veil"
+  },
+  {
+   "id": "oasis-princess",
+   "emoji": "🌴",
+   "name": "오아시스 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "spirit",
+   "prompt": "an oasis princess's turquoise jewelry and flowing desert gown"
+  },
+  {
+   "id": "desert-dancer",
+   "emoji": "🔔",
+   "name": "사막 무희의 잉크",
+   "grade": "COMMON",
+   "family": "spirit",
+   "prompt": "a desert dancer's coin-trimmed veil and flowing skirt"
+  },
+  {
+   "id": "snake-charmer",
+   "emoji": "🐍",
+   "name": "황금 뱀 무희의 잉크",
+   "grade": "RARE",
+   "family": "reptile",
+   "prompt": "a golden snake charmer's coiled golden snake ornaments"
+  },
+  {
+   "id": "sun-queen",
+   "emoji": "🌞",
+   "name": "태양의 여왕의 잉크",
+   "grade": "LEGEND",
+   "family": "spirit",
+   "prompt": "a sun queen's radiant sun crown and golden gown"
+  },
+  {
+   "id": "snowflake-fairy",
+   "emoji": "❄️",
+   "name": "눈꽃 요정의 잉크",
+   "grade": "RARE",
+   "family": "ice",
+   "prompt": "a snowflake fairy's snowflake wings and frosty dress"
+  },
+  {
+   "id": "ice-princess",
+   "emoji": "👸",
+   "name": "얼음 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "ice",
+   "prompt": "an ice princess's ice crystal tiara and shimmering ice-blue gown"
+  },
+  {
+   "id": "frost-dancer",
+   "emoji": "⛸️",
+   "name": "서리 무희의 잉크",
+   "grade": "COMMON",
+   "family": "ice",
+   "prompt": "a frost dancer's frosty silk skirt and snowflake hairpin"
+  },
+  {
+   "id": "snow-maiden",
+   "emoji": "🌨️",
+   "name": "설녀의 잉크",
+   "grade": "RARE",
+   "family": "ice",
+   "prompt": "a snow maiden's white hooded kimono and frost-blue sash"
+  },
+  {
+   "id": "fire-chick",
+   "emoji": "🐤",
+   "name": "불꽃 병아리의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "a fire chick's fluffy flame-feathered body"
+  },
+  {
+   "id": "ember-fairy",
+   "emoji": "✨",
+   "name": "불씨 요정의 잉크",
+   "grade": "RARE",
+   "family": "fire",
+   "prompt": "an ember fairy's glowing ember wings"
+  },
+  {
+   "id": "flame-princess",
+   "emoji": "❤️‍🔥",
+   "name": "불꽃 공주의 잉크",
+   "grade": "LEGEND",
+   "family": "fire",
+   "prompt": "a flame princess's flame-shaped crown and fiery gown"
+  },
+  {
+   "id": "fire-dancer",
+   "emoji": "💃",
+   "name": "불꽃 무희의 잉크",
+   "grade": "COMMON",
+   "family": "fire",
+   "prompt": "a fire dancer's flame-colored ribbons"
+  },
+  {
+   "id": "flame-witch",
+   "emoji": "🌹",
+   "name": "화염 마녀의 잉크",
+   "grade": "RARE",
+   "family": "fire",
+   "prompt": "a flame witch's fire-trimmed witch hat and red cloak"
+  },
+  {
+   "id": "volcano-goddess",
+   "emoji": "🌋",
+   "name": "화산 여신의 잉크",
+   "grade": "LEGEND",
+   "family": "fire",
+   "prompt": "a volcano goddess's lava crown and obsidian-and-flame gown"
+  },
+  {
+   "id": "macaron-fairy",
+   "emoji": "🧁",
+   "name": "마카롱 요정의 잉크",
+   "grade": "RARE",
+   "family": "sweet",
+   "prompt": "a macaron fairy's macaron hat and pastel wings"
+  },
+  {
+   "id": "cherry-lady",
+   "emoji": "🍒",
+   "name": "체리 아가씨의 잉크",
+   "grade": "COMMON",
+   "family": "sweet",
+   "prompt": "a cherry lady's cherry hair ornaments and red-checked dress"
+  },
+  {
+   "id": "choco-lady",
+   "emoji": "🍫",
+   "name": "블랙초코 귀부인의 잉크",
+   "grade": "RARE",
+   "family": "sweet",
+   "prompt": "a dark-chocolate lady's chocolate-lace gown and truffle brooch"
+  },
+  {
+   "id": "sugar-empress",
+   "emoji": "🏰",
+   "name": "설탕 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "sweet",
+   "prompt": "a sugar empress's sugar crystal crown and frosting-white royal gown"
+  },
+  {
+   "id": "little-kunoichi",
+   "emoji": "🎀",
+   "name": "꼬마 쿠노이치의 잉크",
+   "grade": "COMMON",
+   "family": "mask",
+   "prompt": "a little kunoichi's pink headband and short scarf"
+  },
+  {
+   "id": "sakura-ninja",
+   "emoji": "🌸",
+   "name": "벚꽃 닌자의 잉크",
+   "grade": "RARE",
+   "family": "mask",
+   "prompt": "a cherry-blossom ninja's sakura-patterned garb and scarf"
+  },
+  {
+   "id": "fox-shrine-maiden",
+   "emoji": "🦊",
+   "name": "여우 무녀의 잉크",
+   "grade": "LEGEND",
+   "family": "mask",
+   "prompt": "a fox shrine maiden's fox ears, red-and-white shrine robes and bell"
+  },
+  {
+   "id": "fan-dancer",
+   "emoji": "🪭",
+   "name": "부채 무희의 잉크",
+   "grade": "COMMON",
+   "family": "mask",
+   "prompt": "a fan dancer's folding fans and flowing kimono"
+  },
+  {
+   "id": "kunoichi",
+   "emoji": "🟣",
+   "name": "쿠노이치의 잉크",
+   "grade": "RARE",
+   "family": "mask",
+   "prompt": "a kunoichi's dark ninja garb and long flowing scarf"
+  },
+  {
+   "id": "shadow-empress",
+   "emoji": "🌑",
+   "name": "그림자 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "mask",
+   "prompt": "a shadow empress's dark crown and shadow-black ceremonial robe"
+  },
+  {
+   "id": "star-witch",
+   "emoji": "⭐",
+   "name": "별의 마녀의 잉크",
+   "grade": "RARE",
+   "family": "stardust",
+   "prompt": "a star witch's starry hat and comet broom"
+  },
+  {
+   "id": "moon-goddess",
+   "emoji": "🌛",
+   "name": "달의 여신의 잉크",
+   "grade": "LEGEND",
+   "family": "stardust",
+   "prompt": "a moon goddess's crescent crown and silver flowing robe"
+  },
+  {
+   "id": "perfume-potion",
+   "emoji": "🧴",
+   "name": "향수 물약의 잉크",
+   "grade": "COMMON",
+   "family": "stardust",
+   "prompt": "a perfume bottle's elegant crystal stopper"
+  },
+  {
+   "id": "amethyst-witch",
+   "emoji": "💜",
+   "name": "자수정 마녀의 잉크",
+   "grade": "RARE",
+   "family": "stardust",
+   "prompt": "an amethyst witch's purple crystal hat and gem staff"
+  },
+  {
+   "id": "sorceress-queen",
+   "emoji": "🔮",
+   "name": "마법 여제의 잉크",
+   "grade": "LEGEND",
+   "family": "stardust",
+   "prompt": "a sorceress queen's arcane crown, rune-embroidered gown and orb staff"
+  }
+ ]
+}

@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.domain.tamagotchi;
 
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
+import com.tamagochi.tamagochi.domain.spar.SparDrop;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,4 +25,5 @@ public class TrainingResult {
     private int expToNext;
     private boolean inEvolutionZone; // 진화 가능 구간이라 경험치가 줄어 들어왔다
     private PromotionOutcome promotion; // 완성작 트레이닝의 프로모션 결과 (대상이 아니거나 꺼져 있으면 null)
+    private SparDrop drop;  // 이긴 상대가 떨어뜨린 잉크 조각 (없으면 null)
 }

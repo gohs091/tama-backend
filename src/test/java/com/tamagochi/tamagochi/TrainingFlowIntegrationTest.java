@@ -119,7 +119,9 @@ class TrainingFlowIntegrationTest {
         String sessionId = started.path("sessionId").asText();
         assertThat(sessionId).isNotBlank();
         assertThat(started.path("minSeconds").asLong()).isEqualTo(5);
-        assertThat(started.path("enemy").path("key").asText()).isIn("crow", "dog", "person", "train"); // 스파링 상대를 시작할 때 정한다
+        assertThat(started.path("enemy").path("name").asText()).isNotBlank(); // 스파링 상대를 시작할 때 정한다 (상대 목록에서)
+        assertThat(started.path("enemy").path("imageUrl").asText()).contains("/public/spar/" + started.path("enemy").path("key").asText() + ".v1.png");
+        assertThat(started.path("enemy").path("drops").size()).isBetween(1, 5);
         assertThat(started.path("enemy").path("taps").asInt()).isBetween(15, 40);
 
         submit(sessionId, 90).andExpect(status().isBadRequest()); // 아직 5초가 안 지남
