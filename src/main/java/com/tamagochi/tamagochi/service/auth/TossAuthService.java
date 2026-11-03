@@ -3,8 +3,10 @@ package com.tamagochi.tamagochi.service.auth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tamagochi.tamagochi.exception.UnauthorizedException;
 import com.tamagochi.tamagochi.service.toss.TossPartnerApiClient;
+import com.tamagochi.tamagochi.service.user.UserProfileService;
 import com.tamagochi.tamagochi.service.user.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -15,12 +17,14 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TossAuthService {
 
     private static final String EXCHANGE_PATH = "/api-partner/v1/apps-in-toss/users/anon-key/exchange";
 
     private final TossPartnerApiClient tossClient;
     private final UserService userService;
+    private final UserProfileService userProfileService;
     private final AuthTokenService tokenService;
     private final AuthSettings authSettings;
 
@@ -36,7 +40,9 @@ public class TossAuthService {
         }
         String anonKey = extractAnonKey(tossClient.post(EXCHANGE_PATH, Map.of("code", code)));
         String tossUserId = userIdFromAnonKey(anonKey);
-        userService.createUser(tossUserId, tossUserId);
+        // 유저 코드·닉네임이 없는 유저(처음이거나 예전 유저)는 여기서 채운다. 로그에는 유저 번호·코드만 남긴다
+        var user = userProfileService.ensureProfile(userService.createUser(tossUserId, tossUserId));
+        log.info("로그인 - user={}, code={}", user.getId(), user.getUserCode());
         return new LoginResult(tossUserId, tokenService.issue(tossUserId), tokenService.getTtlSeconds());
     }
 
