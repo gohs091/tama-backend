@@ -52,6 +52,23 @@ class SparRosterTest {
     }
 
     @Test
+    @DisplayName("잉크 출처: 떨어뜨리는 상대를 레벨 낮은 순으로, 진영은 중복 없이, 보관함용 조각에는 3명까지")
+    void sources() {
+        List<SparRoster.Enemy> droppers = SparRoster.droppersOf("tiger");
+        assertThat(droppers).isNotEmpty().allMatch(e -> e.drops().contains("tiger"));
+        assertThat(droppers).isSortedAccordingTo(java.util.Comparator.comparingInt(SparRoster.Enemy::minLevel)
+                .thenComparingInt(SparRoster.Enemy::maxLevel));
+        assertThat(SparRoster.factionsOf("tiger")).doesNotHaveDuplicates().contains(droppers.get(0).faction());
+        assertThat(SparRoster.droppersOf("no-such-ink")).isEmpty();
+
+        SparFragment f = SparFragment.of(LandCatalog.ink("family.beast").orElseThrow(), 2);
+        assertThat(f.need()).isEqualTo(5);
+        assertThat(f.familyName()).isEqualTo("짐승");
+        assertThat(f.enemies()).hasSizeLessThanOrEqualTo(SparFragment.MAX_SOURCES);
+        assertThat(f.enemyCount()).isGreaterThanOrEqualTo(f.enemies().size());
+    }
+
+    @Test
     @DisplayName("가중치 고르기: 굴린 값에 따라 가중치 구간의 잉크가 나온다")
     void pickWeighted() {
         List<String> items = List.of("c", "r", "l"); // 4 / 1.5 / 0.5 → 합 6

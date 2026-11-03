@@ -5,6 +5,7 @@ import com.tamagochi.tamagochi.domain.land.LandInk;
 import com.tamagochi.tamagochi.domain.spar.InkFragment;
 import com.tamagochi.tamagochi.domain.spar.SparDrop;
 import com.tamagochi.tamagochi.domain.spar.SparDropRules;
+import com.tamagochi.tamagochi.domain.spar.SparFragment;
 import com.tamagochi.tamagochi.domain.spar.SparRoster;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.land.LandInkRepository;
@@ -65,16 +66,14 @@ public class SparDropService {
         return new SparDrop(ink.id(), ink.emoji(), ink.name(), ink.grade(), Math.min(fragment.getCount(), need), need, completed);
     }
 
-    /** 모으는 중인 조각 (완성한 잉크는 빼고) */
+    /** 모으는 중인 조각과 출처 (완성한 잉크는 빼고, 최근에 주운 순) */
     @Transactional(readOnly = true)
-    public List<SparDrop> progress(User user) {
+    public List<SparFragment> progress(User user) {
         Set<String> owned = landInkRepository.findByUserIdOrderByFoundAtAsc(user.getId()).stream()
                 .map(LandInk::getInkId).collect(Collectors.toSet());
         return fragmentRepository.findByUserIdOrderByUpdatedAtDesc(user.getId()).stream()
                 .filter(f -> !owned.contains(f.getInkId()))
-                .flatMap(f -> LandCatalog.ink(f.getInkId()).stream()
-                        .map(ink -> new SparDrop(ink.id(), ink.emoji(), ink.name(), ink.grade(), f.getCount(),
-                                SparDropRules.need(ink.grade()), false)))
+                .flatMap(f -> LandCatalog.ink(f.getInkId()).stream().map(ink -> SparFragment.of(ink, f.getCount())))
                 .toList();
     }
 }
