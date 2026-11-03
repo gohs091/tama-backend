@@ -8,6 +8,7 @@ import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.land.AdventureService;
 import com.tamagochi.tamagochi.service.land.InkLoadoutService;
 import com.tamagochi.tamagochi.service.land.LandService;
+import com.tamagochi.tamagochi.service.spar.SparDropService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ public class LandController {
     private final LandService landService;
     private final AdventureService adventureService;
     private final InkLoadoutService inkLoadoutService;
+    private final SparDropService sparDropService;
 
     public record Overview(List<LandService.RegionView> regions, AdventureService.Status adventure) {}
 
@@ -43,6 +45,12 @@ public class LandController {
     @GetMapping("/{tossUserId}/inventory")
     public ResponseEntity<?> inventory(@PathVariable String tossUserId) {
         return ResponseEntity.ok(landService.inventory(userIdentity.resolve(tossUserId)));
+    }
+
+    /** 스파링에서 모으는 중인 잉크 조각 (완성한 잉크는 보관함에 있다) */
+    @GetMapping("/{tossUserId}/fragments")
+    public ResponseEntity<?> fragments(@PathVariable String tossUserId) {
+        return ResponseEntity.ok(sparDropService.progress(userIdentity.resolve(tossUserId)));
     }
 
     @GetMapping("/{tossUserId}/adventure")

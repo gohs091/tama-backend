@@ -1,5 +1,11 @@
 package com.tamagochi.tamagochi.domain.land;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -412,5 +418,27 @@ public final class LandCatalog {
         region("candy-land", "🍭", "과자나라");
         region("ninja", "🥷", "이가닌자의 마을");
         region("magic-school", "🪄", "마법학교");
+
+        // 스파링 상대가 떨어뜨리는 잉크 (구역 탐험에는 나오지 않는다). 데이터는 resources/spar/inks.json
+        loadSparInks();
+    }
+
+    private static void loadSparInks() {
+        try (InputStream in = LandCatalog.class.getResourceAsStream("/spar/inks.json")) {
+            if (in == null) throw new IllegalStateException("spar/inks.json 이 없어요");
+            JsonNode root = new ObjectMapper().readTree(in);
+            for (JsonNode f : root.get("families")) {
+                family(f.get("key").asText(), f.get("name").asText(), f.get("prompt").asText());
+                familyInk(f.get("key").asText(), f.get("emoji").asText());
+            }
+            for (JsonNode i : root.get("inks")) {
+                String id = i.get("id").asText();
+                if (INKS.containsKey(id)) throw new IllegalStateException("이미 있는 잉크: " + id);
+                ink(id, i.get("emoji").asText(), i.get("name").asText(), Grade.valueOf(i.get("grade").asText()),
+                        i.get("family").asText(), i.get("prompt").asText());
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("spar/inks.json 을 읽지 못했어요", e);
+        }
     }
 }

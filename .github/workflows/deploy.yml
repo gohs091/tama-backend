@@ -58,6 +58,8 @@ jobs:
             EVOLUTION_PROMOTION_MODE=${{ secrets.EVOLUTION_PROMOTION_MODE }}
             EVOLUTION_PROMOTION_CODE=${{ secrets.EVOLUTION_PROMOTION_CODE }}
             ADMIN_KEY=${{ secrets.ADMIN_KEY }}
+            S3_ENABLED=${{ secrets.S3_ENABLED }}
+            S3_MIGRATE_EXISTING=${{ secrets.S3_MIGRATE_EXISTING }}
             ENVEOF
             chmod 600 .env
             docker compose -f docker-compose.prod.yml up -d --build
