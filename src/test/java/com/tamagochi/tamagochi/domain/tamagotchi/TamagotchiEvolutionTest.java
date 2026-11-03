@@ -211,7 +211,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("가상 상대는 내 위력의 ±15%, 레벨 ±1, 탭 15~40이다")
+    @DisplayName("스파링 상대는 목록에서 고르고, 내 위력의 ±15%, 레벨 ±1, 탭 15~40이다")
     void enemyMatchesMe() {
         for (int i = 0; i < 200; i++) {
             BattleRules.Enemy e = BattleRules.randomEnemy(10, 100);
@@ -219,7 +219,7 @@ class TamagotchiEvolutionTest {
             assertThat(e.level()).isBetween(9, 11);
             assertThat(e.taps()).isBetween(15, 40);
             assertThat(e.luckPermille()).isBetween(900, 1100);
-            assertThat(BattleRules.ENEMY_KEYS).contains(e.key());
+            assertThat(com.tamagochi.tamagochi.domain.spar.SparRoster.find(e.key())).isPresent();
         }
     }
 

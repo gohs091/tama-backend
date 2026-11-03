@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.domain.tamagotchi;
 
-import java.util.List;
+import com.tamagochi.tamagochi.domain.spar.SparRoster;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -19,13 +20,11 @@ public final class BattleRules {
     public static final double LUCK_MIN = 0.90;
     public static final double LUCK_RANGE = 0.20;     // 0.90 ~ 1.10
 
-    // 상대(가상 스파링 상대): 내 위력 ±15%, 레벨 ±1, 탭 15~40, 컨디션 40~100. 레벨별 적은 나중에 이미지와 함께 만든다
+    // 상대: 내 레벨에 나오는 스파링 상대(SparRoster) 중 하나. 힘은 내 위력 ±15%, 레벨 ±1, 탭 15~40, 컨디션 40~100
     public static final double ENEMY_MIGHT_SPREAD = 0.15;
     public static final int ENEMY_TAPS_MIN = 15;
     public static final int ENEMY_TAPS_MAX = 40;
     public static final int ENEMY_COND_MIN = 40;
-    /** 앱에 들어 있는 상대 그림 이름 (앱이 이 이름으로 그림을 고른다) */
-    public static final List<String> ENEMY_KEYS = List.of("crow", "dog", "person", "train");
 
     public static final int WIN_EXP_BONUS_PERCENT = 50; // 이기면 기본 경험치의 50%를 더 준다 (광고 2배에는 포함하지 않는다)
 
@@ -78,7 +77,7 @@ public final class BattleRules {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         double spread = 1 - ENEMY_MIGHT_SPREAD + r.nextDouble() * ENEMY_MIGHT_SPREAD * 2;
         return new Enemy(
-                ENEMY_KEYS.get(r.nextInt(ENEMY_KEYS.size())),
+                SparRoster.pick(myLevel, r).id(),
                 Math.max(1, myLevel + r.nextInt(-1, 2)),
                 (int) Math.round(myMight * spread),
                 r.nextInt(ENEMY_TAPS_MIN, ENEMY_TAPS_MAX + 1),

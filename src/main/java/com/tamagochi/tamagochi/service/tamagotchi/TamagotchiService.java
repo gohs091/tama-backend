@@ -4,12 +4,14 @@ import com.tamagochi.tamagochi.domain.tamagotchi.BattleRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
+import com.tamagochi.tamagochi.domain.spar.SparDrop;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingResult;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
 import com.tamagochi.tamagochi.service.promotion.PromotionService;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.point.PointService;
+import com.tamagochi.tamagochi.service.spar.SparDropService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class TamagotchiService {
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
     private final TrainingSessionService trainingSessionService;
+    private final SparDropService sparDropService;
     private final PromotionService promotionService;
 
     @Transactional
@@ -274,6 +277,9 @@ public class TamagotchiService {
                 ? promotionService.evaluate(user, session.getId(), taps)
                 : null;
 
+        // 이기면 상대가 잉크 조각을 떨어뜨릴 수 있다 (낮은 고정 확률, 성적과 무관)
+        SparDrop drop = sparDropService.roll(user, session.getEnemyKey(), win);
+
         log.info("트레이닝 완료 - tamagotchi: {}, taps: {}, win: {} ({} vs {}), reward: {}, exp: {}, level: {}",
                 tamagotchi.getName(), taps, win, Math.round(myPower), Math.round(enemyPower), totalReward, gain.exp(), tamagotchi.level());
 
@@ -295,6 +301,7 @@ public class TamagotchiService {
                 .expToNext(tamagotchi.expToNext())
                 .inEvolutionZone(tamagotchi.isInEvolutionZone())
                 .promotion(promotion)
+                .drop(drop)
                 .build();
     }
 
