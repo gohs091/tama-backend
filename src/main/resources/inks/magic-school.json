@@ -1,0 +1,24 @@
+{
+  "id": "magic-school",
+  "emoji": "🪄",
+  "name": "마법학교",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"spellbook","emoji":"📖","name":"마법책의 잉크","grade":"COMMON","family":"stardust","prompt":"a flying spellbook's flapping pages and glowing runes"},
+    {"id":"wizard","emoji":"🧙","name":"마법사의 잉크","grade":"RARE","family":"stardust","prompt":"a wizard's star-patterned robe, pointed hat and wooden staff","part":"a pointed star-patterned hat"},
+    {"id":"archmage","emoji":"🔮","name":"대마법사의 잉크","grade":"LEGEND","family":"stardust","prompt":"an archmage's long beard, flowing robes and an ornate crystal staff","part":"an ornate crystal staff"},
+    {"id":"broom","emoji":"🧹","name":"빗자루의 잉크","grade":"COMMON","family":"stardust","prompt":"a flying broom's bristle tail"},
+    {"id":"student","emoji":"🎒","name":"마법 학생의 잉크","grade":"COMMON","family":"stardust","prompt":"a magic student's school robe, tie and wand"},
+    {"id":"potion","emoji":"🧪","name":"물약의 잉크","grade":"COMMON","family":"stardust","prompt":"a potion bottle's corked round flask with bubbling liquid"},
+    {"id":"fortune-teller","emoji":"🔮","name":"점술사의 잉크","grade":"COMMON","family":"stardust","prompt":"a fortune teller's veil, coin jewelry and crystal ball"},
+    {"id":"alchemist","emoji":"⚗️","name":"연금술사의 잉크","grade":"RARE","family":"stardust","prompt":"an alchemist's goggles, flasks and pouch belt","part":"goggles on the head"},
+    {"id":"witch","emoji":"🧙‍♀️","name":"마녀의 잉크","grade":"RARE","family":"stardust","prompt":"a witch's tall pointed hat and long dark robe","part":"a tall pointed witch hat"},
+    {"id":"headmaster","emoji":"🏫","name":"교장의 잉크","grade":"LEGEND","family":"stardust","prompt":"a headmaster's grand robe, tall hat and long beard","part":"a tall headmaster hat"},
+    {"id":"star-witch","emoji":"⭐","name":"별의 마녀의 잉크","grade":"RARE","family":"stardust","prompt":"a star witch's starry hat and comet broom","part":"a starry witch hat"},
+    {"id":"moon-goddess","emoji":"🌛","name":"달의 여신의 잉크","grade":"LEGEND","family":"stardust","prompt":"a moon goddess's crescent crown and silver flowing robe","part":"a crescent crown"},
+    {"id":"perfume-potion","emoji":"🧴","name":"향수 물약의 잉크","grade":"COMMON","family":"stardust","prompt":"a perfume bottle's elegant crystal stopper"},
+    {"id":"amethyst-witch","emoji":"💜","name":"자수정 마녀의 잉크","grade":"RARE","family":"stardust","prompt":"an amethyst witch's purple crystal hat and gem staff","part":"a purple crystal hat"},
+    {"id":"sorceress-queen","emoji":"🔮","name":"마법 여제의 잉크","grade":"LEGEND","family":"stardust","prompt":"a sorceress queen's arcane crown, rune-embroidered gown and orb staff","part":"an arcane crown"}
+  ]
+}

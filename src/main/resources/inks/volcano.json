@@ -1,0 +1,25 @@
+{
+  "id": "volcano",
+  "emoji": "🌋",
+  "name": "화산",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"lava","emoji":"🌋","name":"용암의 잉크","grade":"COMMON","family":"fire","prompt":"glowing molten lava cracks running across the skin"},
+    {"id":"magma-golem","emoji":"🪨","name":"마그마 골렘의 잉크","grade":"RARE","family":"fire","prompt":"a magma golem's rocky plates with glowing lava seams","part":"glowing lava seams"},
+    {"id":"phoenix","emoji":"🐦‍🔥","name":"불사조의 잉크","grade":"LEGEND","family":"fire","prompt":"a phoenix's flaming wings and long fiery tail feathers","part":"flaming wings","body":"FLY"},
+    {"id":"charcoal","emoji":"⚫","name":"숯의 잉크","grade":"COMMON","family":"fire","prompt":"glowing charcoal chunks with ember edges"},
+    {"id":"fire-ant","emoji":"🐜","name":"불개미의 잉크","grade":"COMMON","family":"insect","prompt":"a fire ant's red segmented body and strong jaws"},
+    {"id":"smith-apprentice","emoji":"🔨","name":"견습 대장장이의 잉크","grade":"COMMON","family":"fire","prompt":"a blacksmith's leather apron, hammer and soot smudges"},
+    {"id":"fire-fox","emoji":"🦊","name":"불여우의 잉크","grade":"COMMON","family":"fire","prompt":"a fire fox's flame-tipped tail and ember fur"},
+    {"id":"fire-spirit","emoji":"🔥","name":"불의 정령의 잉크","grade":"RARE","family":"fire","prompt":"a fire spirit's flickering flame body","part":"flickering flame hair","body":"LEGLESS"},
+    {"id":"fire-giant","emoji":"🌋","name":"불거인의 잉크","grade":"RARE","family":"fire","prompt":"a fire giant's huge rocky body with blazing hair","part":"blazing hair"},
+    {"id":"volcano-lord","emoji":"👹","name":"화산 군주의 잉크","grade":"LEGEND","family":"fire","prompt":"a volcano lord's obsidian crown and lava-cracked armor","part":"an obsidian crown"},
+    {"id":"fire-chick","emoji":"🐤","name":"불꽃 병아리의 잉크","grade":"COMMON","family":"fire","prompt":"a fire chick's fluffy flame-feathered body"},
+    {"id":"ember-fairy","emoji":"✨","name":"불씨 요정의 잉크","grade":"RARE","family":"fire","prompt":"an ember fairy's glowing ember wings","part":"glowing ember wings"},
+    {"id":"flame-princess","emoji":"❤️‍🔥","name":"불꽃 공주의 잉크","grade":"LEGEND","family":"fire","prompt":"a flame princess's flame-shaped crown and fiery gown","part":"a flame-shaped crown"},
+    {"id":"fire-dancer","emoji":"💃","name":"불꽃 무희의 잉크","grade":"COMMON","family":"fire","prompt":"a fire dancer's flame-colored ribbons"},
+    {"id":"flame-witch","emoji":"🌹","name":"화염 마녀의 잉크","grade":"RARE","family":"fire","prompt":"a flame witch's fire-trimmed witch hat and red cloak","part":"a fire-trimmed witch hat"},
+    {"id":"volcano-goddess","emoji":"🌋","name":"화산 여신의 잉크","grade":"LEGEND","family":"fire","prompt":"a volcano goddess's lava crown and obsidian-and-flame gown","part":"a lava crown"}
+  ]
+}

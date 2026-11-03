@@ -1,0 +1,32 @@
+{
+  "id": "virus-busters",
+  "emoji": "🛡️",
+  "name": "기사들의 성",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"horse","emoji":"🐴","name":"말의 잉크","grade":"COMMON","family":"beast","prompt":"a horse's flowing mane and sturdy hooves"},
+    {"id":"unicorn","emoji":"🦄","name":"유니콘의 잉크","grade":"RARE","family":"beast","prompt":"a unicorn's spiral horn and pastel flowing mane","part":"a spiral unicorn horn","body":"QUAD"},
+    {"id":"griffin","emoji":"🦅","name":"그리폰의 잉크","grade":"RARE","family":"bird","prompt":"a griffin's eagle head and feathered wings on a lion body","part":"feathered griffin wings","body":"FLY"},
+    {"id":"paladin","emoji":"🛡️","name":"성기사의 잉크","grade":"LEGEND","family":"heraldry","prompt":"a paladin's shining holy plate armor and winged helmet","part":"a winged helmet","body":"HUMAN"},
+    {"id":"kid","emoji":"🧒","name":"꼬마의 잉크","grade":"COMMON","family":"heraldry","prompt":"a little squire's tiny wooden sword and oversized helmet"},
+    {"id":"apprentice","emoji":"📜","name":"견습생의 잉크","grade":"COMMON","family":"heraldry","prompt":"a knight apprentice's simple tunic and practice shield"},
+    {"id":"jester","emoji":"🃏","name":"광대의 잉크","grade":"COMMON","family":"heraldry","prompt":"a jester's two-pointed bell hat and diamond-patterned outfit"},
+    {"id":"gatekeeper","emoji":"🚪","name":"성문지기의 잉크","grade":"COMMON","family":"heraldry","prompt":"a gatekeeper's tall halberd and sturdy helmet"},
+    {"id":"archer","emoji":"🏹","name":"궁수의 잉크","grade":"COMMON","family":"heraldry","prompt":"an archer's feathered cap, longbow and quiver"},
+    {"id":"wanderer","emoji":"🗡️","name":"떠돌이 칼잡이의 잉크","grade":"COMMON","family":"heraldry","prompt":"a wandering swordsman's travel cloak and worn sword"},
+    {"id":"musa","emoji":"⚔️","name":"무사의 잉크","grade":"COMMON","family":"heraldry","prompt":"a warrior's lamellar armor and sturdy sword"},
+    {"id":"knight","emoji":"🛡️","name":"기사의 잉크","grade":"RARE","family":"heraldry","prompt":"a knight's plate armor, plumed helmet and kite shield","part":"a plumed knight helmet","body":"HUMAN"},
+    {"id":"baron","emoji":"🎩","name":"남작의 잉크","grade":"RARE","family":"heraldry","prompt":"a baron's fur-trimmed cloak and family crest brooch","part":"a family crest brooch"},
+    {"id":"count","emoji":"🌹","name":"백작의 잉크","grade":"RARE","family":"heraldry","prompt":"a count's high collar, sash and medal","part":"a sash with a medal"},
+    {"id":"marquis","emoji":"🎖️","name":"후작의 잉크","grade":"RARE","family":"heraldry","prompt":"a marquis's ornate embroidered coat and feathered hat","part":"a feathered hat"},
+    {"id":"grand-duke","emoji":"💎","name":"대공의 잉크","grade":"LEGEND","family":"heraldry","prompt":"a grand duke's ermine mantle and ducal coronet","part":"a ducal coronet"},
+    {"id":"king","emoji":"👑","name":"왕의 잉크","grade":"LEGEND","family":"heraldry","prompt":"a king's golden crown, royal red mantle and scepter","part":"a golden crown"},
+    {"id":"little-maid","emoji":"🫖","name":"꼬마 시녀의 잉크","grade":"COMMON","family":"heraldry","prompt":"a little maid's frilly apron and headband"},
+    {"id":"princess","emoji":"👸","name":"공주의 잉크","grade":"RARE","family":"heraldry","prompt":"a princess's tiara and puffy ball gown","part":"a tiara"},
+    {"id":"queen","emoji":"👑","name":"여왕의 잉크","grade":"LEGEND","family":"heraldry","prompt":"a queen's tall jeweled crown and royal ermine-trimmed gown","part":"a tall jeweled crown"},
+    {"id":"ball-lady","emoji":"🪭","name":"무도회 아가씨의 잉크","grade":"COMMON","family":"heraldry","prompt":"a ball lady's lace fan and ribbon ball gown"},
+    {"id":"rose-knight","emoji":"🌹","name":"장미 기사의 잉크","grade":"RARE","family":"heraldry","prompt":"a rose knight's rose-engraved armor and rose-red cape","part":"a rose-red cape"},
+    {"id":"moon-lady","emoji":"🌙","name":"달의 귀부인의 잉크","grade":"LEGEND","family":"heraldry","prompt":"a moon lady's crescent tiara and silver-blue evening gown","part":"a crescent tiara"}
+  ]
+}

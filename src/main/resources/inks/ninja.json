@@ -1,0 +1,24 @@
+{
+  "id": "ninja",
+  "emoji": "🥷",
+  "name": "이가닌자의 마을",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"toad","emoji":"🐸","name":"두꺼비의 잉크","grade":"COMMON","family":"reptile","prompt":"a toad's bumpy skin and wide mouth"},
+    {"id":"tengu","emoji":"👺","name":"텐구의 잉크","grade":"RARE","family":"bird","prompt":"a tengu's long red nose, feathered wings and a small black cap","part":"a long red tengu nose"},
+    {"id":"ninja-master","emoji":"🥷","name":"닌자 마스터의 잉크","grade":"LEGEND","family":"mask","prompt":"a ninja master's long scarf, sword on the back and a calm masked face","part":"a long flowing scarf"},
+    {"id":"genin","emoji":"🥷","name":"하급 닌자의 잉크","grade":"COMMON","family":"mask","prompt":"a junior ninja's short headband and simple ninja garb"},
+    {"id":"tanuki","emoji":"🦝","name":"둔갑 너구리의 잉크","grade":"COMMON","family":"beast","prompt":"a tanuki's leaf on the head and round striped tail"},
+    {"id":"ronin","emoji":"⚔️","name":"낭인의 잉크","grade":"COMMON","family":"mask","prompt":"a ronin's straw hat and worn kimono with a katana"},
+    {"id":"ninja","emoji":"🌀","name":"닌자의 잉크","grade":"RARE","family":"mask","prompt":"a ninja's full dark garb, mask and katana","part":"a ninja mask","body":"HUMAN"},
+    {"id":"samurai-general","emoji":"🏯","name":"사무라이 장군의 잉크","grade":"RARE","family":"mask","prompt":"a samurai general's ornate kabuto helmet and armor","part":"an ornate kabuto helmet","body":"HUMAN"},
+    {"id":"oni","emoji":"👹","name":"오니의 잉크","grade":"LEGEND","family":"mask","prompt":"an oni's horns, fierce tusks and spiked club","part":"oni horns and tusks","body":"HUMAN"},
+    {"id":"little-kunoichi","emoji":"🎀","name":"꼬마 쿠노이치의 잉크","grade":"COMMON","family":"mask","prompt":"a little kunoichi's pink headband and short scarf"},
+    {"id":"sakura-ninja","emoji":"🌸","name":"벚꽃 닌자의 잉크","grade":"RARE","family":"mask","prompt":"a cherry-blossom ninja's sakura-patterned garb and scarf","part":"a sakura-patterned scarf"},
+    {"id":"fox-shrine-maiden","emoji":"🦊","name":"여우 무녀의 잉크","grade":"LEGEND","family":"mask","prompt":"a fox shrine maiden's fox ears, red-and-white shrine robes and bell","part":"fox ears and a shrine bell"},
+    {"id":"fan-dancer","emoji":"🪭","name":"부채 무희의 잉크","grade":"COMMON","family":"mask","prompt":"a fan dancer's folding fans and flowing kimono"},
+    {"id":"kunoichi","emoji":"🟣","name":"쿠노이치의 잉크","grade":"RARE","family":"mask","prompt":"a kunoichi's dark ninja garb and long flowing scarf","part":"a long flowing ninja scarf","body":"HUMAN"},
+    {"id":"shadow-empress","emoji":"🌑","name":"그림자 여제의 잉크","grade":"LEGEND","family":"mask","prompt":"a shadow empress's dark crown and shadow-black ceremonial robe","part":"a dark crown"}
+  ]
+}

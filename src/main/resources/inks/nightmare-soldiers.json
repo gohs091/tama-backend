@@ -1,0 +1,27 @@
+{
+  "id": "nightmare-soldiers",
+  "emoji": "🏚️",
+  "name": "유령의집",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"sheet-ghost","emoji":"👻","name":"보자기 유령의 잉크","grade":"COMMON","family":"ghost","prompt":"a bedsheet ghost's flowing white sheet body and two round eye holes"},
+    {"id":"bat","emoji":"🦇","name":"박쥐의 잉크","grade":"COMMON","family":"beast","prompt":"a bat's leathery wings and big pointed ears"},
+    {"id":"jack-o-lantern","emoji":"🎃","name":"호박등의 잉크","grade":"COMMON","family":"plant","prompt":"a carved jack-o'-lantern pumpkin head with a grinning face"},
+    {"id":"mummy","emoji":"🧟","name":"미라의 잉크","grade":"RARE","family":"ghost","prompt":"a mummy's wrapped bandages with loose trailing ends","part":"a few wrapped bandages"},
+    {"id":"vampire","emoji":"🧛","name":"뱀파이어의 잉크","grade":"LEGEND","family":"ghost","prompt":"a vampire's high-collared black cape with red lining and small fangs","part":"a high-collared black cape"},
+    {"id":"candle-ghost","emoji":"🕯️","name":"촛대 유령의 잉크","grade":"COMMON","family":"ghost","prompt":"a candelabra's three little flames"},
+    {"id":"skeleton","emoji":"💀","name":"해골의 잉크","grade":"COMMON","family":"ghost","prompt":"a skeleton's bone-white ribs and skull face"},
+    {"id":"cursed-doll","emoji":"🪆","name":"태엽 인형의 잉크","grade":"COMMON","family":"ghost","prompt":"a wind-up doll's porcelain face, button eyes and a key on the back"},
+    {"id":"zombie","emoji":"🧟","name":"좀비의 잉크","grade":"COMMON","family":"ghost","prompt":"a zombie's patched clothes and stitched green skin"},
+    {"id":"witch-apprentice","emoji":"🧹","name":"견습 마녀의 잉크","grade":"COMMON","family":"stardust","prompt":"an apprentice witch's floppy pointed hat and small broom"},
+    {"id":"wailing-ghost","emoji":"👻","name":"통곡 유령의 잉크","grade":"RARE","family":"ghost","prompt":"a wailing ghost's long tattered robe and floating hair","part":"floating wispy hair","body":"LEGLESS"},
+    {"id":"werewolf","emoji":"🌕","name":"늑대인간의 잉크","grade":"RARE","family":"beast","prompt":"a werewolf's shaggy fur, wolf ears and torn clothes","part":"shaggy wolf ears","body":"HUMAN"},
+    {"id":"reaper","emoji":"⚰️","name":"사신의 잉크","grade":"LEGEND","family":"ghost","prompt":"a grim reaper's hooded black cloak and great scythe","part":"a hooded black cloak","body":"LEGLESS"},
+    {"id":"baby-bat","emoji":"🦇","name":"아기 박쥐의 잉크","grade":"COMMON","family":"beast","prompt":"a baby bat's tiny wings and fluffy round body"},
+    {"id":"pumpkin-witch","emoji":"🎃","name":"호박 마녀의 잉크","grade":"RARE","family":"ghost","prompt":"a pumpkin witch's pumpkin hat and orange-and-purple dress","part":"a pumpkin hat"},
+    {"id":"ghost-princess","emoji":"🕯️","name":"유령 공주의 잉크","grade":"LEGEND","family":"ghost","prompt":"a ghost princess's translucent veil, little crown and floating gown","part":"a translucent veil with a little crown"},
+    {"id":"masquerade","emoji":"🎭","name":"가면 무도회의 잉크","grade":"COMMON","family":"ghost","prompt":"a masquerade's ornate eye mask and feathered hat"},
+    {"id":"vampire-lady","emoji":"💍","name":"뱀파이어 귀부인의 잉크","grade":"RARE","family":"ghost","prompt":"a vampire lady's high-collared gothic gown and rose brooch","part":"a rose brooch"}
+  ]
+}

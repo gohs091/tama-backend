@@ -1,0 +1,26 @@
+{
+  "id": "space",
+  "emoji": "🚀",
+  "name": "우주 정거장",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"alien","emoji":"👽","name":"외계인의 잉크","grade":"COMMON","family":"cosmic","prompt":"a little alien's antennae and big glossy eyes"},
+    {"id":"ufo","emoji":"🛸","name":"비행접시의 잉크","grade":"COMMON","family":"cosmic","prompt":"a flying saucer's round domed disc with little lights around the rim"},
+    {"id":"comet","emoji":"☄️","name":"혜성의 잉크","grade":"RARE","family":"cosmic","prompt":"a comet's blazing tail streaking behind","part":"a blazing comet tail"},
+    {"id":"star-whale","emoji":"🌌","name":"별고래의 잉크","grade":"LEGEND","family":"cosmic","prompt":"a star whale's huge body patterned with a starry night sky","part":"a starry night-sky pattern","body":"LEGLESS"},
+    {"id":"astronaut-kid","emoji":"👶","name":"꼬마 우주인의 잉크","grade":"COMMON","family":"cosmic","prompt":"a little astronaut's round bubble helmet and backpack"},
+    {"id":"moon-rabbit","emoji":"🌙","name":"달토끼의 잉크","grade":"COMMON","family":"cosmic","prompt":"a moon rabbit's long ears and rice-cake mallet"},
+    {"id":"satellite","emoji":"🛰️","name":"위성의 잉크","grade":"COMMON","family":"electric","prompt":"a satellite's solar panel wings and dish antenna"},
+    {"id":"space-jelly","emoji":"🪼","name":"우주 해파리의 잉크","grade":"COMMON","family":"cosmic","prompt":"a space jellyfish's star-speckled bell and trailing tendrils"},
+    {"id":"meteorite","emoji":"🌑","name":"운석의 잉크","grade":"COMMON","family":"cosmic","prompt":"a meteorite's cratered rocky surface"},
+    {"id":"astronaut","emoji":"🧑‍🚀","name":"우주 비행사의 잉크","grade":"RARE","family":"cosmic","prompt":"an astronaut's white space suit, visor helmet and jetpack","part":"a small jetpack"},
+    {"id":"alien-warrior","emoji":"🔫","name":"외계 전투병의 잉크","grade":"RARE","family":"cosmic","prompt":"an alien warrior's sleek armor and ray blaster","part":"a small ray blaster"},
+    {"id":"black-hole","emoji":"🕳️","name":"블랙홀의 잉크","grade":"LEGEND","family":"cosmic","prompt":"a swirling black hole vortex with a bright ring around it","part":"a swirling black vortex emblem on the chest"},
+    {"id":"star-candy-alien","emoji":"🍬","name":"별사탕 외계인의 잉크","grade":"RARE","family":"cosmic","prompt":"a star-candy alien's star-shaped candy antennae","part":"star-shaped candy antennae"},
+    {"id":"moon-princess","emoji":"🌙","name":"달의 공주의 잉크","grade":"LEGEND","family":"cosmic","prompt":"a moon princess's crescent tiara and moonlit flowing gown","part":"a crescent tiara"},
+    {"id":"nebula-dancer","emoji":"🌀","name":"성운 무희의 잉크","grade":"COMMON","family":"cosmic","prompt":"a nebula dancer's swirling galaxy-colored skirt"},
+    {"id":"galaxy-idol","emoji":"🌟","name":"은하 아이돌의 잉크","grade":"RARE","family":"cosmic","prompt":"a galaxy idol's star microphone and sparkling stage outfit","part":"a star microphone"},
+    {"id":"star-empress","emoji":"💫","name":"별의 여제의 잉크","grade":"LEGEND","family":"cosmic","prompt":"a star empress's constellation crown and starry royal cape","part":"a constellation crown"}
+  ]
+}

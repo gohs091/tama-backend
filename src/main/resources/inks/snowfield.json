@@ -1,0 +1,25 @@
+{
+  "id": "snowfield",
+  "emoji": "❄️",
+  "name": "설원",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"snowman","emoji":"⛄","name":"눈사람의 잉크","grade":"COMMON","family":"ice","prompt":"a snowman's round snowball body, a carrot nose and a scarf"},
+    {"id":"arctic-fox","emoji":"🦊","name":"북극여우의 잉크","grade":"COMMON","family":"beast","prompt":"an arctic fox's thick snow-white fur and fluffy tail"},
+    {"id":"polar-bear","emoji":"🐻‍❄️","name":"북극곰의 잉크","grade":"RARE","family":"beast","prompt":"a polar bear's heavy white fur and big paws","part":"heavy white fur","body":"QUAD"},
+    {"id":"mammoth","emoji":"🦣","name":"매머드의 잉크","grade":"RARE","family":"beast","prompt":"a mammoth's long curved tusks and shaggy brown fur","part":"long curved tusks","body":"QUAD"},
+    {"id":"yeti","emoji":"❄️","name":"설인의 잉크","grade":"LEGEND","family":"ice","prompt":"a yeti's shaggy white fur and big frosty feet","part":"shaggy white fur","body":"HUMAN"},
+    {"id":"snow-hare","emoji":"🐇","name":"눈토끼의 잉크","grade":"COMMON","family":"beast","prompt":"a snow hare's white fur and dark ear tips"},
+    {"id":"baby-seal","emoji":"🦭","name":"아기 물범의 잉크","grade":"COMMON","family":"marine","prompt":"a baby seal's fluffy white coat and round black eyes"},
+    {"id":"snowy-owl","emoji":"🦉","name":"흰올빼미의 잉크","grade":"COMMON","family":"bird","prompt":"a snowy owl's white speckled feathers and golden eyes"},
+    {"id":"reindeer","emoji":"🦌","name":"순록의 잉크","grade":"COMMON","family":"beast","prompt":"a reindeer's large branching antlers"},
+    {"id":"walrus","emoji":"🦭","name":"바다코끼리의 잉크","grade":"COMMON","family":"marine","prompt":"a walrus's long tusks and bristly whiskers"},
+    {"id":"ice-golem","emoji":"🧊","name":"얼음 골렘의 잉크","grade":"RARE","family":"ice","prompt":"an ice golem's crystal-clear ice block body","part":"ice crystal shoulder plates"},
+    {"id":"snow-queen","emoji":"👸","name":"눈의 여왕의 잉크","grade":"LEGEND","family":"ice","prompt":"a snow queen's ice crystal crown and long frost-white gown","part":"an ice crystal crown"},
+    {"id":"snowflake-fairy","emoji":"❄️","name":"눈꽃 요정의 잉크","grade":"RARE","family":"ice","prompt":"a snowflake fairy's snowflake wings and frosty dress","part":"snowflake wings"},
+    {"id":"ice-princess","emoji":"👸","name":"얼음 공주의 잉크","grade":"LEGEND","family":"ice","prompt":"an ice princess's ice crystal tiara and shimmering ice-blue gown","part":"an ice crystal tiara"},
+    {"id":"frost-dancer","emoji":"⛸️","name":"서리 무희의 잉크","grade":"COMMON","family":"ice","prompt":"a frost dancer's frosty silk skirt and snowflake hairpin"},
+    {"id":"snow-maiden","emoji":"🌨️","name":"설녀의 잉크","grade":"RARE","family":"ice","prompt":"a snow maiden's white hooded kimono and frost-blue sash","part":"a frost-blue sash"}
+  ]
+}

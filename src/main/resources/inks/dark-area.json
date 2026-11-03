@@ -1,0 +1,24 @@
+{
+  "id": "dark-area",
+  "emoji": "😈",
+  "name": "어둠의 세계",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"gargoyle","emoji":"🗿","name":"가고일의 잉크","grade":"RARE","family":"shadow","prompt":"a gargoyle's stone-gray skin, small horns and stone wings","part":"small stone wings on the back","body":"FLY"},
+    {"id":"demon-lord","emoji":"😈","name":"마왕의 잉크","grade":"LEGEND","family":"shadow","prompt":"a demon lord's large curved horns, a dark royal cape and a jagged crown","part":"large curved demon horns"},
+    {"id":"slime","emoji":"🟣","name":"슬라임의 잉크","grade":"COMMON","family":"shadow","prompt":"a slime's glossy wobbly jelly body"},
+    {"id":"goblin","emoji":"👺","name":"고블린의 잉크","grade":"COMMON","family":"shadow","prompt":"a goblin's long pointy ears, green skin and crude dagger"},
+    {"id":"dark-apprentice","emoji":"📕","name":"어둠 견습생의 잉크","grade":"COMMON","family":"shadow","prompt":"a dark apprentice's hooded black robe and small cursed book"},
+    {"id":"orc","emoji":"🪓","name":"오크의 잉크","grade":"COMMON","family":"shadow","prompt":"an orc's tusks, green skin and spiked shoulder pads"},
+    {"id":"hellhound","emoji":"🐕","name":"지옥견의 잉크","grade":"RARE","family":"shadow","prompt":"a hellhound's dark fur, spiked collar and ember eyes","part":"a spiked collar and ember eyes","body":"QUAD"},
+    {"id":"dark-knight","emoji":"⚔️","name":"흑기사의 잉크","grade":"RARE","family":"shadow","prompt":"a dark knight's black spiked armor and horned helmet","part":"a horned black helmet","body":"HUMAN"},
+    {"id":"lich","emoji":"☠️","name":"리치의 잉크","grade":"RARE","family":"shadow","prompt":"a lich's skeletal face, tattered robes and soul-gem staff","part":"a small soul-gem staff"},
+    {"id":"imp","emoji":"😈","name":"꼬마 악동의 잉크","grade":"COMMON","family":"shadow","prompt":"an imp's small horns, pointed tail and mischievous grin"},
+    {"id":"brat-witch","emoji":"🧹","name":"악동 마녀의 잉크","grade":"RARE","family":"shadow","prompt":"a bratty witch's crooked hat and candy-colored broom","part":"a crooked witch hat"},
+    {"id":"dark-princess","emoji":"🖤","name":"어둠의 공주의 잉크","grade":"LEGEND","family":"shadow","prompt":"a dark princess's black tiara and violet gothic gown","part":"a small black tiara"},
+    {"id":"black-rose","emoji":"🥀","name":"검은 장미의 잉크","grade":"COMMON","family":"shadow","prompt":"a black rose with dark velvet petals"},
+    {"id":"dark-lady","emoji":"🪶","name":"어둠의 귀부인의 잉크","grade":"RARE","family":"shadow","prompt":"a dark lady's black lace veil and long dark gown","part":"a black lace veil"},
+    {"id":"queen-of-night","emoji":"🌌","name":"밤의 여왕의 잉크","grade":"LEGEND","family":"shadow","prompt":"a queen of the night's starry black crown and midnight gown","part":"a starry black crown"}
+  ]
+}

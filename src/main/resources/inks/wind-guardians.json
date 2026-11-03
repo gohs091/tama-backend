@@ -1,0 +1,28 @@
+{
+  "id": "wind-guardians",
+  "emoji": "🏞️",
+  "name": "계곡",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"duck","emoji":"🦆","name":"오리의 잉크","grade":"COMMON","family":"bird","prompt":"a duck's flat orange bill and webbed feet"},
+    {"id":"kingfisher","emoji":"🐦","name":"물총새의 잉크","grade":"COMMON","family":"bird","prompt":"a kingfisher's bright blue-and-orange feathers and long pointed beak"},
+    {"id":"crane","emoji":"🕊️","name":"학의 잉크","grade":"COMMON","family":"bird","prompt":"a crane's long elegant neck and a red crown patch"},
+    {"id":"eagle","emoji":"🦅","name":"독수리의 잉크","grade":"RARE","family":"bird","prompt":"an eagle's broad powerful wings and hooked beak","part":"broad eagle wings","body":"FLY"},
+    {"id":"bonghwang","emoji":"🪶","name":"봉황의 잉크","grade":"LEGEND","family":"bird","prompt":"a bonghwang phoenix's long multi-colored tail plumes and an elegant crest","part":"long multi-colored tail plumes","body":"FLY"},
+    {"id":"dragonfly","emoji":"🪰","name":"잠자리의 잉크","grade":"COMMON","family":"insect","prompt":"a dragonfly's long thin body and four clear wings"},
+    {"id":"salmon","emoji":"🐟","name":"연어의 잉크","grade":"COMMON","family":"fish","prompt":"a salmon's pink speckled scales and strong tail"},
+    {"id":"heron","emoji":"🪿","name":"왜가리의 잉크","grade":"COMMON","family":"bird","prompt":"a heron's long legs, long neck and spear-like beak"},
+    {"id":"hawk","emoji":"🦅","name":"매의 잉크","grade":"COMMON","family":"bird","prompt":"a hawk's sharp talons and barred wing feathers"},
+    {"id":"wind-sprite","emoji":"🌬️","name":"바람 요정의 잉크","grade":"COMMON","family":"wind","prompt":"a wind sprite's swirling breeze wisps and leaf wings"},
+    {"id":"falconer","emoji":"🧤","name":"매사냥꾼의 잉크","grade":"RARE","family":"bird","prompt":"a falconer's leather glove, hood and a falcon companion","part":"a leather glove with a small falcon"},
+    {"id":"thunderbird","emoji":"🌩️","name":"천둥새의 잉크","grade":"RARE","family":"bird","prompt":"a thunderbird's storm-dark wings with lightning patterns","part":"storm-dark wings with lightning patterns","body":"FLY"},
+    {"id":"wind-god","emoji":"🌪️","name":"바람 신장의 잉크","grade":"LEGEND","family":"wind","prompt":"a wind god's billowing wind bag, flowing scarves and divine armor","part":"flowing scarves"},
+    {"id":"dandelion","emoji":"🌼","name":"민들레의 잉크","grade":"COMMON","family":"wind","prompt":"a dandelion's white fluffy seed puff"},
+    {"id":"cloud-sheep","emoji":"☁️","name":"구름 양의 잉크","grade":"RARE","family":"wind","prompt":"a cloud sheep's fluffy cloud-wool body","part":"fluffy cloud wool"},
+    {"id":"rainbow-spirit","emoji":"🌈","name":"무지개 정령의 잉크","grade":"LEGEND","family":"wind","prompt":"a rainbow spirit's rainbow-arched ribbons and pastel flowing hair","part":"rainbow ribbons"},
+    {"id":"wind-dancer","emoji":"🎐","name":"바람 무희의 잉크","grade":"COMMON","family":"wind","prompt":"a wind dancer's fluttering silk scarves"},
+    {"id":"crane-maiden","emoji":"🕊️","name":"학 선녀의 잉크","grade":"RARE","family":"bird","prompt":"a crane maiden's white feather robe and red-crowned hair ornament","part":"a red-crowned hair ornament"},
+    {"id":"sky-nymph","emoji":"🌤️","name":"하늘 선녀의 잉크","grade":"LEGEND","family":"wind","prompt":"a sky nymph's floating heavenly sashes and cloud hairpin","part":"floating heavenly sashes"}
+  ]
+}

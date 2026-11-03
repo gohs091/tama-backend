@@ -1,0 +1,26 @@
+{
+  "id": "candy-land",
+  "emoji": "🍭",
+  "name": "과자나라",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"gummy-bear","emoji":"🧸","name":"젤리곰의 잉크","grade":"COMMON","family":"sweet","prompt":"a gummy bear's glossy translucent jelly body"},
+    {"id":"gingerbread","emoji":"🍪","name":"쿠키의 잉크","grade":"COMMON","family":"sweet","prompt":"a gingerbread cookie's icing-trimmed edges and gumdrop buttons"},
+    {"id":"cotton-candy","emoji":"🍭","name":"솜사탕의 잉크","grade":"COMMON","family":"sweet","prompt":"fluffy pastel cotton-candy puffs"},
+    {"id":"ice-cream","emoji":"🍦","name":"아이스크림의 잉크","grade":"RARE","family":"sweet","prompt":"an ice cream cone's scoops with dripping cream and a cherry","part":"a small ice cream scoop on the head"},
+    {"id":"candy-queen","emoji":"👑","name":"사탕 여왕의 잉크","grade":"LEGEND","family":"sweet","prompt":"a candy queen's lollipop scepter, candy crown and swirl-patterned gown","part":"a small candy crown"},
+    {"id":"lollipop","emoji":"🍭","name":"막대사탕의 잉크","grade":"COMMON","family":"sweet","prompt":"a big swirl lollipop"},
+    {"id":"macaron","emoji":"🧁","name":"마카롱의 잉크","grade":"COMMON","family":"sweet","prompt":"a macaron's two pastel shells with a cream filling"},
+    {"id":"donut","emoji":"🍩","name":"도넛의 잉크","grade":"COMMON","family":"sweet","prompt":"a donut's ring shape with icing and sprinkles"},
+    {"id":"pudding","emoji":"🍮","name":"푸딩의 잉크","grade":"COMMON","family":"sweet","prompt":"a pudding's wobbly caramel-topped body"},
+    {"id":"chocolate","emoji":"🍫","name":"초콜릿의 잉크","grade":"COMMON","family":"sweet","prompt":"a chocolate bar's grid of squares"},
+    {"id":"cake","emoji":"🍰","name":"케이크의 잉크","grade":"COMMON","family":"sweet","prompt":"a layered cake with frosting and a strawberry on top"},
+    {"id":"patissier","emoji":"👨‍🍳","name":"파티시에의 잉크","grade":"RARE","family":"sweet","prompt":"a pastry chef's tall white hat, apron and whisk","part":"a tall white chef hat"},
+    {"id":"candy-dragon","emoji":"🐉","name":"사탕 용의 잉크","grade":"RARE","family":"sweet","prompt":"a candy dragon's striped candy-cane horns and lollipop scales","part":"striped candy-cane horns"},
+    {"id":"macaron-fairy","emoji":"🧁","name":"마카롱 요정의 잉크","grade":"RARE","family":"sweet","prompt":"a macaron fairy's macaron hat and pastel wings","part":"a little macaron hat"},
+    {"id":"cherry-lady","emoji":"🍒","name":"체리 아가씨의 잉크","grade":"COMMON","family":"sweet","prompt":"a cherry lady's cherry hair ornaments and red-checked dress"},
+    {"id":"choco-lady","emoji":"🍫","name":"블랙초코 귀부인의 잉크","grade":"RARE","family":"sweet","prompt":"a dark-chocolate lady's chocolate-lace gown and truffle brooch","part":"a chocolate truffle brooch"},
+    {"id":"sugar-empress","emoji":"🏰","name":"설탕 여제의 잉크","grade":"LEGEND","family":"sweet","prompt":"a sugar empress's sugar crystal crown and frosting-white royal gown","part":"a sugar crystal crown"}
+  ]
+}

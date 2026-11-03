@@ -1,0 +1,26 @@
+{
+  "id": "dragons-roar",
+  "emoji": "🐉",
+  "name": "용 둥지",
+  "open": false,
+  "explore": [],
+  "inks": [
+    {"id":"salamander","emoji":"🦎","name":"불도마뱀의 잉크","grade":"COMMON","family":"reptile","prompt":"a fire salamander's spotted orange skin and flame-tipped tail"},
+    {"id":"wyvern","emoji":"🐲","name":"와이번의 잉크","grade":"RARE","family":"scale","prompt":"a wyvern's bat-like dragon wings and barbed tail","part":"bat-like dragon wings","body":"FLY"},
+    {"id":"blue-dragon","emoji":"🐉","name":"청룡의 잉크","grade":"LEGEND","family":"scale","prompt":"an eastern blue dragon's long serpentine body, whiskers and antler horns","part":"antler horns and long whiskers","body":"LEGLESS"},
+    {"id":"red-dragon","emoji":"🔥","name":"드래곤의 잉크","grade":"LEGEND","family":"scale","prompt":"a red dragon's great horned head, big wings and fiery scales","part":"big red dragon wings","body":"FLY"},
+    {"id":"kobold","emoji":"⛏️","name":"코볼트의 잉크","grade":"COMMON","family":"reptile","prompt":"a kobold's small scaly snout and tiny horns"},
+    {"id":"baby-dragon","emoji":"🐣","name":"꼬마용의 잉크","grade":"COMMON","family":"scale","prompt":"a baby dragon's stubby wings and little horns"},
+    {"id":"dragon-tamer","emoji":"🍖","name":"용사육사의 잉크","grade":"COMMON","family":"scale","prompt":"a dragon tamer's leather gear and dragon-scale whip"},
+    {"id":"drake","emoji":"🦎","name":"드레이크의 잉크","grade":"COMMON","family":"scale","prompt":"a drake's sturdy four-legged dragon build and armored scales"},
+    {"id":"frost-wyvern","emoji":"🧊","name":"서리 와이번의 잉크","grade":"RARE","family":"scale","prompt":"a frost wyvern's icy blue wings and frosted scales","part":"icy blue wings","body":"FLY"},
+    {"id":"dragon-knight","emoji":"🏇","name":"용기사의 잉크","grade":"RARE","family":"scale","prompt":"a dragon knight's dragon-scale armor and dragon-head helmet","part":"a dragon-head helmet","body":"HUMAN"},
+    {"id":"hydra","emoji":"🐍","name":"히드라의 잉크","grade":"RARE","family":"scale","prompt":"a hydra's several serpent heads","part":"a second small serpent head"},
+    {"id":"dragon-king","emoji":"🐲","name":"용왕의 잉크","grade":"LEGEND","family":"scale","prompt":"a dragon king's royal crown, long whiskers and golden dragon robes","part":"a royal dragon crown and long whiskers"},
+    {"id":"blossom-dragon","emoji":"🌸","name":"꽃비늘 용의 잉크","grade":"RARE","family":"scale","prompt":"a blossom dragon's petal-shaped scales and flower horns","part":"flower-shaped horns"},
+    {"id":"gem-dragon-princess","emoji":"💎","name":"보석 용 공주의 잉크","grade":"LEGEND","family":"scale","prompt":"a gem dragon princess's jeweled horns, gem scales and royal gown","part":"jeweled horns"},
+    {"id":"scale-dancer","emoji":"🧣","name":"용비늘 무희의 잉크","grade":"COMMON","family":"scale","prompt":"a scale dancer's shimmering dragon-scale dress"},
+    {"id":"dragon-priestess","emoji":"🔔","name":"용의 무녀의 잉크","grade":"RARE","family":"scale","prompt":"a dragon priestess's ceremonial robes and dragon-horn headdress","part":"a dragon-horn headdress"},
+    {"id":"dragon-empress","emoji":"🐉","name":"용의 여제의 잉크","grade":"LEGEND","family":"scale","prompt":"a dragon empress's horned crown and long scale-patterned royal robe","part":"a horned crown"}
+  ]
+}
