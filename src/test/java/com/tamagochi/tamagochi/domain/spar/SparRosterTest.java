@@ -38,17 +38,24 @@ class SparRosterTest {
     }
 
     @Test
-    @DisplayName("상대는 내 레벨 범위 안에서 고르고, 범위 밖 레벨이면 가장 가까운 상대를 고른다")
+    @DisplayName("일반 상대·보스 각각 내 레벨에 가장 가까운 상대를 고르고, 보스는 BOSS_CHANCE 확률로만 나온다")
     void pickByLevel() {
         SplittableRandom r = new SplittableRandom(1);
-        for (int level : new int[]{1, 10, 30, 50}) {
-            for (int i = 0; i < 100; i++) {
-                SparRoster.Enemy e = SparRoster.pick(level, r);
-                assertThat(level).as(e.id()).isBetween(e.minLevel(), e.maxLevel());
+        for (int level : new int[]{1, 10, 30, 50, 80}) {
+            for (int i = 0; i < 50; i++) {
+                assertThat(SparRoster.pick(level, r, 0.0).boss()).isFalse();
+                assertThat(SparRoster.pick(level, r, 1.0).boss()).isTrue();
             }
         }
-        int top = SparRoster.all().stream().mapToInt(SparRoster.Enemy::maxLevel).max().orElseThrow();
-        assertThat(SparRoster.pick(top + 40, r).maxLevel()).isEqualTo(top);
+        for (int level : new int[]{1, 10, 30}) {
+            SparRoster.Enemy e = SparRoster.pick(level, r, 0.0);
+            assertThat(level).as(e.id()).isBetween(e.minLevel(), e.maxLevel());
+        }
+        int top = SparRoster.all().stream().filter(e -> !e.boss()).mapToInt(SparRoster.Enemy::maxLevel).max().orElseThrow();
+        assertThat(SparRoster.pick(top + 40, r, 0.0).maxLevel()).isEqualTo(top);
+
+        long bosses = java.util.stream.IntStream.range(0, 20000).filter(i -> SparRoster.pick(50, r).boss()).count();
+        assertThat(bosses).isBetween(100L, 320L); // 1% 근처
     }
 
     @Test
