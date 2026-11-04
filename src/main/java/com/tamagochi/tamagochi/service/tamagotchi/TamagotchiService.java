@@ -23,9 +23,9 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Slf4j
 public class TamagotchiService {
-    private static final int ITEM_COST = 2; // 고기·알약 1회 가격(포인트)
+    private static final int ITEM_COST = 5; // 고기·알약 1회 가격(잉크). 한 번에 포만감·파워 +3
     private static final int MAX_TRAINING_CLICKS = 60; // 5초 트레이닝에서 사람이 칠 수 있는 상한(클라이언트 값은 신뢰하지 않음)
-    private static final int TRAINING_COST = 10; // 트레이닝 1번에 줄어드는 포만감·파워 (채우는 데 잉크 40)
+    private static final int TRAINING_COST = 10; // 트레이닝 1번에 줄어드는 포만감·파워 (채우는 데 고기·알약 각 4번, 잉크 40)
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
@@ -43,6 +43,9 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
         requireHome(tamagotchi);
+        if (tamagotchi.isFull()) {
+            throw new IllegalStateException("배가 불러서 더 먹을 수 없어요.");
+        }
 
         // 1. 포인트 차감 (멱등성 처리 포함)
         pointService.usePoint(user, ITEM_COST, idempotencyKey);
@@ -326,6 +329,9 @@ public class TamagotchiService {
         requireHome(tamagotchi);
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태에서는 알약을 먹을 수 없어요.");
+        }
+        if (tamagotchi.getStrength() >= 100) {
+            throw new IllegalStateException("파워가 가득 차서 더 먹을 수 없어요.");
         }
 
         // 포인트 차감

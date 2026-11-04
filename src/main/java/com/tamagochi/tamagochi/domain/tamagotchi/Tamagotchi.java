@@ -20,8 +20,8 @@ public class Tamagotchi {
 
     public static final int INITIAL_HUNGER = 50;
     public static final int INITIAL_STRENGTH = 50;
-    public static final int FEED_AMOUNT = 1;  // 고기 1회 포만감 회복량
-    public static final int PILL_AMOUNT = 1;  // 알약 1회 파워 회복량
+    public static final int FEED_AMOUNT = 3;  // 고기 1회 포만감 회복량
+    public static final int PILL_AMOUNT = 3;  // 알약 1회 파워 회복량
     public static final String DEFAULT_NAME = "끄적이";
 
     @Id
@@ -348,6 +348,11 @@ public class Tamagotchi {
 
     public boolean isDead() {
         return this.deadAt != null;
+    }
+
+    /** 포만감이 가득(100)이면 더 먹지 않는다 (잉크를 쓰기 전에 확인한다) */
+    public boolean isFull() {
+        return this.hunger <= 0;
     }
 
     public void feed() {

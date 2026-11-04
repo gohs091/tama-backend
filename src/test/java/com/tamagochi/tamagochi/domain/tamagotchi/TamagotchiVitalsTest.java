@@ -114,6 +114,18 @@ class TamagotchiVitalsTest {
     }
 
     @Test
+    @DisplayName("고기 한 번에 포만감 +3, 가득 차면 isFull (백엔드 hunger는 0이 가득)")
+    void feeding_addsThree_andStopsAtFull() {
+        Tamagotchi p = baby(5, 50);
+        assertThat(p.isFull()).isFalse();
+        p.feed();
+        assertThat(p.getHunger()).isEqualTo(2);
+        p.feed();
+        assertThat(p.getHunger()).isZero();
+        assertThat(p.isFull()).isTrue();
+    }
+
+    @Test
     @DisplayName("자다가 먹이면 깬다")
     void feeding_wakesUp() {
         LocalDateTime night = LocalDateTime.of(2026, 10, 23, 22, 0);
