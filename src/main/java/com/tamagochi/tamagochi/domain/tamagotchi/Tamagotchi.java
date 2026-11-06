@@ -331,12 +331,17 @@ public class Tamagotchi {
     @Column(name = "adult_image_key", length = 200)
     private String adultImageKey;
 
+    // 유저가 그린 원본 그림. 폰 저장소가 지워져도 이걸로 되살리고 다음 진화를 만든다
+    @Column(name = "sketch_image_key", length = 200)
+    private String sketchImageKey;
+
     /** S3에 올린 그림의 키를 저장하고, 같은 단계의 base64 원본은 DB에서 지운다 */
     public void saveStageImageKey(String stage, String key) {
         switch (stage) {
             case "baby"  -> { this.babyImageKey = key;  this.babyImageBase64 = null; }
             case "child" -> { this.childImageKey = key; this.childImageBase64 = null; }
             case "adult" -> { this.adultImageKey = key; this.adultImageBase64 = null; }
+            case "sketch" -> this.sketchImageKey = key;
             default -> throw new IllegalArgumentException("알 수 없는 단계예요.");
         }
     }
@@ -756,5 +761,6 @@ public class Tamagotchi {
         this.babyImageKey = null;
         this.childImageKey = null;
         this.adultImageKey = null;
+        this.sketchImageKey = null;
     }
 }

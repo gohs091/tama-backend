@@ -73,6 +73,35 @@ class PetImageTest {
     }
 
     @Test
+    @DisplayName("원본 그림(sketch)도 S3에 올려 키를 남기고, 지금 단계 그림은 그대로 둔다. 새로 시작하면 원본 키도 지운다")
+    void saveSketch() {
+        FakeStore store = new FakeStore();
+        TamagotchiRepository repo = mock(TamagotchiRepository.class);
+        Tamagotchi pet = pet(EvolutionStage.CHILD);
+        pet.saveStageImageKey("child", "public/pets/x/child.1.png");
+        when(repo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
+
+        new PetImageService(store, repo, mock(TamagotchiService.class)).saveImage(User.builder().id(1L).build(), "sketch", PNG);
+
+        assertThat(pet.getSketchImageKey()).startsWith("public/pets/" + pet.getPublicId() + "/sketch.");
+        assertThat(pet.getCurrentImageKey()).isEqualTo("public/pets/x/child.1.png");
+        pet.reset();
+        assertThat(pet.getSketchImageKey()).isNull();
+    }
+
+    @Test
+    @DisplayName("S3가 꺼져 있으면 원본 그림은 저장하지 않는다 (DB가 커지지 않게)")
+    void sketchNotStoredInDb() {
+        PetImageStore off = mock(PetImageStore.class);
+        when(off.enabled()).thenReturn(false);
+        TamagotchiService legacy = mock(TamagotchiService.class);
+
+        new PetImageService(off, mock(TamagotchiRepository.class), legacy).saveImage(User.builder().id(1L).build(), "sketch", PNG);
+
+        verify(legacy, never()).saveImage(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("S3가 꺼져 있으면(로컬·테스트) 예전처럼 DB에 둔다")
     void fallbackToDb() {
         PetImageStore off = mock(PetImageStore.class);

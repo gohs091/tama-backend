@@ -40,7 +40,7 @@ public record PetImage(byte[] bytes, String contentType, String extension) {
 
     public static String key(String publicId, String stage, PetImage image) {
         if (publicId == null || !publicId.matches("[0-9a-f]{32}")) throw new IllegalStateException("끄적이 공개 ID가 없어요.");
-        if (!stage.matches("baby|child|adult")) throw new IllegalArgumentException("알 수 없는 단계예요.");
+        if (!stage.matches("baby|child|adult|sketch")) throw new IllegalArgumentException("알 수 없는 단계예요.");
         return "public/pets/" + publicId + "/" + stage + "." + image.shortHash() + "." + image.extension();
     }
 }
