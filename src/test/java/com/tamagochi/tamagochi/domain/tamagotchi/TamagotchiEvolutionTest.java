@@ -8,8 +8,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TamagotchiEvolutionTest {
 
-    private static final int BABY_ZONE = LevelRules.START_LEVEL + LevelRules.zoneSpan(EvolutionStage.BABY); // 낙서 진화 가능 구간 시작 레벨
-    private static final int CHILD_SPAN = LevelRules.zoneSpan(EvolutionStage.CHILD);
+    private static final int BABY_ZONE = 6;   // 낙서 진화 가능 구간 Lv.6~10 (고정)
+    private static final int BABY_END = 10;
+    private static final int CHILD_ZONE = 26; // 스케치 진화 가능 구간 Lv.26~30 (고정)
+    private static final int CHILD_END = 30;
+    // 레벨이 생기기 전 행을 옮길 때만 쓰는 예전 간격
+    private static final int OLD_BABY_SPAN = LevelRules.zoneSpan(EvolutionStage.BABY);
+    private static final int OLD_CHILD_SPAN = LevelRules.zoneSpan(EvolutionStage.CHILD);
 
     // hunger는 0=포만감 최대. 포만감 = 100 - hunger
     private static Tamagotchi pet(EvolutionStage stage, int satiation, int strength, int poop) {
@@ -71,7 +76,7 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("부화하면 Lv.1 낙서이고, 낙서는 Lv.1 + zoneSpan(BABY)부터 진화 가능 구간이다")
+    @DisplayName("부화하면 Lv.1 낙서이고, 낙서는 Lv.6부터 진화 가능 구간이다")
     void babyZone() {
         Tamagotchi hatched = pet(EvolutionStage.EGG, 80, 80, 0);
         hatched.reset();
@@ -103,35 +108,64 @@ class TamagotchiEvolutionTest {
     }
 
     @Test
-    @DisplayName("스케치의 진화 가능 구간은 진화한 레벨 + zoneSpan(CHILD)부터다 (낙서에서 오래 키워도 바로 완성작이 되지 않는다)")
-    void childZoneCountsFromEvolveLevel() {
-        Tamagotchi p = newBaby(80, 80, 0);
-        int evolvedAt = BABY_ZONE + 3;
-        levelTo(p, evolvedAt);
-        p.evolveIfReady();
+    @DisplayName("스케치의 진화 가능 구간은 진화한 레벨과 상관없이 Lv.26~30이다")
+    void childZoneIsFixed() {
+        for (int evolvedAt : new int[]{BABY_ZONE, BABY_END}) {
+            Tamagotchi p = newBaby(80, 80, 0);
+            levelTo(p, evolvedAt);
+            p.evolveIfReady();
+            assertThat(p.evolutionLevel()).isEqualTo(CHILD_ZONE);
+            assertThat(p.evolutionEndLevel()).isEqualTo(CHILD_END);
+            levelTo(p, CHILD_ZONE - 1);
+            assertThat(p.isInEvolutionZone()).isFalse();
+            levelTo(p, CHILD_ZONE);
+            p.evolveIfReady();
+            assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.ADULT);
+        }
+    }
 
-        assertThat(p.evolutionLevel()).isEqualTo(evolvedAt + CHILD_SPAN);
-        assertThat(p.isInEvolutionZone()).isFalse();
-        levelTo(p, evolvedAt + CHILD_SPAN);
-        p.evolveIfReady();
+    @Test
+    @DisplayName("구간 끝(Lv.10·30)을 넘길 때까지 진화하지 않으면 저절로 진화한다. 끝 레벨까지는 그대로다")
+    void autoEvolvesPastZoneEnd() {
+        Tamagotchi p = newBaby(80, 80, 0);
+        levelTo(p, BABY_END);
+        assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.BABY);
+        levelTo(p, BABY_END + 1);
+        assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.CHILD);
+        assertThat(p.level()).isEqualTo(BABY_END + 1);
+
+        levelTo(p, CHILD_END);
+        assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.CHILD);
+        levelTo(p, CHILD_END + 1);
+        assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.ADULT);
+        levelTo(p, CHILD_END + 5); // 완성작은 더 진화하지 않는다
         assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.ADULT);
     }
 
     @Test
-    @DisplayName("포만감·파워·응가 조건을 하나라도 못 맞추면 구간이어도 진화하지 않는다")
-    void conditionsMustAllPass() {
-        for (Tamagotchi p : new Tamagotchi[]{
-                newBaby(49, 80, 0),   // 포만감 부족
-                newBaby(80, 49, 0),   // 파워 부족
-                newBaby(80, 80, 1)}) { // 응가 있음
+    @DisplayName("진화에 컨디션 조건이 없다: 배고프거나 지치거나 응가가 있어도 구간이면 진화할 수 있다")
+    void noConditionToEvolve() {
+        for (Tamagotchi p : new Tamagotchi[]{newBaby(10, 80, 0), newBaby(80, 10, 0), newBaby(80, 80, 3)}) {
             levelTo(p, BABY_ZONE);
-            assertThat(p.isInEvolutionZone()).isTrue();
-            assertThat(p.isEvolutionReady()).isFalse();
-            assertThatThrownBy(p::evolveIfReady).isInstanceOf(IllegalStateException.class).hasMessageContaining("컨디션");
+            assertThat(p.isEvolutionReady()).isTrue();
+            p.evolveIfReady();
+            assertThat(p.getEvolutionStage()).isEqualTo(EvolutionStage.CHILD);
         }
-        Tamagotchi border = newBaby(50, 50, 0); // 경계값은 통과
-        levelTo(border, BABY_ZONE);
-        assertThat(border.isEvolutionReady()).isTrue();
+    }
+
+    @Test
+    @DisplayName("진화 후보 다시 그리기는 구간에서만, 하루 정해진 횟수까지 쓸 수 있다")
+    void candidateRedrawLimit() {
+        java.time.LocalDate today = java.time.LocalDate.of(2026, 11, 7);
+        Tamagotchi p = newBaby(80, 80, 0);
+        assertThatThrownBy(() -> p.useCandidateRedraw(today, 2)).hasMessageContaining("진화할 수 있을 때");
+        levelTo(p, BABY_ZONE);
+        p.useCandidateRedraw(today, 2);
+        p.useCandidateRedraw(today, 2);
+        assertThat(p.candidateRedrawsLeft(today, 2)).isZero();
+        assertThatThrownBy(() -> p.useCandidateRedraw(today, 2)).hasMessageContaining("오늘은");
+        assertThat(p.candidateRedrawsLeft(today.plusDays(1), 2)).isEqualTo(2); // 다음 날 다시 채워진다
+        assertThat(p.candidateRedrawsLeft(today, 5)).isEqualTo(3);              // 회원(하루 5번)이면 남은 수가 늘어난다
     }
 
     @Test
@@ -249,12 +283,12 @@ class TamagotchiEvolutionTest {
         assertThat(p.expToNext()).isEqualTo(LevelRules.expToNext(BABY_ZONE - 1));
         levelTo(p, BABY_ZONE);
         assertThat(p.expToNext()).isEqualTo(LevelRules.ZONE_EXP_PER_LEVEL);
-        levelTo(p, BABY_ZONE + 5);
+        levelTo(p, BABY_END);
         assertThat(p.expToNext()).isEqualTo(LevelRules.ZONE_EXP_PER_LEVEL);
 
         p.evolveIfReady(); // 스케치가 되면 다시 오르는 곡선, 구간에 들어서면 다시 고정
-        assertThat(p.expToNext()).isEqualTo(LevelRules.expToNext(BABY_ZONE + 5));
-        levelTo(p, BABY_ZONE + 5 + CHILD_SPAN);
+        assertThat(p.expToNext()).isEqualTo(LevelRules.expToNext(BABY_END));
+        levelTo(p, CHILD_ZONE);
         assertThat(p.expToNext()).isEqualTo(LevelRules.ZONE_EXP_PER_LEVEL);
     }
 
@@ -294,7 +328,7 @@ class TamagotchiEvolutionTest {
     void migratesFromGauge() {
         Tamagotchi baby = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(80)
                 .evoGauge(7).pendingEvoGain(2).build();
-        assertThat(baby.level()).isEqualTo(1 + LevelRules.zoneSpan(EvolutionStage.BABY) * 7 / 10);
+        assertThat(baby.level()).isEqualTo(1 + OLD_BABY_SPAN * 7 / 10);
         assertThat(baby.pendingExp()).isEqualTo(2 * LevelRules.EXP_PER_STAR); // 대기 게이지 2칸 = 별 2개만큼
         assertThat(baby.might()).isEqualTo(LevelRules.mightForLevel(baby.level()));
 
@@ -304,11 +338,11 @@ class TamagotchiEvolutionTest {
 
         Tamagotchi child = Tamagotchi.builder().evolutionStage(EvolutionStage.CHILD).hunger(20).strength(80)
                 .evoGauge(30).build();
-        assertThat(child.level()).isEqualTo(BABY_ZONE + CHILD_SPAN * 30 / 60);
-        assertThat(child.evolutionLevel()).isEqualTo(BABY_ZONE + CHILD_SPAN);
+        assertThat(child.level()).isEqualTo(1 + OLD_BABY_SPAN + OLD_CHILD_SPAN * 30 / 60);
+        assertThat(child.evolutionLevel()).isEqualTo(CHILD_ZONE);
 
         Tamagotchi adult = Tamagotchi.builder().evolutionStage(EvolutionStage.ADULT).hunger(20).strength(80).build();
-        assertThat(adult.level()).isEqualTo(BABY_ZONE + CHILD_SPAN);
+        assertThat(adult.level()).isEqualTo(1 + OLD_BABY_SPAN + OLD_CHILD_SPAN);
     }
 
     @Test

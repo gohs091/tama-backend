@@ -38,6 +38,27 @@ public final class LevelRules {
         };
     }
 
+    /**
+     * 진화 가능 구간은 레벨로 고정한다 (2026-11-07): 낙서 Lv.6~10, 스케치 Lv.26~30.
+     * 구간에 들어서면 언제든 진화할 수 있고, 끝 레벨을 넘길 때까지 진화하지 않으면 그려 둔 후보로 저절로 진화한다.
+     * 진화할 수 없는 단계(알·완성작)는 0
+     */
+    public static int zoneStart(EvolutionStage stage) {
+        return switch (stage) {
+            case BABY -> 6;
+            case CHILD -> 26;
+            case EGG, ADULT -> 0;
+        };
+    }
+
+    public static int zoneEnd(EvolutionStage stage) {
+        return switch (stage) {
+            case BABY -> 10;
+            case CHILD -> 30;
+            case EGG, ADULT -> 0;
+        };
+    }
+
     /** 트레이닝 탭 수로 받는 경험치. 진화 가능 구간이면 절반(올림) */
     public static int expForTaps(int taps, boolean inZone) {
         int exp = EvolutionRules.gainForTaps(taps) * EXP_PER_STAR;

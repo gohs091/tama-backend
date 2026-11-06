@@ -264,6 +264,27 @@ public class Tamagotchi {
     @Column(name = "redraw_count")
     private Integer redrawCount;
 
+    // 진화 후보 모습 다시 그리기. 후보는 구간에 들어설 때 한 번만 그리고, 유저가 누를 때만 다시 그린다 (이미지 비용). 하루 횟수를 센다
+    public static final int CANDIDATE_REDRAWS_PER_DAY = 2;
+    @Column(name = "candidate_redraw_date")
+    private LocalDate candidateRedrawDate;
+    @Column(name = "candidate_redraw_count")
+    private Integer candidateRedrawCount;
+
+    public int candidateRedrawsLeft(LocalDate today, int perDay) {
+        int used = today.equals(this.candidateRedrawDate) && this.candidateRedrawCount != null ? this.candidateRedrawCount : 0;
+        return Math.max(0, perDay - used);
+    }
+
+    /** 진화 가능 구간에서만, 하루 횟수 안에서 후보 다시 그리기를 하나 쓴다 */
+    public void useCandidateRedraw(LocalDate today, int perDay) {
+        if (!isInEvolutionZone()) throw new IllegalStateException("진화할 수 있을 때만 다시 그릴 수 있어요.");
+        int left = candidateRedrawsLeft(today, perDay);
+        if (left <= 0) throw new IllegalStateException("오늘은 더 다시 그릴 수 없어요. 내일 다시 해 주세요.");
+        this.candidateRedrawCount = perDay - left + 1;
+        this.candidateRedrawDate = today;
+    }
+
     public int redrawsLeft(LocalDate today) {
         int used = today.equals(this.redrawDate) && this.redrawCount != null ? this.redrawCount : 0;
         return Math.max(0, REDRAWS_PER_DAY - used);
@@ -485,12 +506,14 @@ public class Tamagotchi {
     public int weightDg() { ensureLevel(); return this.weightDg; }
     public int might() { ensureLevel(); return this.might; }
 
-    /** 진화 가능 구간이 시작되는 레벨. 진화할 수 없는 단계(알·완성작)는 0 */
+    /** 진화 가능 구간이 시작되는 레벨 (고정: 낙서 6, 스케치 26). 진화할 수 없는 단계(알·완성작)는 0 */
     public int evolutionLevel() {
-        int span = LevelRules.zoneSpan(this.evolutionStage);
-        if (span == 0) return 0;
-        ensureLevel();
-        return this.stageStartLevel + span;
+        return LevelRules.zoneStart(this.evolutionStage);
+    }
+
+    /** 진화 가능 구간의 마지막 레벨 (낙서 10, 스케치 30). 이 레벨을 넘기면 저절로 진화한다. 진화할 수 없는 단계는 0 */
+    public int evolutionEndLevel() {
+        return LevelRules.zoneEnd(this.evolutionStage);
     }
 
     /** 진화 가능 구간이다: 레벨이 오를 때마다 진화 후보 모습을 받고, 원할 때 진화할 수 있다 */
@@ -529,7 +552,7 @@ public class Tamagotchi {
         return this.level - before;
     }
 
-    /** 경험치를 더하고, 넘치면 레벨을 올린다 */
+    /** 경험치를 더하고, 넘치면 레벨을 올린다. 진화 가능 구간 끝을 넘기면 저절로 다음 단계로 진화한다 */
     public void addExp(int amount) {
         ensureLevel();
         this.exp = this.exp + Math.max(0, amount);
@@ -537,7 +560,16 @@ public class Tamagotchi {
             this.exp -= expRequired(this.level);
             this.level++;
             this.might = this.might + LevelRules.MIGHT_PER_LEVEL;
+            evolveIfOverdue();
         }
+    }
+
+    /** 진화 가능 구간 끝(Lv.10·30)을 넘겼는데 아직 진화하지 않았으면 다음 단계로 올린다. 진화했으면 true */
+    public boolean evolveIfOverdue() {
+        int end = evolutionEndLevel();
+        if (end == 0 || isDead() || level() <= end) return false;
+        evolve(EvolutionRules.next(this.evolutionStage));
+        return true;
     }
 
     // ── 업데이트 전 앱(진화 게이지 화면)이 읽는 값 ──
@@ -545,8 +577,11 @@ public class Tamagotchi {
     /** 진화 가능 구간까지의 진행도를 예전 게이지 칸 수로 바꾼 값. 구간에 들어서면 가득 */
     public int legacyEvoGauge() {
         int max = EvolutionRules.gaugeMax(this.evolutionStage);
-        int span = LevelRules.zoneSpan(this.evolutionStage);
-        if (max == 0 || span == 0) return 0;
+        int at = evolutionLevel();
+        if (max == 0 || at == 0) return 0;
+        ensureLevel();
+        int span = at - this.stageStartLevel;
+        if (span <= 0) return max;
         return Math.min(max, max * Math.max(0, level() - this.stageStartLevel) / span);
     }
 
@@ -555,21 +590,15 @@ public class Tamagotchi {
         return pending > 0 ? Math.max(1, pending / LevelRules.EXP_PER_STAR) : 0;
     }
 
-    /** 진화 가능 구간이고 컨디션(포만감·파워·응가) 조건을 모두 만족하면 진화할 수 있다. */
+    /** 진화 가능 구간이면 진화할 수 있다. 컨디션 조건은 없다 (2026-11-07) */
     public boolean isEvolutionReady() {
-        return isInEvolutionZone()
-                && (100 - this.hunger) >= EvolutionRules.MIN_SATIATION
-                && this.strength >= EvolutionRules.MIN_STRENGTH
-                && this.poopCount <= EvolutionRules.MAX_POOP;
+        return isInEvolutionZone();
     }
 
-    /** 진화 가능 구간에서 컨디션 조건을 만족했을 때만 다음 단계로 올린다. */
+    /** 진화 가능 구간이면 다음 단계로 올린다. */
     public void evolveIfReady() {
         if (!isInEvolutionZone()) {
             throw new IllegalStateException("Lv." + evolutionLevel() + "부터 진화할 수 있어요.");
-        }
-        if (!isEvolutionReady()) {
-            throw new IllegalStateException("진화하려면 컨디션을 맞춰 주세요. (포만감·파워 50 이상, 응가 없음)");
         }
         evolve(EvolutionRules.next(this.evolutionStage));
     }
