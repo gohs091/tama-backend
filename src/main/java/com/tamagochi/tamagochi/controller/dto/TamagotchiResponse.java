@@ -37,7 +37,8 @@ public class TamagotchiResponse {
     private int expToNext;         // 다음 레벨까지 필요한 경험치
     private int pendingExp;        // 마지막 훈련으로 받을 수 있는 경험치 (광고를 보면 받는다)
     private int evolutionLevel;    // 이 레벨부터 진화할 수 있다. 0이면 진화할 수 없는 단계(알·완성작)
-    private boolean inEvolutionZone; // 진화 가능 구간: 레벨이 오를 때마다 새 모습을 받아 진화할지 고른다
+    private boolean inEvolutionZone; // 진화 가능 구간: 그려 둔 후보로 언제든 진화할 수 있다
+    private int evolutionEndLevel;   // 진화 가능 구간의 마지막 레벨. 이 레벨을 넘기면 저절로 진화한다. 0이면 진화할 수 없는 단계
     private int weightDg;          // 무게 (dg)
     private int might;             // 위력
     private int wins;              // 스파링 승
@@ -80,6 +81,7 @@ public class TamagotchiResponse {
                 .pendingExp(tamagotchi.pendingExp())
                 .evolutionLevel(tamagotchi.evolutionLevel())
                 .inEvolutionZone(tamagotchi.isInEvolutionZone())
+                .evolutionEndLevel(tamagotchi.evolutionEndLevel())
                 .weightDg(tamagotchi.weightDg())
                 .might(tamagotchi.might())
                 .wins(tamagotchi.wins())

@@ -33,6 +33,23 @@ public class RedrawService {
         return new Status(pet.redrawsLeft(today), Tamagotchi.REDRAWS_PER_DAY);
     }
 
+    /** 진화 후보 다시 그리기 남은 횟수 (화가 회원이 생기면 하루 횟수를 여기서 늘린다) */
+    @Transactional
+    public Status candidateStatus(User user) {
+        int perDay = Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
+        return new Status(pet(user).candidateRedrawsLeft(LocalDate.now(clock), perDay), perDay);
+    }
+
+    /** 진화 후보 다시 그리기 한 번을 쓴다. 쓴 뒤 앱이 새 후보를 그린다 */
+    @Transactional
+    public Status candidateRedraw(User user) {
+        int perDay = Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
+        Tamagotchi pet = pet(user);
+        LocalDate today = LocalDate.now(clock);
+        pet.useCandidateRedraw(today, perDay);
+        return new Status(pet.candidateRedrawsLeft(today, perDay), perDay);
+    }
+
     private Tamagotchi pet(User user) {
         return tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));

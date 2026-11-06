@@ -45,6 +45,18 @@ public class TamagotchiController {
     }
 
     /** 오늘 남은 다시 그리기 횟수 */
+    /** 진화 후보 다시 그리기 남은 횟수 */
+    @GetMapping("/candidate-redraw/{tossUserId}")
+    public ResponseEntity<?> candidateRedrawStatus(@PathVariable String tossUserId) {
+        return ResponseEntity.ok(redrawService.candidateStatus(userIdentity.resolve(tossUserId)));
+    }
+
+    /** 진화 후보 다시 그리기 한 번 쓰기 (쓴 뒤 앱이 새 후보를 그린다) */
+    @PostMapping("/candidate-redraw")
+    public ResponseEntity<?> candidateRedraw(@RequestBody EvolveRequest request) {
+        return ResponseEntity.ok(redrawService.candidateRedraw(userIdentity.resolve(request.getTossUserId())));
+    }
+
     @GetMapping("/redraw/{tossUserId}")
     public ResponseEntity<?> redrawStatus(@PathVariable String tossUserId) {
         return ResponseEntity.ok(redrawService.status(userIdentity.resolve(tossUserId)));
@@ -107,7 +119,10 @@ public class TamagotchiController {
     @PostMapping("/evo-gauge/claim")
     public ResponseEntity<?> claimEvoGauge(@RequestBody EvolveRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
-        return ResponseEntity.ok(TamagotchiResponse.from(evolutionGaugeClaimService.claim(user)));
+        com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage before = tamagotchiService.getByUserId(user.getId()).getEvolutionStage();
+        Tamagotchi after = evolutionGaugeClaimService.claim(user);
+        if (after.getEvolutionStage() != before) rewardEvolution(user, after); // 구간 끝을 넘겨 저절로 진화했을 때도 진화 보상
+        return ResponseEntity.ok(TamagotchiResponse.from(after));
     }
 
     @PostMapping("/feed")
@@ -162,12 +177,15 @@ public class TamagotchiController {
     public ResponseEntity<?> training(@RequestBody TrainingRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
 
+        com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage before = tamagotchiService.getByUserId(user.getId()).getEvolutionStage();
         TrainingResult result = tamagotchiService.training(
                 user,
                 request.getSessionId(),
                 request.getClickCount(),
                 request.getIdempotencyKey()
         );
+        Tamagotchi after = tamagotchiService.getByUserId(user.getId());
+        if (after.getEvolutionStage() != before) rewardEvolution(user, after); // 구간 끝을 넘겨 저절로 진화했을 때도 진화 보상
         return ResponseEntity.ok(result);
     }
 
