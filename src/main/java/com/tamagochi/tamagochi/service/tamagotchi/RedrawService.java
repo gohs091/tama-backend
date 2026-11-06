@@ -17,6 +17,7 @@ public class RedrawService {
 
     private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
 
     public record Status(int left, int max) {}
 
@@ -33,17 +34,24 @@ public class RedrawService {
         return new Status(pet.redrawsLeft(today), Tamagotchi.REDRAWS_PER_DAY);
     }
 
-    /** 진화 후보 다시 그리기 남은 횟수 (화가 회원이 생기면 하루 횟수를 여기서 늘린다) */
+    /** 화가 회원은 진화 후보를 하루 5번 다시 그린다 */
+    public static final int PAINTER_CANDIDATE_REDRAWS_PER_DAY = 5;
+
+    private int candidatePerDay(User user) {
+        return membershipService.isPainter(user.getId()) ? PAINTER_CANDIDATE_REDRAWS_PER_DAY : Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
+    }
+
+    /** 진화 후보 다시 그리기 남은 횟수 */
     @Transactional
     public Status candidateStatus(User user) {
-        int perDay = Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
+        int perDay = candidatePerDay(user);
         return new Status(pet(user).candidateRedrawsLeft(LocalDate.now(clock), perDay), perDay);
     }
 
     /** 진화 후보 다시 그리기 한 번을 쓴다. 쓴 뒤 앱이 새 후보를 그린다 */
     @Transactional
     public Status candidateRedraw(User user) {
-        int perDay = Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
+        int perDay = candidatePerDay(user);
         Tamagotchi pet = pet(user);
         LocalDate today = LocalDate.now(clock);
         pet.useCandidateRedraw(today, perDay);

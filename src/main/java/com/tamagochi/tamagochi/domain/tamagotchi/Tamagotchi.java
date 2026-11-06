@@ -146,6 +146,28 @@ public class Tamagotchi {
         return this.sleepImageMask != null && this.sleepImageMask != 0;
     }
 
+    // 자는 모습을 잉크로 샀는가. null이면 예전 행: 그때는 잉크로만 살 수 있었으니 하나라도 만들었으면 잉크로 산 것이다.
+    // 화가 회원으로 만들면 false로 둔다 (환불되면 거둬야 하고, 해지 뒤에는 새로 만들 수 없다)
+    @Column(name = "sleep_image_ink_paid")
+    private Boolean sleepImageInkPaid;
+
+    /** 잉크로 산 자는 모습이 있다: 회원이 아니어도 다음 단계를 계속 무료로 만든다 */
+    public boolean isSleepImagePaidByInk() {
+        return this.sleepImageInkPaid == null ? isSleepImageUnlocked() : this.sleepImageInkPaid;
+    }
+
+    /** 화가 회원으로 자는 모습을 만들기 시작했다 (잉크로 산 적이 없을 때만 표시한다) */
+    public void markSleepImageByMember() {
+        if (!isSleepImagePaidByInk()) this.sleepImageInkPaid = false;
+    }
+
+    /** 화가 회원이 환불·회수되면 회원으로 만든 자는 모습 기록을 거둔다 (잉크로 산 것은 그대로) */
+    public void revokeMemberSleepImages() {
+        if (isSleepImagePaidByInk()) return;
+        this.sleepImageMask = 0;
+        this.sleepImageRedoMask = 0;
+    }
+
     public boolean hasSleepImage(EvolutionStage stage) {
         return this.sleepImageMask != null && (this.sleepImageMask & sleepBit(stage)) != 0;
     }
@@ -397,6 +419,26 @@ public class Tamagotchi {
         this.sleeping = false; // 알약을 먹여도 깬다
         this.strength = Math.min(100, this.strength + amount);
         if (this.strength > 0) this.strengthEmptySince = null;
+    }
+
+    /** 한 판만큼 회복에 고기·알약을 몇 개씩 쓰나 (각각 최대 4개, 가득 찬 쪽은 쓰지 않는다) */
+    public record Recovery(int meats, int pills) {
+        public int items() { return meats + pills; }
+    }
+
+    public static final int RECOVER_MAX_ITEMS = 4;
+
+    public Recovery planRecovery() {
+        int meats = 0, pills = 0;
+        for (int h = this.hunger; meats < RECOVER_MAX_ITEMS && h > 0; h -= FEED_AMOUNT) meats++;
+        for (int s = this.strength; pills < RECOVER_MAX_ITEMS && s < 100; s += PILL_AMOUNT) pills++;
+        return new Recovery(meats, pills);
+    }
+
+    /** 한 판만큼 회복: 고기·알약을 정해진 개수만큼 한꺼번에 먹인다 (잉크는 서비스가 받는다) */
+    public void recover(Recovery plan) {
+        for (int i = 0; i < plan.meats(); i++) feed();
+        if (plan.pills() > 0) addStrength(PILL_AMOUNT * plan.pills());
     }
 
     public void consumeForTraining(int hungerCost, int strengthCost) {
@@ -748,6 +790,7 @@ public class Tamagotchi {
         this.sleeping = false;
         this.sleepImageMask = 0;
         this.sleepImageRedoMask = 0;
+        this.sleepImageInkPaid = null;
         this.bathing = false;
         this.adventuring = false;
         setInkLoadout(null, null, null);

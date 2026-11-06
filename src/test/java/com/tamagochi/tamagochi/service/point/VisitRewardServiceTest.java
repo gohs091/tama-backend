@@ -21,7 +21,8 @@ class VisitRewardServiceTest {
     PointWalletRepository repo = mock(PointWalletRepository.class);
     PointService pointService = mock(PointService.class);
     InkBathServiceTest.MutableClock clock = new InkBathServiceTest.MutableClock(Instant.parse("2026-10-28T01:00:00Z"));
-    VisitRewardService service = new VisitRewardService(repo, pointService, clock);
+    com.tamagochi.tamagochi.service.membership.PainterMembershipService membership = org.mockito.Mockito.mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class);
+    VisitRewardService service = new VisitRewardService(repo, pointService, clock, membership);
     User user = mock(User.class);
     PointWallet wallet = PointWallet.builder().balance(0).build();
 

@@ -23,6 +23,7 @@ public class SleepImageService {
 
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
 
     /** 시작 결과: charged 가 true 면 이번에 잉크를 냈다 (실패 시 돌려줘야 한다). redo 면 잃어버린 이미지를 무료로 다시 만든다 */
     public record Start(EvolutionStage stage, boolean charged, boolean redo) {
@@ -49,10 +50,13 @@ public class SleepImageService {
             return new Start(stage, false, true);
         }
 
-        boolean charged = !pet.isSleepImageUnlocked();
-        if (charged) pointService.usePoint(user, PRICE, "sleep-image-" + idempotencyKey);
+        // 2026-11-07: 자는 모습은 화가 회원 혜택이다. 예전에 잉크로 산 끄적이는 계속 무료로 만든다. 더는 잉크로 팔지 않는다
+        if (!pet.isSleepImagePaidByInk()) {
+            if (!membershipService.isPainter(user.getId())) throw new IllegalStateException("자는 모습은 화가 회원이 만들 수 있어요.");
+            pet.markSleepImageByMember();
+        }
         pet.markSleepImage(stage);
-        return new Start(stage, charged);
+        return new Start(stage, false);
     }
 
     /** 만들기에 실패했을 때: 단계 기록을 지우고, 이번에 잉크를 냈다면 돌려준다 */
