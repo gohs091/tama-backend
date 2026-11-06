@@ -25,6 +25,7 @@ public class PetImageService {
     @Transactional
     public void saveImage(User user, String stage, String imageBase64) {
         if (!store.enabled()) {
+            if ("sketch".equals(stage)) return; // 원본 그림은 S3에만 둔다 (DB가 커지지 않게)
             tamagotchiService.saveImage(user, stage, imageBase64);
             return;
         }

@@ -119,6 +119,20 @@ public class TamagotchiController {
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
 
+    /**
+     * 앱이 폰 저장소가 지워진 걸 발견했는데 서버에도 원본 그림이 없어 되살릴 수 없을 때 부른다.
+     * 앱은 문의를 안내하고, 운영자는 이 로그를 유저 코드로 찾아 확인한다.
+     */
+    @PostMapping("/local-missing")
+    public ResponseEntity<?> localMissing(@RequestBody EvolveRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        Tamagotchi t = tamagotchiService.getByUserId(user.getId());
+        log.warn("끄적이 폰 정보 없음(문의 대기) - userCode={}, user={}, pet={}, stage={}, level={}, dead={}, imageKeys(baby/child/adult/sketch)={}/{}/{}/{}",
+                user.getUserCode(), user.getId(), t.getPublicId(), t.getEvolutionStage(), t.level(), t.isDead(),
+                t.getBabyImageKey() != null, t.getChildImageKey() != null, t.getAdultImageKey() != null, t.getSketchImageKey() != null);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{tossUserId}")
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
         User user = userIdentity.resolve(tossUserId);

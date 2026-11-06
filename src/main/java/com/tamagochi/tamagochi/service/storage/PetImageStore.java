@@ -11,7 +11,7 @@ public interface PetImageStore {
     boolean enabled();
 
     /**
-     * 그림을 올리고 S3 키를 돌려준다. 키: public/pets/{publicId}/{stage}.{내용 해시 8자}.{png|jpg}
+     * 그림을 올리고 S3 키를 돌려준다. 키: public/pets/{publicId}/{stage}.  (stage: baby·child·adult, 유저가 그린 원본은 sketch) {내용 해시 8자}.{png|jpg}
      * 같은 그림은 같은 키라서 다시 올려도 덮어쓰기만 된다. 그림이 바뀌면 키도 바뀌어 CDN 캐시를 지울 필요가 없다.
      */
     String put(String publicId, String stage, PetImage image);
