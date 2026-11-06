@@ -25,7 +25,8 @@ class SleepImageServiceTest {
 
     TamagotchiRepository repo = mock(TamagotchiRepository.class);
     PointService points = mock(PointService.class);
-    SleepImageService service = new SleepImageService(repo, points);
+    com.tamagochi.tamagochi.service.membership.PainterMembershipService membership = mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class);
+    SleepImageService service = new SleepImageService(repo, points, membership);
     User user = mock(User.class);
     Tamagotchi pet = mock(Tamagotchi.class);
 
@@ -37,19 +38,32 @@ class SleepImageServiceTest {
     }
 
     @Test
-    void 처음_만들면_잉크_1000개를_낸다() {
-        when(pet.isSleepImageUnlocked()).thenReturn(false);
+    void 회원이_아니고_잉크로_산_적도_없으면_만들_수_없다() {
+        when(pet.isSleepImagePaidByInk()).thenReturn(false);
+        when(membership.isPainter(1L)).thenReturn(false);
 
-        SleepImageService.Start start = service.begin(user, "child", "k1");
-
-        assertThat(start.charged()).isTrue();
-        verify(points).usePoint(user, 1000, "sleep-image-k1");
-        verify(pet).markSleepImage(EvolutionStage.CHILD);
+        assertThatThrownBy(() -> service.begin(user, "child", "k0")).hasMessageContaining("화가 회원");
+        verify(pet, never()).markSleepImage(any());
+        verify(points, never()).usePoint(any(User.class), anyInt(), anyString());
     }
 
     @Test
-    void 이미_값을_냈으면_다른_단계는_무료다() {
-        when(pet.isSleepImageUnlocked()).thenReturn(true);
+    void 화가_회원은_잉크_없이_만들고_회원으로_만든_것으로_표시한다() {
+        when(pet.isSleepImagePaidByInk()).thenReturn(false);
+        when(membership.isPainter(1L)).thenReturn(true);
+
+        SleepImageService.Start start = service.begin(user, "child", "k1");
+
+        assertThat(start.charged()).isFalse();
+        verify(pet).markSleepImageByMember();
+        verify(pet).markSleepImage(EvolutionStage.CHILD);
+        verify(points, never()).usePoint(any(User.class), anyInt(), anyString());
+    }
+
+    @Test
+    void 예전에_잉크로_샀으면_회원이_아니어도_다른_단계는_무료다() {
+        when(pet.isSleepImagePaidByInk()).thenReturn(true);
+        when(membership.isPainter(1L)).thenReturn(false);
 
         SleepImageService.Start start = service.begin(user, "child", "k2");
 

@@ -25,6 +25,7 @@ public class VisitRewardService {
     private final PointWalletRepository pointWalletRepository;
     private final PointService pointService;
     private final Clock clock;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
 
     /** granted: 이번에 받았는지. nextInSeconds: 다음 보상까지 남은 시간 */
     public record Status(boolean granted, int amount, int balance, long nextInSeconds) {}
@@ -42,8 +43,9 @@ public class VisitRewardService {
             }
         }
         String key = "visit-" + user.getId() + "-" + (last == null ? 0 : last.toEpochMilli());
-        pointService.earnPoint(user, AMOUNT, key);
+        int amount = membershipService.isPainter(user.getId()) ? AMOUNT * 2 : AMOUNT; // 화가 회원: 잉크 보상 2배
+        pointService.earnPoint(user, amount, key);
         wallet.markVisitReward(now);
-        return new Status(true, AMOUNT, wallet.getBalance(), INTERVAL.toSeconds());
+        return new Status(true, amount, wallet.getBalance(), INTERVAL.toSeconds());
     }
 }

@@ -32,6 +32,26 @@ public class TamagotchiService {
     private final TrainingSessionService trainingSessionService;
     private final SparDropService sparDropService;
     private final PromotionService promotionService;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
+
+    /**
+     * 한 판만큼 회복: 고기·알약을 각각 최대 4개(+12)까지 한꺼번에 먹이고, 실제로 먹인 만큼만 잉크를 받는다(최대 40).
+     * 가득 찬 쪽은 먹이지 않는다. 결과 화면의 회복 버튼과 화가 회원 자동 반복이 쓴다.
+     */
+    @Transactional
+    public Tamagotchi recover(User user, String idempotencyKey) {
+        Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        if (tamagotchi.isDead()) throw new IllegalStateException("다마고치가 죽었어요.");
+        requireHome(tamagotchi);
+        if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) throw new IllegalStateException("알 상태에서는 회복할 수 없어요.");
+        Tamagotchi.Recovery plan = tamagotchi.planRecovery();
+        if (plan.items() == 0) throw new IllegalStateException("포만감과 파워가 이미 가득 찼어요.");
+        pointService.usePoint(user, plan.items() * ITEM_COST, idempotencyKey);
+        tamagotchi.recover(plan);
+        log.info("한 판만큼 회복 - user={}, 고기 {} · 알약 {}, 잉크 {}", user.getId(), plan.meats(), plan.pills(), plan.items() * ITEM_COST);
+        return tamagotchi;
+    }
 
     @Transactional
     public void feed(User user, String idempotencyKey) {
@@ -267,6 +287,8 @@ public class TamagotchiService {
         // 클릭 수 5번당 1포인트 추가 (5초 트레이닝)
         int bonusReward = taps / 5;
         int totalReward = baseReward + bonusReward;
+        boolean painter = membershipService.isPainter(user.getId());
+        if (painter) totalReward *= 2; // 화가 회원: 잉크 보상 2배
 
         // 포인트 지급 (idempotencyKey-earn 으로 차감과 분리)
         pointService.earnPoint(user, totalReward, idempotencyKey + "-earn");
@@ -274,6 +296,7 @@ public class TamagotchiService {
         // 경험치는 바로 받고(이기면 보너스), 광고를 보면 기본 경험치만큼 더 받는다. 위력·무게도 바로 바뀐다
         int mightBefore = tamagotchi.might();
         Tamagotchi.TrainingGain gain = tamagotchi.train(taps, win);
+        if (painter) tamagotchi.claimExp(); // 화가 회원: 광고 없이 경험치 2배 (광고로 받던 몫을 바로 받는다)
 
         // 완성작의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
         PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT

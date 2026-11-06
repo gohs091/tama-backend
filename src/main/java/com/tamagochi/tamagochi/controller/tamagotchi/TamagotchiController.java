@@ -233,6 +233,13 @@ public class TamagotchiController {
         return ResponseEntity.ok(result);
     }
 
+    /** 한 판만큼 회복 (고기·알약 각각 최대 4개, 먹인 만큼만 잉크) */
+    @PostMapping("/recover")
+    public ResponseEntity<?> recover(@RequestBody PillRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        return ResponseEntity.ok(TamagotchiResponse.from(tamagotchiService.recover(user, request.getIdempotencyKey())));
+    }
+
     @PostMapping("/pill")
     public ResponseEntity<?> eatPill(@RequestBody PillRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
