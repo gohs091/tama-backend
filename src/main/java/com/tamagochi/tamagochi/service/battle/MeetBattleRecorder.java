@@ -37,6 +37,12 @@ public class MeetBattleRecorder {
         public Rewards(int host, int guest) { this(host, guest, false, false, 0, 0); }
     }
 
+    /** 배틀 이름표에 붙일 닉네임 ("닉네임의 끄적이명"). 없으면 빈 문자열 */
+    @Transactional(readOnly = true)
+    public String nickname(Long userId) {
+        return userRepository.findById(userId).map(User::getNickname).map(String::strip).orElse("");
+    }
+
     /** 오늘 한 배틀 수 */
     @Transactional(readOnly = true)
     public long battlesToday(Long userId) {
