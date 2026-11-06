@@ -90,6 +90,20 @@ class MeetBattleServiceTest {
     }
 
     @Test
+    void 이름표에는_서버에_저장된_닉네임이_붙는다() {
+        when(recorder.nickname(1L)).thenReturn("철수");
+        when(recorder.nickname(2L)).thenReturn("영희");
+        service.create(host, 1L);
+        service.join(guest, 2L, code());
+        // 화면이 닉네임을 보내도 무시하고 서버 값을 쓴다
+        service.onMessage(host, "{\"t\":\"hello\",\"profile\":{\"image\":\"data:image/png;base64,AA\",\"name\":\"뭉치\",\"nickname\":\"가짜\"}}");
+
+        JsonNode foe = guest.last("room").path("foe").path("profile");
+        assertThat(foe.path("nickname").asText()).isEqualTo("철수");
+        assertThat(foe.path("name").asText()).isEqualTo("뭉치");
+    }
+
+    @Test
     void 내_QR은_내가_찍을_수_없다() {
         service.create(host, 1L);
         FakePeer me2 = new FakePeer("h2");

@@ -217,6 +217,16 @@ public class MeetBattleService {
         }
     }
 
+    private String safeNickname(Long userId) {
+        try {
+            String n = recorder.nickname(userId);
+            return n == null ? "" : n;
+        } catch (RuntimeException e) {
+            log.warn("Meet battle nickname lookup failed: user={}", userId, e);
+            return "";
+        }
+    }
+
     private void hello(Room room, Player me, JsonNode profile) {
         if (!profile.isObject()) return;
         ObjectNode p = mapper.createObjectNode();
@@ -232,6 +242,8 @@ public class MeetBattleService {
         p.put("stage", profile.path("stage").asText("BABY").replaceAll("[^A-Z]", ""));
         p.put("facing", "left".equals(profile.path("facing").asText()) ? "left" : "right");
         p.put("name", battleName(profile.path("name").asText("")));
+        // 닉네임은 화면이 보낸 값이 아니라 서버에 저장된 값을 쓴다 (남의 닉네임을 사칭하지 못하게)
+        p.put("nickname", safeNickname(me.userId));
         me.profile = p;
         broadcastRoom(room);
         maybeStartIntro(room);
