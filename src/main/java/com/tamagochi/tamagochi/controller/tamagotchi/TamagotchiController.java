@@ -133,6 +133,36 @@ public class TamagotchiController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 원본 그림을 data URL로 돌려준다. CDN에 CORS가 없어 앱이 직접 받아 데이터로 쓸 수 없으므로 서버가 대신 받는다.
+     * 폰 저장소가 지워진 앱이 원본을 되살려 다음 진화에 쓴다. 원본이 없으면 404
+     */
+    @GetMapping("/sketch/{tossUserId}")
+    public ResponseEntity<?> sketch(@PathVariable String tossUserId) {
+        User user = userIdentity.resolve(tossUserId);
+        Tamagotchi t = tamagotchiService.getByUserId(user.getId());
+        String url = com.tamagochi.tamagochi.service.storage.PetImageUrls.of(t.getSketchImageKey());
+        if (url == null) return ResponseEntity.notFound().build();
+        try {
+            java.net.http.HttpResponse<byte[]> res = SKETCH_HTTP.send(
+                    java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).timeout(java.time.Duration.ofSeconds(10)).build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+            if (res.statusCode() != 200) {
+                log.warn("원본 그림을 받지 못했어요 - user={}, status={}", user.getId(), res.statusCode());
+                return ResponseEntity.status(502).build();
+            }
+            String type = url.endsWith(".png") ? "image/png" : "image/jpeg";
+            return ResponseEntity.ok(java.util.Map.of("imageBase64",
+                    "data:" + type + ";base64," + java.util.Base64.getEncoder().encodeToString(res.body())));
+        } catch (Exception e) {
+            log.warn("원본 그림을 받지 못했어요 - user={}", user.getId(), e);
+            return ResponseEntity.status(502).build();
+        }
+    }
+
+    private static final java.net.http.HttpClient SKETCH_HTTP = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(5)).build();
+
     @GetMapping("/{tossUserId}")
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
         User user = userIdentity.resolve(tossUserId);
