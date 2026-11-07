@@ -369,6 +369,30 @@ public class Tamagotchi {
     }
 
     /** 현재 진화 단계 그림의 S3 키 (없으면 null) */
+    // 배틀 기술: 단계마다 한 번, 그 단계 그림을 보고 AI가 정한다 (BattleSkillService). 틀은 앱의 입자 연출 18가지 중 하나
+    @Column(name = "skill_template", length = 20)
+    private String skillTemplate;
+    @Column(name = "skill_name", length = 40)
+    private String skillName;
+    @Column(name = "skill_colors", length = 40)
+    private String skillColors;   // "#rrggbb,#rrggbb,#rrggbb" (주색, 보조색, 밝은 강조색)
+    @Column(name = "skill_particle", length = 12)
+    private String skillParticle;
+    @Column(name = "skill_stage", length = 10)
+    private String skillStage;    // 이 기술을 정한 단계. 진화하면 새 모습으로 다시 정한다
+
+    public boolean hasSkillForCurrentStage() {
+        return skillTemplate != null && evolutionStage != null && evolutionStage.name().equals(skillStage);
+    }
+
+    public void applySkill(String template, String name, String colors, String particle) {
+        this.skillTemplate = template;
+        this.skillName = name;
+        this.skillColors = colors;
+        this.skillParticle = particle;
+        this.skillStage = evolutionStage == null ? null : evolutionStage.name();
+    }
+
     public String getCurrentImageKey() {
         return switch (this.evolutionStage) {
             case EGG, BABY -> babyImageKey;

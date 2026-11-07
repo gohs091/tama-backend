@@ -20,9 +20,11 @@ public class TrainingStartResponse {
     /**
      * key: 스파링 상대 id (SparRoster). 예전 임시 상대(crow 등)면 name·imageUrl이 null이라 앱이 가진 그림을 쓴다.
      * imageUrl: 일반 상대는 오른쪽을 보는 측면 그림, 보스(boss)는 정면 그림.
+     * skill: 연타 중에 쓰는 기술 연출 틀 (색은 앱이 상대 그림에서 뽑는다)
      */
     public record Enemy(String key, int level, int might, int taps, int condition,
-                        String name, String faction, String power, boolean boss, String imageUrl, List<DropInk> drops) {
+                        String name, String faction, String power, boolean boss, String imageUrl, List<DropInk> drops,
+                        String skill) {
     }
 
     /** 이 상대가 떨어뜨릴 수 있는 잉크 (화면에 미리 보여준다) */
@@ -41,7 +43,7 @@ public class TrainingStartResponse {
                 .enemy(new Enemy(session.getEnemyKey(), session.getEnemyLevel(), session.getEnemyMight(),
                         session.getEnemyTaps(), session.getEnemyCondition(),
                         e == null ? null : e.name(), e == null ? null : e.faction(), e == null ? null : e.power().name(),
-                        e != null && e.boss(), e == null ? null : PetImageUrls.of(e.imageKey()), drops))
+                        e != null && e.boss(), e == null ? null : PetImageUrls.of(e.imageKey()), drops, e == null ? null : e.skill()))
                 .build();
     }
 }

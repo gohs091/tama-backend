@@ -27,6 +27,7 @@ public class TamagotchiController {
     private final RedrawService redrawService;
     private final EvolutionPromotionService evolutionPromotionService;
     private final com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
+    private final com.tamagochi.tamagochi.service.battle.BattleSkillService battleSkillService;
 
     /** 진화 달성 보상(스케치 10원·완성작 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
     private void rewardEvolution(User user, Tamagotchi tamagotchi) {
@@ -177,6 +178,18 @@ public class TamagotchiController {
 
     private static final java.net.http.HttpClient SKETCH_HTTP = java.net.http.HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(5)).build();
+
+    /**
+     * 지금 단계 배틀 기술. 없으면 그림을 보고 정해 저장한다(단계마다 한 번). 알이거나 정하지 못하면 204 (앱은 기본 기술로 연출)
+     */
+    @PostMapping("/skill")
+    public ResponseEntity<?> skill(@RequestBody SkillRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        Tamagotchi t = tamagotchiService.getByUserId(user.getId());
+        return battleSkillService.ensure(t.getId(), request.getImageBase64())
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
 
     @GetMapping("/{tossUserId}")
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
