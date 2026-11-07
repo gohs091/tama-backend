@@ -16,6 +16,7 @@ import java.util.random.RandomGenerator;
 
 /**
  * 스파링 상대 목록 (resources/spar/enemies.json, 412명). 상대마다 나오는 레벨 범위와 떨어뜨리는 잉크(최대 5칸)가 정해져 있다.
+ * skill: 연타 중에 쓰는 기술 연출 틀 (BattleSkill.TEMPLATES). 412명을 그림 이름으로 분류해 가장 잘 맞는 틀을 넣었다
  * 그림은 CDN의 public/spar/{id}.v{IMAGE_VERSION}.png
  */
 public final class SparRoster {
@@ -26,7 +27,7 @@ public final class SparRoster {
     public enum Power { WEAK, NORMAL, STRONG, BOSS }
 
     public record Enemy(String id, String name, String faction, Power power, String axis,
-                        int minLevel, int maxLevel, List<String> drops) {
+                        int minLevel, int maxLevel, List<String> drops, String skill) {
         public boolean boss() {
             return power == Power.BOSS;
         }
@@ -111,7 +112,8 @@ public final class SparRoster {
                 n.get("drops").forEach(d -> drops.add(d.asText()));
                 Enemy e = new Enemy(n.get("id").asText(), n.get("name").asText(), n.get("faction").asText(),
                         Power.valueOf(n.get("power").asText().toUpperCase()), n.get("axis").asText(),
-                        n.get("minLevel").asInt(), n.get("maxLevel").asInt(), List.copyOf(drops));
+                        n.get("minLevel").asInt(), n.get("maxLevel").asInt(), List.copyOf(drops),
+                        n.hasNonNull("skill") ? n.get("skill").asText() : "projectile");
                 if (map.put(e.id(), e) != null) throw new IllegalStateException("중복 상대: " + e.id());
             }
             return Collections.unmodifiableMap(map);

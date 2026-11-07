@@ -50,6 +50,7 @@ public class TamagotchiResponse {
     private String currentImageBase64; // S3로 옮기기 전 그림 (옮긴 뒤에는 null)
     private String currentImageUrl;    // S3에 올린 지금 단계 그림 주소 (CDN). 있으면 이것을 쓴다
     private boolean imageUploadEnabled; // 앱이 단계 그림을 서버(S3)에 올려도 되는지
+    private com.tamagochi.tamagochi.domain.battle.BattleSkill skill; // 지금 단계 배틀 기술 (아직 없으면 null → 앱이 /skill로 정해 달라고 한다)
     private String sketchImageUrl;     // 유저가 그린 원본 그림 주소 (CDN). 폰 저장소가 지워졌을 때 되살린다
 
     public static TamagotchiResponse from(Tamagotchi tamagotchi) {
@@ -94,6 +95,7 @@ public class TamagotchiResponse {
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
                 .currentImageUrl(com.tamagochi.tamagochi.service.storage.PetImageUrls.of(tamagotchi.getCurrentImageKey()))
                 .imageUploadEnabled(com.tamagochi.tamagochi.service.storage.PetImageUrls.uploadEnabled())
+                .skill(com.tamagochi.tamagochi.service.battle.BattleSkillService.current(tamagotchi).orElse(null))
                 .sketchImageUrl(com.tamagochi.tamagochi.service.storage.PetImageUrls.of(tamagotchi.getSketchImageKey()))
                 .build();
     }
