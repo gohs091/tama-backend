@@ -30,6 +30,11 @@ final class ImagePromptV3 {
             "the same dark dots if image 1 has dots), and make sure every eye keeps a small white highlight so it never becomes a blank solid-black oval. " +
             "Do not make the eyes smaller, flatter or emptier than in image 1.";
 
+    /** 잉크가 닿지 않은 부위(꼬리 등)까지 물들고, 점이 자글자글해지고, 칸 크기가 달라지는 걸 막는다 */
+    static final String CLEAN = "Every part that the absorbed ink does not change (for example the tail, wings, eyes, belly and main body color) keeps EXACTLY " +
+            "its colors and shape from image 1. Use a limited palette (about 12 colors at most) with large clean flat color areas: " +
+            "no speckled, mottled, noisy or rainbow pixels. Keep the same pixel size as image 1. ";
+
     private static final String FRAME = "Single character centered, filling about 70% of the frame, transparent background, " +
             "no shadow, no glow, no ground, no other characters.";
 
@@ -144,7 +149,7 @@ final class ImagePromptV3 {
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes + CLEAN +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
@@ -164,8 +169,8 @@ final class ImagePromptV3 {
     private static final String LOOSE = "Keep its color palette and its essence, but its outer design may change a lot: new proportions, a new silhouette, new parts.";
 
     private static final String CHILD_GROWTH = "This is the second stage: a more mature, more developed form, NOT merely a bigger copy of image 1. " +
-            "Add exactly ONE new signature feature that fits its nature (for example a crest, longer limbs, a distinctive marking or a tail), " +
-            "and keep everything else recognizable.";
+            "Make ONE clear change to its SILHOUETTE that fits its nature (for example a taller crest, longer legs, a bigger tail or a more upright, " +
+            "confident posture) so the outline itself looks more grown-up; a new color or pattern alone does not count. Keep everything else recognizable.";
 
     /** 스케치 → 완성작: 정규 진화처럼 눈에 띄게 강하고 멋있어지되, 같은 생물이어야 한다 */
     private static final String ADULT_GROWTH =

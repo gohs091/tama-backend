@@ -93,7 +93,7 @@ class LandCatalogAbsorbTest {
         String b = LandCatalog.absorbedPrompt("t-rex", familyInkIds(2), "adult");
 
         assertThat(a).isEqualTo(b);
-        assertThat(a).contains("texture, pattern and mood");
+        assertThat(a).contains("clearly shaped parts").contains("Never spread it as speckles");
     }
 
     @Test
@@ -101,7 +101,7 @@ class LandCatalogAbsorbTest {
     void familyOnly_textureOnly() {
         String p = LandCatalog.absorbedPrompt(null, familyInkIds(2), "adult");
 
-        assertThat(p).contains("texture, pattern and mood").doesNotContain("truly").doesNotContain(LandCatalog.BODY_CHANGE_MARK);
+        assertThat(p).contains("clearly shaped parts").contains("Never spread it as speckles").doesNotContain("truly").doesNotContain(LandCatalog.BODY_CHANGE_MARK);
     }
 
     @Test

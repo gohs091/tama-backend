@@ -374,7 +374,13 @@ public class ImageGenerationService {
             log.warn("알파 정리 실패, 원본 사용");
             return png;
         }
-        return cleaned;
+        // 도트 크기가 그림마다 달라 같은 격자로 다시 찍는다
+        byte[] snapped = PixelSnap.snap(cleaned);
+        if (snapped == null) {
+            log.warn("격자 맞추기 실패, 알파만 정리한 그림 사용");
+            return cleaned;
+        }
+        return snapped;
     }
 
     private void addImagePart(MultipartBodyBuilder builder, String field, byte[] bytes, String mime, String filename) {

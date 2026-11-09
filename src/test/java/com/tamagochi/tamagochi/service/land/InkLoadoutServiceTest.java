@@ -51,7 +51,7 @@ class InkLoadoutServiceTest {
         service.set(user, "cat", List.of("family.spirit", "family.flower"));
         String prompt = service.promptFor(user, "child");
         assertThat(prompt).contains("a cat's pointed ears").contains("spirit traits").contains("flower traits")
-                .contains("not as extra body parts");
+                .contains("Never spread it as speckles");
     }
 
     @Test
