@@ -35,8 +35,9 @@ class CharacterControllerJobTest {
         imageService = mock(ImageGenerationService.class);
         quota = mock(ImageQuotaService.class);
         when(quota.tryAcquire(anyString())).thenReturn(true);
+        when(quota.tryAcquireEvolved(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class));
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class), mock(com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository.class));
     }
 
     private GenerateImageRequest generateRequest() {
@@ -74,6 +75,19 @@ class CharacterControllerJobTest {
         InOrder order = inOrder(imageService);
         order.verify(imageService).storeJob(anyString(), any(ImageJobResult.class));
         order.verify(imageService).generateEvolvedAsync(anyString(), any(), eq("AAAA"), eq("metal-empire"), eq("child"), any(), any(), eq("u1"));
+    }
+
+    @Test
+    @DisplayName("진화 생성: 단계별 하루 한도를 넘으면 429이고 그리지 않는다 (잉크를 갈아 끼워 계속 다시 그리기 방지)")
+    void generateEvolved_rejectedWhenStageCapReached() {
+        when(quota.tryAcquireEvolved(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(false);
+        EvolveImageRequest r = new EvolveImageRequest();
+        ReflectionTestUtils.setField(r, "tossUserId", "u1");
+        ReflectionTestUtils.setField(r, "imageBase64", "AAAA");
+        ReflectionTestUtils.setField(r, "stage", "child");
+
+        org.assertj.core.api.Assertions.assertThat(controller.generateEvolved(r).getStatusCode().value()).isEqualTo(429);
+        org.mockito.Mockito.verify(imageService, org.mockito.Mockito.never()).generateEvolvedAsync(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
