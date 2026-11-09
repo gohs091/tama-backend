@@ -16,6 +16,18 @@ class LandCatalogTest {
     }
 
     @Test
+    void everyRegionHasHomeInksAndEachSpecificInkHasOneHome() {
+        for (LandCatalog.Region r : LandCatalog.regions()) {
+            assertThat(LandCatalog.homeInks(r.id())).as(r.id()).isNotEmpty()
+                    .allMatch(i -> i.grade() != LandCatalog.Grade.FAMILY)
+                    .allMatch(i -> LandCatalog.homeRegion(i.id()).orElseThrow().equals(r.id()));
+        }
+        assertThat(LandCatalog.homeRegion("tiger")).contains("nature-spirits");
+        assertThat(LandCatalog.homeRegion("family.beast")).isEmpty();
+        assertThat(LandCatalog.familyCount()).isPositive();
+    }
+
+    @Test
     void openRegionsFirstFindAtOneMinuteAndStrictlyIncreaseToEighteenHours() {
         for (LandCatalog.Region r : LandCatalog.regions()) {
             if (!r.open()) continue;

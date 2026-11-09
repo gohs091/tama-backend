@@ -34,6 +34,17 @@ public class LandService {
 
     public record OwnedInk(InkView ink, List<String> regionIds, Instant foundAt) {}
 
+    /** 도감: 구역마다 집 잉크 수(닫힌 구역 포함)와 계열 잉크 수. 찾은 수는 앱이 보관함의 homeRegionId로 센다 */
+    public record DexRegion(String id, String emoji, String name, int totalCount) {}
+
+    public record Dex(List<DexRegion> regions, int familyTotal) {}
+
+    public static Dex dex() {
+        return new Dex(LandCatalog.regions().stream()
+                .map(r -> new DexRegion(r.id(), r.emoji(), r.name(), LandCatalog.homeInks(r.id()).size()))
+                .toList(), LandCatalog.familyCount());
+    }
+
     @Transactional
     public List<RegionView> regions(User user) {
         Map<String, Integer> explored = explored(user);

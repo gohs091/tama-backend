@@ -45,10 +45,12 @@ public class AdventureService {
     private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
 
-    public record InkView(String id, String emoji, String name, String grade, String family, String familyName) {
+    /** homeRegionId: 도감에서 이 잉크가 들어가는 구역 (계열 잉크는 null) */
+    public record InkView(String id, String emoji, String name, String grade, String family, String familyName, String homeRegionId) {
         public static InkView of(LandCatalog.Ink ink) {
             String familyName = LandCatalog.family(ink.family()).map(LandCatalog.Family::name).orElse(null);
-            return new InkView(ink.id(), ink.emoji(), ink.name(), ink.grade().name(), ink.family(), familyName);
+            return new InkView(ink.id(), ink.emoji(), ink.name(), ink.grade().name(), ink.family(), familyName,
+                    LandCatalog.homeRegion(ink.id()).orElse(null));
         }
     }
 
