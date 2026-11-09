@@ -35,6 +35,14 @@ final class ImagePromptV3 {
             "its colors and shape from image 1. Use a limited palette (about 12 colors at most) with large clean flat color areas: " +
             "no speckled, mottled, noisy or rainbow pixels. Keep the same pixel size as image 1. ";
 
+    /** 정면 그림은 방향이 없어 앱이 뒤집을 수 없다 (11/2 결정). 진화 프롬프트에 빠져 있어 완성작이 정면으로 나왔다 */
+    static final String SIDE_VIEW = "View: a SIDE VIEW (or three-quarter side view) facing the same direction as image 1, the whole body turned to that side. " +
+            "Never a front view facing the viewer. ";
+
+    /** 젤리·유령·얼음 같은 재질도 불투명하게: 반투명하게 그리면 알파 정리에서 지워져 몸에 구멍이 난다 */
+    static final String SOLID = "Fill the whole body with solid, fully opaque flat colors: even jelly, glass, ice, ghost or water materials are drawn " +
+            "as opaque colors, never see-through, translucent or white. ";
+
     private static final String FRAME = "Single character centered, filling about 70% of the frame, transparent background, " +
             "no shadow, no glow, no ground, no other characters.";
 
@@ -149,7 +157,7 @@ final class ImagePromptV3 {
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes + CLEAN +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes + CLEAN + SIDE_VIEW + SOLID +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
@@ -178,7 +186,7 @@ final class ImagePromptV3 {
             "It must look visibly stronger, cooler and more mature than image 1, and image 1 should look like its younger form. " +
             "Make the proportions more mature and imposing (a taller or more athletic build, longer limbs, a broader chest or a more refined body line, " +
             "a sharper face and a more confident or fierce expression), add refined armor-like plates, bands, spikes, markings or a signature accessory " +
-            "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident pose that fits its body plan. " +
+            "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident side-view pose that fits its body plan. " +
             "The distinctive features listed in the origin above must still be clearly visible, evolved and exaggerated rather than dropped. " +
             "It is still the same creature (same face identity and palette), not a generic cute mascot and not a generic standing hero.";
 
