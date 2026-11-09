@@ -59,6 +59,10 @@ public final class LandCatalog {
     private static final Map<String, Family> FAMILIES = new LinkedHashMap<>();
     private static final Map<String, Ink> INKS = new LinkedHashMap<>();
     private static final Map<String, Region> REGIONS = new LinkedHashMap<>();
+    /** 잉크 id → 집 구역 id (그 잉크를 적어 둔 구역 파일). 계열 잉크는 집 구역이 없다 */
+    private static final Map<String, String> HOME = new LinkedHashMap<>();
+    /** 구역 id → 그 구역이 집인 잉크들 (도감의 구역별 잉크). 닫힌 구역에도 있다 */
+    private static final Map<String, List<Ink>> HOME_INKS = new LinkedHashMap<>();
 
     public static Optional<Region> region(String id) {
         return Optional.ofNullable(id == null ? null : REGIONS.get(id));
@@ -74,6 +78,20 @@ public final class LandCatalog {
 
     public static Optional<Family> family(String key) {
         return Optional.ofNullable(key == null ? null : FAMILIES.get(key));
+    }
+
+    public static int familyCount() {
+        return FAMILIES.size();
+    }
+
+    /** 잉크의 집 구역. 계열 잉크는 비어 있다 */
+    public static Optional<String> homeRegion(String inkId) {
+        return Optional.ofNullable(inkId == null ? null : HOME.get(inkId));
+    }
+
+    /** 이 구역이 집인 잉크들 (도감). 탐험 목록(Region.inks)과 달리 닫힌 구역에도 있고, 다른 구역 잉크는 없다 */
+    public static List<Ink> homeInks(String regionId) {
+        return HOME_INKS.getOrDefault(regionId, List.of());
     }
 
     /** 잉크 개수 → 흡수 비율(%). 특정(대표) 잉크는 2개, 계열 잉크는 1개로 센다 */
@@ -252,6 +270,8 @@ public final class LandCatalog {
                 put(new Ink(text(i, "id"), text(i, "emoji"), text(i, "name"), grade, family, text(i, "prompt"),
                         i.hasNonNull("part") ? i.get("part").asText() : null,
                         i.hasNonNull("body") ? Body.valueOf(i.get("body").asText()) : null));
+                HOME.put(text(i, "id"), text(r, "id"));
+                HOME_INKS.computeIfAbsent(text(r, "id"), k -> new ArrayList<>()).add(INKS.get(text(i, "id")));
             }
         }
         for (JsonNode r : regionFiles) {

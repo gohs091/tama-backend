@@ -37,6 +37,12 @@ public class LandController {
         return ResponseEntity.ok(new Overview(landService.regions(user), adventure));
     }
 
+    /** 도감 구역 목록과 구역별 잉크 수 (유저와 상관없다) */
+    @GetMapping("/dex")
+    public ResponseEntity<?> dex() {
+        return ResponseEntity.ok(LandService.dex());
+    }
+
     @GetMapping("/{tossUserId}/regions/{regionId}")
     public ResponseEntity<?> region(@PathVariable String tossUserId, @PathVariable String regionId) {
         return ResponseEntity.ok(landService.region(userIdentity.resolve(tossUserId), regionId));
