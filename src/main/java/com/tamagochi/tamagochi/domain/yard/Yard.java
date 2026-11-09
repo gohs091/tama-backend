@@ -105,6 +105,17 @@ public class Yard {
         plantedAt = now.minus(YardCatalog.GROW);
     }
 
+    // ── 열매 (농장에서 거둔 열매도 여기에 쌓인다)
+
+    public void addFruit(int n) {
+        if (n > 0) fruit += n;
+    }
+
+    public void spendFruit(int n) {
+        if (fruit < n) throw new IllegalStateException("열매가 모자라요.");
+        fruit -= n;
+    }
+
     // ── 소품
 
     public void buyProp(String propId) {

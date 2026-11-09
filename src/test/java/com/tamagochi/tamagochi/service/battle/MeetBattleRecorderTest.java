@@ -20,7 +20,7 @@ class MeetBattleRecorderTest {
     UserRepository users = mock(UserRepository.class);
     PointService points = mock(PointService.class);
     TamagotchiRepository pets = mock(TamagotchiRepository.class);
-    MeetBattleRecorder recorder = new MeetBattleRecorder(repo, users, points, pets);
+    MeetBattleRecorder recorder = new MeetBattleRecorder(repo, users, points, pets, org.mockito.Mockito.mock(com.tamagochi.tamagochi.service.farm.FarmService.class));
 
     @Test
     void 같은_친구와_하루_보상_횟수를_넘기면_잉크를_주지_않는다() {
