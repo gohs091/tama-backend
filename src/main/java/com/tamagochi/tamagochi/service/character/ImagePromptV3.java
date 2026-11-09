@@ -161,6 +161,51 @@ final class ImagePromptV3 {
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
 
+    /**
+     * 완성작 디자인 단계(텍스트 모델)의 지시문. 재료를 콘셉트 하나로 합쳐 콜라주를 막는다.
+     * 정체성은 머리·얼굴, 주 몸 색, 처음 그림의 대표 특징이 들고 가고, 몸 구조는 자유롭게 바꿀 수 있다 (네발 → 직립 기사 등).
+     */
+    static String finalDesigner(DoodleSubject origin) {
+        String signature = origin == null || blank(origin.traits()) ? "its most distinctive features in the image" : origin.traits();
+        return "You are the lead character designer of a monster-raising game whose evolutions feel like Digimon or Pokemon evolutions.\n" +
+                "You get the CURRENT form of a player's creature (image) and the ingredients of its next evolution: its origin, its stage, the ink data the player absorbed, and a faction theme.\n" +
+                "Merge them into ONE coherent evolved character design, NOT a collage of stickers. The classic failure you must avoid: a skull from the faction, wings from one ink " +
+                "and armor plates from another, each glued on separately in unrelated colors. Instead, find a single concept that explains every element, so each part looks like it was designed together.\n" +
+                "Freedom is allowed: armor, helmets, masks, fierce looks, big bodies, cool or cute are all fine, as long as the design is unified.\n" +
+                "Rules:\n" +
+                "- Respect the transformation strength written in the ink data (decoration only / one part / prominent / full transformation).\n" +
+                "- IDENTITY is carried by: the head and face shape (snout, horns, ears, eye style), the MAIN BODY COLOR read from the image " +
+                "(it must be the first color of the palette; faction colors are only accents), and these signature features: " + signature +
+                ". They must all survive, clearly visible, in the new concept.\n" +
+                "- The BODY PLAN is NOT part of identity. For this FINAL form you may freely change it to fit the concept: a four-legged creature may stand up " +
+                "into an upright two-legged warrior or knight, gain wings, etc. Choose what makes the most impressive evolution.\n" +
+                "- Faction theme is optional seasoning: use at most one faction element, and only if it fits the concept; otherwise just use its colors or drop it.\n" +
+                "- One clear focal point: the eyes stay vivid and readable (they may be partly covered by a helmet, but at least one eye clearly shines).\n" +
+                "- A tight palette: 3 main colors + 1 accent, each repeated on several parts so the whole body reads as one design.\n" +
+                "- It is ONE single creature: any companion, pet or rider in the ink data becomes part of its own body.\n" +
+                "- Side view, facing the same direction as the image.\n" +
+                "- Describe it in neutral design words (no gore, no violence).\n" +
+                "Reply with JSON only: {\"concept\": one short phrase, \"palette\": \"...\", \"bodyPlan\": \"the new body plan and pose\", " +
+                "\"silhouette\": \"how the outline changes and why\", \"focal\": \"...\", " +
+                "\"parts\": [\"2-4 parts, each saying which ingredient it comes from and how it fits the concept\"], " +
+                "\"dropped\": \"ingredients reduced to color or left out to keep it clean\"}";
+    }
+
+    /** 디자인 설계서대로 완성작을 그리는 그림 프롬프트 */
+    static String finalFromBrief(com.fasterxml.jackson.databind.JsonNode b) {
+        StringBuilder parts = new StringBuilder();
+        b.path("parts").forEach(p -> parts.append(p.asText()).append(' '));
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given two images. Image 1 is the CURRENT form of a pet creature, image 2 is the original drawing it came from. " +
+                "Draw its evolved form following this design brief exactly.\n" +
+                "Concept: " + b.path("concept").asText() + ". Palette: " + b.path("palette").asText() + ". " +
+                "Body plan and pose: " + b.path("bodyPlan").asText() + ". Silhouette: " + b.path("silhouette").asText() + ". " +
+                "Focal point: " + b.path("focal").asText() + ". Parts: " + parts.toString().trim() + "\n" +
+                "Everything on the body belongs to this one concept and palette; do not add any other decorations. Keep it recognizable as the creature of image 1.\n" +
+                "View: a side view (or three-quarter side view) facing the same direction as image 1, never a front view. " +
+                "Fill the whole body with solid, fully opaque flat colors, nothing see-through. It must be ONE single creature, no text. " + FRAME;
+    }
+
     /** 친구와 배틀을 잘한 끄적이는 진화한 모습에 그 기세가 보인다 (같은 생물 그대로, 무기·글자 없이) */
     static String champion(int tier) {
         if (tier <= 0) return "";
