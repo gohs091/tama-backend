@@ -31,6 +31,7 @@ public class MeetBattleRecorder {
     private final UserRepository userRepository;
     private final PointService pointService;
     private final TamagotchiRepository tamagotchiRepository;
+    private final com.tamagochi.tamagochi.service.farm.FarmService farmService; // 농장 곁다리 퀘스트 "친구와 배틀"
 
     /** 한 판 결과: 받은 잉크, 이번 판에 포만감·파워를 썼는지, 오늘 남은 무료 판 */
     public record Rewards(int host, int guest, boolean hostCharged, boolean guestCharged, int hostFreeLeft, int guestFreeLeft) {
@@ -84,6 +85,9 @@ public class MeetBattleRecorder {
                 .hostReward(hostReward).guestReward(guestReward)
                 .quit(quitter != null)
                 .build());
+        // 끝까지 한 사람만 농장 퀘스트에 센다 (나간 사람은 빼고)
+        if (!hostId.equals(quitter)) farmService.progress(hostId, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.BATTLE, 1);
+        if (!guestId.equals(quitter)) farmService.progress(guestId, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.BATTLE, 1);
         grant(hostId, hostReward, battle.getId());
         grant(guestId, guestReward, battle.getId());
         int hostResult = quitter != null ? (quitter.equals(hostId) ? -1 : 1) : winner;
