@@ -192,6 +192,13 @@ public final class LandCatalog {
     static final java.util.Set<String> PAINT_FAMILIES = java.util.Set.of("fire", "ice", "tentacle", "sweet", "cosmic", "ghost", "shadow", "steel");
     /** v3 문장 머리말 (v1·v2 머리말을 포함하지 않는다) */
     public static final String THEME_MARK_V3 = "INK THEME EVOLUTION (v3): ";
+    /**
+     * v4: v3 + 완전체는 얼굴까지 새로 디자인한다. v1~v3는 "같은 얼굴·같은 눈"을 지키게 해서 몸만 용이 되고
+     * 얼굴은 낙서 단계 고양이 그대로 남아 키메라가 됐다. 누구였는지는 색·표정·대표 특징을 새 몸에 "번역"해서 잇는다.
+     * 잉크 문장은 v3와 같고, 다른 점은 ImagePromptV3가 머리말을 보고 완전체 문장을 바꾸는 것이다.
+     */
+    public static final String INK_STYLE_V4 = "v4";
+    public static final String THEME_MARK_V4 = "INK THEME EVOLUTION (v4): ";
 
     /** v3: 이 잉크가 몸 색을 바꾸는지. 데이터의 paint가 먼저, 없으면 계열로 정한다 */
     public static boolean paints(Ink ink) {
@@ -209,6 +216,7 @@ public final class LandCatalog {
         if (INK_STYLE_V1.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 1);
         if (INK_STYLE_V2.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 2);
         if (INK_STYLE_V3.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 3);
+        if (INK_STYLE_V4.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 4);
         return absorbedPrompt(mainId, familyIds, stage);
     }
 
@@ -229,7 +237,7 @@ public final class LandCatalog {
         boolean adult = !"child".equals(stage);
         String theme = main != null ? main.prompt() : String.join(" and ", families);
         String mix = main != null && !families.isEmpty() ? " mixed with " + String.join(" and ", families) : "";
-        StringBuilder sb = new StringBuilder(version >= 3 ? THEME_MARK_V3 : v2 ? THEME_MARK_V2 : THEME_MARK);
+        StringBuilder sb = new StringBuilder(version >= 4 ? THEME_MARK_V4 : version == 3 ? THEME_MARK_V3 : v2 ? THEME_MARK_V2 : THEME_MARK);
         sb.append("The player chose this ink theme: ").append(theme).append(mix).append(". ");
         if (v2 && paint) {
             sb.append(main != null && main.colors() != null

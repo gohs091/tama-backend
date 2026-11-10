@@ -56,6 +56,17 @@ class InkStyleV1Test {
     }
 
     @Test
+    void v4_완전체는_얼굴까지_새로_디자인하고_스케치는_v3와_같다() {
+        String adultInk = LandCatalog.absorbedPrompt("red-dragon", List.of(), "adult", LandCatalog.INK_STYLE_V4);
+        String adult = ImagePromptV3.evolve("adult", CAT, "nature-spirits", "green", "fur tufts", adultInk);
+        assertThat(adult).contains(LandCatalog.THEME_MARK_V4).contains("REDESIGN the whole creature").contains(ImagePromptV3.CUTE_ANCHOR_V4)
+                .doesNotContain("keep the exact eye design").doesNotContain("Keep the proportions and body plan of image 1 exactly");
+        String childInk = LandCatalog.absorbedPrompt("wyvern", List.of(), "child", LandCatalog.INK_STYLE_V4);
+        String child = ImagePromptV3.evolve("child", CAT, "nature-spirits", "green", "fur tufts", childInk);
+        assertThat(child).doesNotContain("REDESIGN the whole creature").contains(ImagePromptV3.CUTE_ANCHOR_V2);
+    }
+
+    @Test
     void v2_색이_없는_잉크는_실제_색을_고르게_한다() {
         assertThat(LandCatalog.absorbedPrompt("kobold", List.of(), "child", LandCatalog.INK_STYLE_V2)).contains("real-life colors");
     }
