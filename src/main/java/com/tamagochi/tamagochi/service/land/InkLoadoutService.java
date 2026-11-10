@@ -1,7 +1,6 @@
 package com.tamagochi.tamagochi.service.land;
 
 import com.tamagochi.tamagochi.domain.land.LandCatalog;
-import com.tamagochi.tamagochi.domain.land.LandInk;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.user.User;
@@ -13,11 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 다음 진화에 반영할 대표 잉크: 특정 잉크 최대 1개 + 계열 잉크 최대 2개. 모두 비워 둬도 진화한다.
@@ -27,7 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InkLoadoutService {
 
-    public static final int MAX_FAMILY = 2;
 
     private final TamagotchiRepository tamagotchiRepository;
     private final LandInkRepository inkRepository;
@@ -43,33 +38,28 @@ public class InkLoadoutService {
         return view(pet(user));
     }
 
+    /**
+     * 진화 잉크는 한 칸(2026-11-10): 특정 잉크든 계열 잉크든 하나만 넣는다. 여러 개를 섞어도 결과가 크게 다르지 않았고,
+     * 칸이 하나여야 "이 잉크를 넣어서 이렇게 됐다"가 바로 읽힌다. 계열 잉크(불씨·전기·새 등)도 혼자 넣으면 좋은 잉크다.
+     * 예전 앱이 계열 칸(familyIds)으로만 보내면 첫 번째를 그 한 칸으로 쓰고, 나머지는 무시한다.
+     */
     @Transactional
     public Loadout set(User user, String mainId, List<String> familyIds) {
         Tamagotchi pet = pet(user);
         if (pet.getEvolutionStage() != EvolutionStage.BABY && pet.getEvolutionStage() != EvolutionStage.CHILD) {
             throw new IllegalStateException("진화할 수 있는 단계에서만 고를 수 있어요.");
         }
-        Set<String> owned = inkRepository.findByUserIdOrderByFoundAtAsc(user.getId()).stream()
-                .map(LandInk::getInkId).collect(Collectors.toSet());
-
-        String main = blankToNull(mainId);
-        if (main != null) {
-            LandCatalog.Ink ink = LandCatalog.ink(main).orElseThrow(() -> new IllegalArgumentException("알 수 없는 잉크예요."));
-            if (ink.grade() == LandCatalog.Grade.FAMILY) throw new IllegalArgumentException("계열 잉크는 계열 칸에 넣어 주세요.");
-            if (!owned.contains(main)) throw new IllegalStateException("아직 찾지 못한 잉크예요.");
+        String chosen = blankToNull(mainId);
+        if (chosen == null && familyIds != null) {
+            chosen = familyIds.stream().map(InkLoadoutService::blankToNull).filter(Objects::nonNull).findFirst().orElse(null);
         }
-        List<String> families = new ArrayList<>();
-        for (String id : familyIds == null ? List.<String>of() : familyIds) {
-            String f = blankToNull(id);
-            if (f == null || families.contains(f)) continue;
-            LandCatalog.Ink ink = LandCatalog.ink(f).orElseThrow(() -> new IllegalArgumentException("알 수 없는 잉크예요."));
-            if (ink.grade() != LandCatalog.Grade.FAMILY) throw new IllegalArgumentException("특정 잉크는 특정 칸에 넣어 주세요.");
-            if (!owned.contains(f)) throw new IllegalStateException("아직 찾지 못한 잉크예요.");
-            families.add(f);
+        if (chosen != null) {
+            LandCatalog.ink(chosen).orElseThrow(() -> new IllegalArgumentException("알 수 없는 잉크예요."));
+            String id = chosen;
+            boolean owned = inkRepository.findByUserIdOrderByFoundAtAsc(user.getId()).stream().anyMatch(i -> id.equals(i.getInkId()));
+            if (!owned) throw new IllegalStateException("아직 찾지 못한 잉크예요.");
         }
-        if (families.size() > MAX_FAMILY) throw new IllegalArgumentException("계열 잉크는 2개까지 고를 수 있어요.");
-
-        pet.setInkLoadout(main, families.size() > 0 ? families.get(0) : null, families.size() > 1 ? families.get(1) : null);
+        pet.setInkLoadout(chosen, null, null);
         return view(pet);
     }
 
@@ -78,8 +68,7 @@ public class InkLoadoutService {
     public String promptFor(User user, String stage) {
         Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet == null) return null;
-        return LandCatalog.absorbedPrompt(pet.getInkMain(),
-                java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList(), stage, inkStyle);
+        return LandCatalog.singleInkPrompt(singleInk(pet), stage, inkStyle);
     }
 
     /** v5 완성작 디자이너에게 줄 잉크 설명. 고른 잉크가 없으면 null */
@@ -87,8 +76,12 @@ public class InkLoadoutService {
     public String themeFor(User user) {
         Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet == null) return null;
-        return LandCatalog.inkTheme(pet.getInkMain(),
-                java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList());
+        return LandCatalog.singleInkTheme(singleInk(pet));
+    }
+
+    /** 넣은 잉크 하나. 예전에 계열 칸에만 넣어 둔 끄적이는 첫 계열 잉크를 쓴다 */
+    private static String singleInk(Tamagotchi pet) {
+        return pet.getInkMain() != null ? pet.getInkMain() : pet.getInkFamily1();
     }
 
     private Loadout view(Tamagotchi pet) {

@@ -48,6 +48,7 @@ public class TamagotchiResponse {
     private int battleWins;        // 만나서 배틀 승 (이번 단계)
     private int battleLosses;      // 만나서 배틀 패 (이번 단계)
     private int championTier;      // 지금 진화하면 받는 배틀 등급 (0 없음, 1 챔피언 +15, 2 그랜드 챔피언 +30)
+    private boolean legendGlow;    // 전설 잉크로 진화한 적이 있다 → 앱이 금테 + 반짝이를 바른다
     private LocalDateTime lastFedAt;
     private String currentImageBase64; // S3로 옮기기 전 그림 (옮긴 뒤에는 null)
     private String currentImageUrl;    // S3에 올린 지금 단계 그림 주소 (CDN). 있으면 이것을 쓴다
@@ -95,6 +96,7 @@ public class TamagotchiResponse {
                 .battleWins(tamagotchi.battleWins())
                 .battleLosses(tamagotchi.battleLosses())
                 .championTier(tamagotchi.championTier())
+                .legendGlow(tamagotchi.legendGlow())
                 .lastFedAt(tamagotchi.getLastFedAt())
                 .currentImageBase64(tamagotchi.getCurrentImageBase64())
                 .currentImageUrl(com.tamagochi.tamagochi.service.storage.PetImageUrls.of(tamagotchi.getCurrentImageKey()))
