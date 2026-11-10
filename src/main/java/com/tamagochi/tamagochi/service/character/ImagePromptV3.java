@@ -126,7 +126,8 @@ final class ImagePromptV3 {
         boolean hasInk = !blank(absorbed);
         boolean strong = hasInk && absorbed.contains(LandCatalog.FULL_MARK);                 // 85% 이상(몸 전체가 바뀜): 겉모습이 크게 바뀔 수 있다
         boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);  // 하체 분류가 바뀐다
-        boolean themeV2 = hasInk && absorbed.contains(LandCatalog.THEME_MARK_V2);         // 잉크 시안 v2
+        boolean themeV2 = hasInk && (absorbed.contains(LandCatalog.THEME_MARK_V2)
+                || absorbed.contains(LandCatalog.THEME_MARK_V3));                         // 잉크 시안 v2·v3
         boolean theme = themeV2 || hasInk && absorbed.contains(LandCatalog.THEME_MARK);   // 잉크 시안 v1·v2: 속성 재해석
         String fidelity = theme ? THEME_KEEP : child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
         String growth = theme ? (child ? CHILD_THEME_GROWTH : ADULT_THEME_GROWTH) + " " + (themeV2 ? CUTE_ANCHOR_V2 : CUTE_ANCHOR)

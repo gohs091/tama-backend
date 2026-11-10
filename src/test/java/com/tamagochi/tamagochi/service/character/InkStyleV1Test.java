@@ -44,6 +44,18 @@ class InkStyleV1Test {
     }
 
     @Test
+    void v3는_모양_잉크면_몸_색을_지키고_재질_잉크면_칠한다() {
+        String wyvern = LandCatalog.absorbedPrompt("wyvern", List.of(), "child", LandCatalog.INK_STYLE_V3);
+        String salamander = LandCatalog.absorbedPrompt("salamander", List.of(), "child", LandCatalog.INK_STYLE_V3);
+        String jellyfish = LandCatalog.absorbedPrompt("jellyfish", List.of(), "child", LandCatalog.INK_STYLE_V3);
+        assertThat(wyvern).contains(LandCatalog.THEME_MARK_V3).contains("KEEP the body colors").doesNotContain("deep violet");
+        assertThat(salamander).contains("repaint").contains("bright orange");
+        assertThat(jellyfish).contains("repaint").contains("pale aqua");
+        String prompt = ImagePromptV3.evolve("child", CAT, "nature-spirits", "green and brown color scheme", "fur tufts", wyvern);
+        assertThat(prompt).contains(ImagePromptV3.CUTE_ANCHOR_V2).doesNotContain("green and brown color scheme as accent");
+    }
+
+    @Test
     void v2_색이_없는_잉크는_실제_색을_고르게_한다() {
         assertThat(LandCatalog.absorbedPrompt("kobold", List.of(), "child", LandCatalog.INK_STYLE_V2)).contains("real-life colors");
     }
