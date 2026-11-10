@@ -288,6 +288,14 @@ public class Tamagotchi {
     @Column(name = "ink_family2", length = 40)
     private String inkFamily2;
 
+    // 전설 잉크로 진화한 적이 있으면 끄적이 둘레에 금테 + 반짝이를 바른다 (앱 연출). 한 번 켜지면 이 끄적이는 계속 켜져 있다. 기존 행은 null
+    @Column(name = "legend_glow")
+    private Boolean legendGlow;
+
+    public boolean legendGlow() {
+        return Boolean.TRUE.equals(legendGlow);
+    }
+
     public void setInkLoadout(String main, String family1, String family2) {
         this.inkMain = main;
         this.inkFamily1 = family1;
@@ -561,9 +569,19 @@ public class Tamagotchi {
         this.stageStartLevel = this.level; // 진화 가능 구간은 이 레벨부터 다시 센다
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
+        markLegendGlow();                // 비우기 전에: 이번 진화에 전설 잉크를 썼으면 반짝이를 켠다
         setInkLoadout(null, null, null); // 대표 잉크는 진화마다 새로 고른다
         this.battleWins = 0;             // 배틀 전적은 단계마다 새로 센다
         this.battleLosses = 0;
+    }
+
+    /** 이번 진화에 넣은 잉크(한 칸, 예전 데이터면 첫 계열 칸)가 전설이면 반짝이를 켠다 */
+    private void markLegendGlow() {
+        String used = inkMain != null ? inkMain : inkFamily1;
+        if (used == null) return;
+        boolean legend = com.tamagochi.tamagochi.domain.land.LandCatalog.ink(used)
+                .map(i -> i.grade() == com.tamagochi.tamagochi.domain.land.LandCatalog.Grade.LEGEND).orElse(false);
+        if (legend) this.legendGlow = true;
     }
 
     /** 알 → 낙서. 알 두드리기는 클라이언트 연출이고, 서버는 단계만 올린다. */
