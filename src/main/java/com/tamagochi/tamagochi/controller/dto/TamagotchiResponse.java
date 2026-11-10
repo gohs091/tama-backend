@@ -22,7 +22,9 @@ public class TamagotchiResponse {
     private boolean sleepImageUnlocked; // 자는 모습 이미지 값을 냈다 (이후 단계는 무료)
     private java.util.List<String> sleepImageStages; // 자는 모습을 이미 만든 단계 (BABY | CHILD | ADULT)
     private java.util.List<String> sleepImageRedoStages; // 이미지를 잃어버렸을 때 무료로 한 번 다시 만들 수 있는 단계
-    private boolean sleepy;         // 졸린 시간대인데 깨어 있다 (불을 끄면 잠든다)
+    private boolean sleepy;         // 피곤한데 깨어 있다 (피로 70 이상)
+    private int fatigue;            // 피로 0~100
+    private Long wakeInSeconds;     // 자는 중이면 혼자 깨기까지 남은 초
     private int sleepyStartHour;    // 졸린 시간대 시작 시각(0~23시, KST). 여기서부터 8시간 졸리다
     private boolean bathing;       // 잉크통 충전 중 (돌보기·훈련 불가)
     private boolean adventuring;    // 끄적랜드 모험 중 (돌보기·훈련 불가)
@@ -69,6 +71,8 @@ public class TamagotchiResponse {
                 .sleepImageStages(tamagotchi.sleepImageStages())
                 .sleepImageRedoStages(tamagotchi.sleepImageRedoStages())
                 .sleepy(tamagotchi.isSleepy(LocalDateTime.now()))
+                .fatigue((int) Math.round(tamagotchi.fatigue()))
+                .wakeInSeconds(tamagotchi.wakeAt() == null ? null : Math.max(0, java.time.Duration.between(LocalDateTime.now(), tamagotchi.wakeAt()).toSeconds()))
                 .sleepyStartHour(tamagotchi.sleepyStartHour())
                 .bathing(tamagotchi.isBathing())
                 .adventuring(tamagotchi.isAdventuring())

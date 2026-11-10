@@ -216,8 +216,23 @@ public class Tamagotchi {
     // 졸린 시간대: 끄적이마다 밤 9시~새벽 1시 중 한 시각에 시작해 8시간. 이 동안에만 불을 끄면 잠든다. 기존 행은 null(id로 정한다).
     public static final int[] SLEEPY_START_HOURS = {21, 22, 23, 0, 1};
     public static final int SLEEPY_HOURS = 8;
-    // 자는 동안 포만감·파워는 이 배만큼 느리게 줄고, 응가는 멈춘다
+    // 자는 동안 포만감·파워는 이 배만큼 느리게 줄고, 응가는 멈춘다 (예전 규칙, 지금은 자는 동안 모두 멈춘다)
     public static final int SLEEP_DECAY_SLOWDOWN = 3;
+
+    // ── 피로 (0~100): 얼마나 잘지와 언제 혼자 깰지를 정한다
+    public static final double FATIGUE_PER_AWAKE_HOUR = 4;   // 깨어 있는 1시간
+    public static final int FATIGUE_TRAINING = 10;            // 트레이닝 1판
+    public static final int FATIGUE_BATTLE = 10;              // 친구 배틀 1판
+    public static final int FATIGUE_FEED = 1;                 // 고기·알약 1번
+    public static final Duration SLEEP_MAX = Duration.ofHours(7);   // 피로 100이면 7시간 자고 다 풀린다
+    public static final Duration SLEEP_MIN = Duration.ofMinutes(20);
+    public static final int SLEEPY_FATIGUE = 70;              // 이 이상이면 졸려 한다
+    @Column(name = "fatigue")
+    private Double fatigue;
+    @Column(name = "fatigue_at")
+    private LocalDateTime fatigueAt;  // 피로를 마지막으로 계산한 시각
+    @Column(name = "wake_at")
+    private LocalDateTime wakeAt;     // 자는 중이면 혼자 깨는 시각
     @Column(name = "sleepy_start_hour")
     private Integer sleepyStartHour;
 
@@ -232,9 +247,9 @@ public class Tamagotchi {
         return Math.floorMod(now.getHour() - sleepyStartHour(), 24) < SLEEPY_HOURS;
     }
 
-    /** 졸린 시간대인데 아직 깨어 있다 (불을 꺼 달라고 보챈다) */
+    /** 피곤한데 아직 깨어 있다 (불을 꺼 달라고 보챈다) */
     public boolean isSleepy(LocalDateTime now) {
-        return !this.sleeping && !isDead() && this.evolutionStage != EvolutionStage.EGG && isSleepyTime(now);
+        return !this.sleeping && !isDead() && this.evolutionStage != EvolutionStage.EGG && fatigue() >= SLEEPY_FATIGUE;
     }
 
     public static int randomSleepyStartHour() {
@@ -440,7 +455,8 @@ public class Tamagotchi {
         if (100 - this.hunger >= LevelRules.OVERFEED_AT) { // 배부른데 또 먹으면 살이 찐다
             this.weightDg = this.weightDg + LevelRules.FEED_WEIGHT_DG;
         }
-        this.sleeping = false; // 먹이면 깬다
+        wakeNow(); // 먹이면 깬다
+        addFatigue(FATIGUE_FEED);
         this.hunger = Math.max(0, this.hunger - FEED_AMOUNT);
         this.feedCount++;
         this.lastFedAt = LocalDateTime.now();
@@ -448,7 +464,8 @@ public class Tamagotchi {
     }
 
     public void addStrength(int amount) {
-        this.sleeping = false; // 알약을 먹여도 깬다
+        wakeNow(); // 알약을 먹여도 깬다
+        addFatigue(FATIGUE_FEED);
         this.strength = Math.min(100, this.strength + amount);
         if (this.strength > 0) this.strengthEmptySince = null;
     }
@@ -489,21 +506,57 @@ public class Tamagotchi {
         this.lastPoopAt = LocalDateTime.now(); // 청소 직후 바로 또 싸지 않도록 간격 재시작
     }
 
-    /** 불 끄기. 졸린 시간대에만 잠든다. 저절로 깨지 않고, 불을 켜거나 만지거나 먹이면 깬다 */
+    /**
+     * 불 끄기: 언제든 잠든다. 잘 시간 = 피로 ÷ 100 × 7시간 (20분~7시간).
+     * 그 시각이 되면 혼자 깨고(applyTime), 불을 켜거나 만지거나 먹이면 바로 깬다 (남은 피로는 그대로).
+     */
     public void sleep(LocalDateTime now) {
         if (this.evolutionStage == EvolutionStage.EGG) {
             throw new IllegalStateException("알은 잠을 자지 않아요.");
         }
         if (this.sleeping) return;
-        if (!isSleepyTime(now)) {
-            throw new IllegalStateException("아직 안 졸려요!");
-        }
+        tickFatigue(now);
         this.sleeping = true;
         this.sleptAt = now;
+        this.wakeAt = now.plus(sleepLength());
     }
 
     public void wakeUp() {
+        wakeNow();
+    }
+
+    private void wakeNow() {
+        if (this.sleeping) tickFatigue(LocalDateTime.now());
         this.sleeping = false;
+        this.wakeAt = null;
+    }
+
+    /** 지금 피로로 잠들면 잘 시간 */
+    public Duration sleepLength() {
+        long secs = Math.round(fatigue() / 100.0 * SLEEP_MAX.toSeconds());
+        return Duration.ofSeconds(Math.max(SLEEP_MIN.toSeconds(), Math.min(SLEEP_MAX.toSeconds(), secs)));
+    }
+
+    public double fatigue() {
+        return this.fatigue == null ? 0 : this.fatigue;
+    }
+
+    public LocalDateTime wakeAt() {
+        return this.sleeping ? this.wakeAt : null;
+    }
+
+    public void addFatigue(int amount) {
+        this.fatigue = Math.min(100, fatigue() + amount);
+    }
+
+    /** 지난 시간만큼 피로를 더하거나(깨어 있음) 뺀다(자는 중) */
+    private void tickFatigue(LocalDateTime now) {
+        if (this.fatigueAt == null || now.isBefore(this.fatigueAt)) { this.fatigueAt = now; return; }
+        double hours = Duration.between(this.fatigueAt, now).toSeconds() / 3600.0;
+        double next = this.sleeping ? fatigue() - hours * (100.0 / (SLEEP_MAX.toSeconds() / 3600.0))
+                : fatigue() + hours * FATIGUE_PER_AWAKE_HOUR;
+        this.fatigue = Math.max(0, Math.min(100, next));
+        this.fatigueAt = now;
     }
 
     public void evolve(EvolutionStage nextStage) {
@@ -571,6 +624,7 @@ public class Tamagotchi {
 
     /** 만나서 배틀 한 판의 결과 (1 = 승, -1 = 패, 0 = 무승부는 세지 않는다) */
     public void recordBattle(int result) {
+        addFatigue(FATIGUE_BATTLE);
         if (result > 0) this.battleWins = battleWins() + 1;
         else if (result < 0) this.battleLosses = battleLosses() + 1;
     }
@@ -703,13 +757,24 @@ public class Tamagotchi {
 
         absorbDowntime(now, rule);
 
+        if (this.sleeping) {
+            LocalDateTime until = this.wakeAt != null && this.wakeAt.isBefore(now) ? this.wakeAt : now;
+            tickFatigue(until);
+            this.lastHungerTickAt = until;
+            this.lastStrengthTickAt = until;
+            this.lastPoopAt = until;
+            if (until.isBefore(now)) { this.sleeping = false; this.wakeAt = null; } // 혼자 깼다. 깬 뒤 시간은 아래에서 평소대로
+        }
+        tickFatigue(now);
+
         if (isBathing() || isAdventuring()) {
             this.lastHungerTickAt = now;
             this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
         } else if (this.sleeping) {
-            decayHunger(now, rule.satietyMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
-            decayStrength(now, rule.strengthMinutesPerPoint() * SLEEP_DECAY_SLOWDOWN);
+            // 방에서 자는 동안은 배도 안 고프고 응가도 안 한다
+            this.lastHungerTickAt = now;
+            this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
         } else {
             decayHunger(now, rule.satietyMinutesPerPoint());
@@ -837,6 +902,9 @@ public class Tamagotchi {
         this.adventuring = false;
         setInkLoadout(null, null, null);
         this.sleptAt = null;
+        this.fatigue = null;
+        this.fatigueAt = null;
+        this.wakeAt = null;
         this.sleepyStartHour = randomSleepyStartHour(); // 새 끄적이마다 졸린 시간이 다르다
         // 이전 캐릭터 이미지는 새 그림으로 교체되므로 비운다
         this.babyImageBase64 = null;

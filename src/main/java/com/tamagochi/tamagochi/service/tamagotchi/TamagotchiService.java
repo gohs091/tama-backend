@@ -186,7 +186,7 @@ public class TamagotchiService {
         }
         requireHome(tamagotchi);
 
-        tamagotchi.sleep(LocalDateTime.now()); // 졸린 시간대인지는 Entity 안에서 확인
+        tamagotchi.sleep(LocalDateTime.now()); // 언제든 잠든다. 피로만큼 자고 혼자 깬다
     }
 
     @Transactional
@@ -279,6 +279,7 @@ public class TamagotchiService {
 
         // 트레이닝 소모 (포만감·파워 10씩: 채우는 데 잉크 40)
         tamagotchi.consumeForTraining(TRAINING_COST, TRAINING_COST);
+        tamagotchi.addFatigue(Tamagotchi.FATIGUE_TRAINING);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.TRAIN, 1);
 
         // 리워드 계산 (진화 단계별 + 클릭 수 기반)
