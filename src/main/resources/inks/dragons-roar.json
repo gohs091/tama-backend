@@ -5,8 +5,8 @@
   "open": false,
   "explore": [],
   "inks": [
-    {"id":"salamander","emoji":"🦎","name":"불도마뱀의 잉크","grade":"COMMON","family":"reptile","prompt":"a fire salamander's spotted orange skin and flame-tipped tail"},
-    {"id":"wyvern","emoji":"🐲","name":"와이번의 잉크","grade":"RARE","family":"scale","prompt":"a wyvern's bat-like dragon wings and barbed tail","part":"bat-like dragon wings","body":"FLY"},
+    {"id":"salamander","emoji":"🦎","name":"불도마뱀의 잉크","grade":"COMMON","family":"reptile","prompt":"a fire salamander's spotted orange skin and flame-tipped tail","colors":"bright orange with dark red spots and a yellow flame tip","paint":true},
+    {"id":"wyvern","emoji":"🐲","name":"와이번의 잉크","grade":"RARE","family":"scale","prompt":"a wyvern's bat-like dragon wings and barbed tail","colors":"deep violet and teal, with a pale lavender belly","part":"bat-like dragon wings","body":"FLY"},
     {"id":"blue-dragon","emoji":"🐉","name":"청룡의 잉크","grade":"LEGEND","family":"scale","prompt":"an eastern blue dragon's long serpentine body, whiskers and antler horns","part":"antler horns and long whiskers","body":"LEGLESS"},
     {"id":"red-dragon","emoji":"🔥","name":"드래곤의 잉크","grade":"LEGEND","family":"scale","prompt":"a red dragon's great horned head, big wings and fiery scales","part":"big red dragon wings","body":"FLY"},
     {"id":"kobold","emoji":"⛏️","name":"코볼트의 잉크","grade":"COMMON","family":"reptile","prompt":"a kobold's small scaly snout and tiny horns"},

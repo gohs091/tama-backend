@@ -5,6 +5,8 @@ import com.tamagochi.tamagochi.controller.dto.CharacterFeaturesResponse;
 import com.tamagochi.tamagochi.controller.dto.EvolveImageRequest;
 import com.tamagochi.tamagochi.controller.dto.EvolveSketchRequest;
 import com.tamagochi.tamagochi.controller.dto.EvolveFeaturesResponse;
+import com.tamagochi.tamagochi.controller.dto.FinalDesignsRequest;
+import com.tamagochi.tamagochi.service.character.FinalDesignService;
 import com.tamagochi.tamagochi.controller.dto.GenerateImageRequest;
 import com.tamagochi.tamagochi.controller.dto.GenerateImageResponse;
 import com.tamagochi.tamagochi.controller.dto.ImageStatusResponse;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.land.InkLoadoutService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -85,6 +88,12 @@ public class CharacterController {
         }
         String jobId = UUID.randomUUID().toString();
         imageGenerationService.storeJob(jobId, ImageJobResult.pending());
+        if ("adult".equals(request.getStage()) && imageGenerationService.finalDesignEnabled()) {
+            // v5 완성작: 고른 디자인 후보를 글로만 그린다 (스케치 그림은 후보가 없을 때 디자인을 만드는 데만 쓴다)
+            imageGenerationService.generateFinalAsync(jobId, request.getTossUserId(), request.getImageBase64(),
+                    request.getReferenceImageBase64(), request.getDesignIndex());
+            return ResponseEntity.ok(new GenerateImageResponse(jobId));
+        }
         imageGenerationService.generateEvolvedAsync(
                 jobId,
                 request.getImageUrl(),
@@ -96,6 +105,25 @@ public class CharacterController {
                 request.getTossUserId()
         );
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
+    }
+
+    /** v5 완성작 디자인 후보에 대한 응답. enabled=false면 예전 방식(바로 그리기)이다 */
+    public record FinalDesignsResponse(boolean enabled, List<FinalDesignService.Choice> designs) {}
+
+    /**
+     * v5 완성작 후보 3개(한글 이름·한 줄·몸 종류). 그림을 그리기 전에 앱이 보여 주고 사용자가 고른다.
+     * 후보는 서버에 저장해 두고 같은 끄적이면 다시 만들지 않는다 (글 모델 호출이라 이미지 한도와 따로 센다).
+     * Request body: { tossUserId, imageBase64(낙서), referenceImageBase64(스케치), refresh }
+     */
+    @PostMapping("/final-designs")
+    public ResponseEntity<FinalDesignsResponse> finalDesigns(@RequestBody FinalDesignsRequest request) {
+        if (request.getTossUserId() == null || request.getTossUserId().isBlank()) return ResponseEntity.badRequest().build();
+        if (!imageGenerationService.finalDesignEnabled()) return ResponseEntity.ok(new FinalDesignsResponse(false, List.of()));
+        if (request.getImageBase64() == null || request.getReferenceImageBase64() == null) return ResponseEntity.badRequest().build();
+        List<FinalDesignService.Choice> designs = imageGenerationService.finalChoices(request.getTossUserId(),
+                request.getImageBase64(), request.getReferenceImageBase64(), request.isRefresh());
+        if (designs.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+        return ResponseEntity.ok(new FinalDesignsResponse(true, designs));
     }
 
     /**
@@ -169,6 +197,6 @@ public class CharacterController {
     @GetMapping("/status/{jobId}")
     public ResponseEntity<ImageStatusResponse> status(@PathVariable String jobId) {
         ImageJobResult result = imageGenerationService.getJob(jobId);
-        return ResponseEntity.ok(new ImageStatusResponse(result.getStatus(), result.getImageDataUrl(), result.getError(), result.getSpecies(), result.getFacing()));
+        return ResponseEntity.ok(new ImageStatusResponse(result.getStatus(), result.getImageDataUrl(), result.getError(), result.getSpecies(), result.getFacing(), result.isSolid()));
     }
 }

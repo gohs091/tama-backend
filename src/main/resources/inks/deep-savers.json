@@ -10,7 +10,7 @@
     {"id":"crab","emoji":"🦀","name":"꽃게의 잉크","grade":"COMMON","family":"crustacean","prompt":"a crab's two big claws"},
     {"id":"hermit-crab","emoji":"🐚","name":"소라게의 잉크","grade":"COMMON","family":"crustacean","prompt":"a spiral seashell carried on the back"},
     {"id":"seahorse","emoji":"🌊","name":"해마의 잉크","grade":"COMMON","family":"fish","prompt":"a seahorse's curled tail and snout"},
-    {"id":"jellyfish","emoji":"🪼","name":"해파리의 잉크","grade":"COMMON","family":"tentacle","prompt":"a jellyfish's translucent bell and trailing ribbons"},
+    {"id":"jellyfish","emoji":"🪼","name":"해파리의 잉크","grade":"COMMON","family":"tentacle","prompt":"a jellyfish's translucent bell and trailing ribbons","colors":"translucent pale aqua and soft pink, with a glowing white sheen"},
     {"id":"squid","emoji":"🦑","name":"오징어의 잉크","grade":"COMMON","family":"tentacle","prompt":"a squid's pointed fin head and long arms"},
     {"id":"sea-turtle","emoji":"🐢","name":"바다거북의 잉크","grade":"COMMON","family":"reptile","prompt":"a sea turtle's patterned shell and flippers"},
     {"id":"seal","emoji":"🦭","name":"물개의 잉크","grade":"COMMON","family":"marine","prompt":"a seal's whiskers and smooth flippers"},

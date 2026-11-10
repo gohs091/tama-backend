@@ -46,6 +46,120 @@ final class ImagePromptV3 {
     private static final String FRAME = "Single character centered, filling about 70% of the frame, transparent background, " +
             "no shadow, no glow, no ground, no other characters.";
 
+    // ================= 잉크 진화 시안 v5 (image.ink-style=v5) =================
+    // 낙서 단계: 측면 + 귀여운 얼굴 (mini가 정면으로 그리면 진화에서 돌릴 수 없다)
+    // 스케치: 아기 체형 + 측면 + 진영은 색·무늬만. sunburst low로 그린다
+    // 완성작: 정수 뽑기 디자인(글 모델)이 몸 구조가 다른 후보 3개를 내고, 고른 후보를 글로만 그린다 (스케치 그림을 넣으면 그 얼굴을 따라 그려 키메라가 됐다)
+
+    static final String SIDE_BABY_V5 = "View: a SIDE VIEW (or three-quarter side view) facing RIGHT, the whole body turned to that side, " +
+            "with its face shown in profile. Never a front view facing the viewer. Face: big round eyes with a white highlight and a small happy smile. ";
+
+    static final String SIDE_SKETCH_V5 = "View: a SIDE VIEW (or three-quarter side view) facing the same direction as image 1, " +
+            "the whole body turned to that side. Never a front view. ";
+
+    /** 스케치 귀여움: 숫자 비율 없이 아기 체형으로. 알아보게 하는 길이(긴 목·긴 꼬리)는 지킨다 */
+    static final String CHIBI_V5 = "It must stay lovable, the kind of pet people want to raise, drawn in a CHIBI baby-animal style: " +
+            "the head is clearly bigger than a real animal's head compared to the body, the legs are short and stubby, the body is compact and chubby, " +
+            "big round eyes with a large white highlight, a happy open smile, and thick bold dark outlines. " +
+            "Keep the lengths that make it recognizable (a long neck stays long, a long tail stays long) and keep the same body plan as image 1. " +
+            "Draw it with chunky pixels: about 48 pixels across the whole canvas, so each pixel is a big visible square. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws.";
+
+    /**
+     * 몸은 끝까지 불투명하게: 젤리·유리·얼음·유령·물 재질을 반투명하게 그리면 알파 정리(binarizeAlpha)에서 지워져 몸에 구멍이 난다.
+     * v5는 solid=true라 앱이 구멍을 흰색으로 메우지 않으므로, 그대로 배경이 비쳐 보인다. 유리 느낌은 밝은 하이라이트 색으로만 낸다 (#52에서 가져옴)
+     */
+    static final String SOLID_V5 = "Fill the whole body with solid, fully opaque flat colors: even jelly, glass, ice, ghost or water materials are drawn as opaque colors " +
+            "that only LOOK glassy through lighter highlight shades, never see-through or translucent. ";
+
+    /** 진영 장식이 귀·꼬리를 붙여 로봇·공룡에 고양이 귀가 생겼다 → 색·작은 무늬만 */
+    static final String FACTION_PARTS_V5 = "Faction theme: only as subtle colors or small patterns, never as new body parts " +
+            "(no ears, tails, horns or paws added for the faction).";
+
+    /** v5 낙서 단계: 지금 문장 끝(틀 문장 앞)에 방향·얼굴 지시를 더한다 */
+    static String babyV5(DoodleSubject o, String colors) {
+        String base = baby(o, colors);
+        int at = base.lastIndexOf(FRAME);
+        return at < 0 ? base + " " + SIDE_BABY_V5 : base.substring(0, at) + SIDE_BABY_V5 + base.substring(at);
+    }
+
+    /** v5 스케치. absorbed는 잉크 문장(v3 방식: 재질 잉크만 칠한다), 없으면 null */
+    static String sketchV5(DoodleSubject origin, String absorbed) {
+        boolean hasInk = !blank(absorbed);
+        boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);
+        String identity = origin == null || blank(origin.subject()) ? "" :
+                "Origin of this creature: " + origin.subject() + "." +
+                (blank(origin.traits()) ? "" : " Its distinctive features: " + origin.traits() + ".") + " ";
+        String fidelity = hasInk ? THEME_KEEP : SAME;
+        String growth = (hasInk ? CHILD_THEME_GROWTH : CHILD_GROWTH) + " " + CHIBI_V5;
+        String bodyPlan = bodyChanges ? "" : "Keep the body plan of image 1 (the same number of legs and the same overall posture family). ";
+        String ink = hasInk ? LandCatalog.fillOrigin(absorbed, origin == null ? null : origin.subject(), origin == null ? null : origin.traits()) + " " : "";
+        String eyes = blankEyesAllowed(null, absorbed) ? "" : EYES + " ";
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
+                "the root of this creature's identity (silhouette, proportions, distinctive features). " +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + FACTION_PARTS_V5 + " " + eyes + SOLID_V5 +
+                "It must be ONE single creature. Never draw blueprints, diagrams or text. " + SIDE_SKETCH_V5 + FRAME;
+    }
+
+    /**
+     * v5 완성작 디자이너(글 모델의 시스템 지시). 스케치에 덧붙이지 않고 정수를 뽑아 다른 차원의 존재로 다시 태어나게 한다.
+     * 한 번에 몸 구조가 다른 후보 3개를 받는다: 한 개만 받으면 같은 문장에서 늘 같은 몸(사람형만, 또는 뱀형만)으로 쏠렸다.
+     * 자세는 "그 몸의 쉬는 자세"(홈 화면이 정적이라 뛰기·날개 활짝이 어색했다), 디자인은 48칸에서 읽히게 단순하게.
+     */
+    static final String FINAL_DESIGNER_V5 = """
+            You are the lead creature designer of a monster-raising game. Its FINAL evolutions are famous for being a complete paradigm shift,
+            like a red mechanical dragon evolving into a crimson holy knight with a flowing cape: not the old body with more parts added, but a new being of a higher order.
+
+            You get two images: image 1 is the creature's CURRENT form (second stage), image 2 is the original doodle the player drew. You also get the ink the player fed it.
+
+            Do NOT add things to the current body. DIGEST everything and DISTILL its essence:
+            1. Essence: in one sentence, what is this creature at its core? (its spirit, role and personality, read from its look, its origin and the ink)
+            2. Rebirth: reincarnate that essence as a completely new, more majestic being. Species, body plan, silhouette, head and face may ALL change.
+               It can be a knight, a guardian beast, a spirit, a titan, a dragon, a mecha, anything, as long as it is the natural final form of that essence.
+            3. Carry over ONLY three things: its main color palette, its personality, and one or two symbolic motifs TRANSFORMED into something more meaningful
+               (for example a tail flame becomes a flaming cape or banner, an antenna becomes a crest or halo, long ears become a hood or crown-like horns).
+               Nothing is copied literally from the current form.
+            Rules: it may be cool, elegant, majestic or awe-inspiring; armor, capes and crowns are fine when they come from the essence. No gore, nothing scary or grotesque.
+            Eyes must stay vivid and readable. A tight palette (3 main colors + 1 accent). ONE single being, no rider or companion. Side view (or three-quarter side view) facing right.
+            POSE: it lives on the calm home screen of a pet game, so draw it RESTING in whatever body it has: a walker stands still with feet on the ground,
+            a serpent or long-bodied being rests calmly coiled or lies in a gentle S-curve on the ground, a flyer or floater hovers calmly just above the ground.
+            The pose is calm, never an attack, a jump or a mid-motion action. This rule is about the POSE only: it must not limit what kind of body it becomes.
+            SIMPLICITY: it must read clearly as a small 48-pixel sprite. Use a few big, bold shapes and large calm color areas, at most 10 colors in total,
+            and at most 2 key details. No fine filigree, thin swirls, tiny patterns, lace, or many small floating pieces.
+
+            Propose THREE different final forms of the same essence, each with a clearly DIFFERENT body type
+            (for example one upright humanoid or knight, one beast or serpent, one floating spirit or winged being; choose the three that fit this essence best).
+            For each also write, in KOREAN for the player: "nameKo", a short name of 2 to 6 Korean characters (no English letters),
+            and "lineKo", one short line of at most 18 Korean characters saying what it becomes. "body" is one of: humanoid, beast, serpent, flyer, spirit.
+
+            Reply with JSON only:
+            {"candidates": [ {"nameKo": "...", "lineKo": "...", "body": "...", "essence": "...", "newForm": "...", "bodyPlan": "...", "silhouette": "...",
+             "face": "...", "palette": "...", "motifs": ["from X -> to Y"], "details": ["at most 2 key design details, each a big bold shape"]}, {...}, {...} ]}
+            """;
+
+    private static final String PIXEL_FINAL_V5 = "Create a 16-bit PIXEL ART sprite, like a retro handheld monster game: clearly visible chunky square pixels " +
+            "with hard stair-stepped edges, about 48 pixels across the whole canvas so each pixel is a big visible square, bold dark pixel outlines, " +
+            "flat colors with at most 2 shades per color, NO smooth vector lines, NO gradients, NO anti-aliasing. Keep the design SIMPLE: a few big bold shapes, " +
+            "large flat color areas, at most 10 colors, no fine filigree, thin swirls or tiny patterns. ";
+    private static final String POSE_FINAL_V5 = "POSE: a calm RESTING pose for a pet game home screen, facing RIGHT in side view (or three-quarter side view), " +
+            "in whatever body it has: a walker stands still with feet on the ground, a serpent rests calmly coiled or in a gentle S-curve near the ground, " +
+            "a flyer or floater hovers calmly just above the ground. Never an attack, a jump or a mid-motion action. ";
+    private static final String FRAME_FINAL_V5 = "Single character centered, filling about 70% of the frame, transparent background, no shadow, no glow, " +
+            "no ground, no other characters, no text. " + SOLID_V5;
+
+    /** v5 완성작 그림 프롬프트: 고른 디자인 후보 하나를 글로만 그린다 (그림 입력 없음) */
+    static String finalFromDesignV5(com.fasterxml.jackson.databind.JsonNode c) {
+        StringBuilder motifs = new StringBuilder(), details = new StringBuilder();
+        c.path("motifs").forEach(m -> motifs.append(motifs.isEmpty() ? "" : "; ").append(m.asText()));
+        c.path("details").forEach(d -> details.append(details.isEmpty() ? "" : "; ").append(d.asText()));
+        return PIXEL_FINAL_V5 + "Draw this creature. It is the FINAL evolution: " + c.path("newForm").asText() + ". " +
+                "Essence: " + c.path("essence").asText() + " Body plan: " + c.path("bodyPlan").asText() + ". " +
+                "Silhouette: " + c.path("silhouette").asText() + ". Head and face: " + c.path("face").asText() + ". " +
+                "Palette: " + c.path("palette").asText() + ". Symbolic motifs: " + motifs + ". Key details: " + details + ". " +
+                "Eyes vivid and readable. ONE single being. " + POSE_FINAL_V5 + FRAME_FINAL_V5;
+    }
+
     /** 원본이 사람·생물이면 그 모습 그대로, 물체이면 물체 자체에 얼굴을 달아 캐릭터로 만든다 */
     static String baby(DoodleSubject o, String colors) {
         if (o.isTool()) return babyTool(o, colors);
@@ -139,24 +253,34 @@ final class ImagePromptV3 {
         boolean hasInk = !blank(absorbed);
         boolean strong = hasInk && absorbed.contains(LandCatalog.FULL_MARK);                 // 85% 이상(몸 전체가 바뀜): 겉모습이 크게 바뀔 수 있다
         boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);  // 하체 분류가 바뀐다
-        String fidelity = child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
-        String growth = child ? CHILD_GROWTH : ADULT_GROWTH;
+        boolean themeV4 = hasInk && absorbed.contains(LandCatalog.THEME_MARK_V4);         // 잉크 시안 v4
+        boolean themeV2 = themeV4 || hasInk && (absorbed.contains(LandCatalog.THEME_MARK_V2)
+                || absorbed.contains(LandCatalog.THEME_MARK_V3));                         // 잉크 시안 v2·v3·v4
+        boolean theme = themeV2 || hasInk && absorbed.contains(LandCatalog.THEME_MARK);   // 잉크 시안 v1~v4: 속성 재해석
+        boolean redesign = themeV4 && !child;                                              // v4 완전체: 얼굴까지 새로 디자인
+        String fidelity = redesign ? THEME_REDESIGN_V4 : theme ? THEME_KEEP : child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
+        String growth = redesign ? ADULT_THEME_GROWTH + " " + CUTE_ANCHOR_V4
+                : theme ? (child ? CHILD_THEME_GROWTH : ADULT_THEME_GROWTH) + " " + (themeV2 ? CUTE_ANCHOR_V2 : CUTE_ANCHOR)
+                : child ? CHILD_GROWTH : ADULT_GROWTH;
         String identity = origin == null || blank(origin.subject()) ? "" :
                 "Origin of this creature: " + origin.subject() + "." +
-                (blank(origin.traits()) ? "" : " Its distinctive features: " + origin.traits() + ".") + " ";
+                (blank(origin.traits()) ? "" : redesign
+                        ? " Its iconic traits, to be translated into the new design (not copied): " + origin.traits() + "."
+                        : " Its distinctive features: " + origin.traits() + ".") + " ";
         String bodyPlan = bodyChanges ? ""
                 : "Keep the body plan of image 1 (the same number of legs and the same overall posture family). ";
         String ink = hasInk
                 ? LandCatalog.fillOrigin(absorbed, origin == null ? null : origin.subject(), origin == null ? null : origin.traits()) + " "
                 : "";
-        String decor = "Faction theme (small accents only, about " + (child ? 20 : 30) + "% intensity): " +
+        String decor = "Faction theme (small accents only, about " + (theme ? 10 : child ? 20 : 30) + "% intensity): " +
                 (KNIGHT_FACTION.equals(faction) ? motifs : withoutScarves(motifs)) + ". " +
-                "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity. " +
-                "Use " + colors + " as accent colors.";
-        String eyes = blankEyesAllowed(faction, absorbed) ? "" : EYES + " ";
+                "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity." +
+                (themeV2 ? " Do not use faction colors; the ink theme colors decide the palette." : " Use " + colors + " as accent colors.");
+        String eyes = blankEyesAllowed(faction, absorbed) ? "" : (redesign ? EYES_V4 : EYES) + " ";
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
-                "the root of this creature's identity (silhouette, proportions, distinctive features). " +
+                (redesign ? "the root of this creature's identity; carry over its spirit and its iconic traits, not its exact drawing. "
+                        : "the root of this creature's identity (silhouette, proportions, distinctive features). ") +
                 identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes + CLEAN + SIDE_VIEW + SOLID +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
     }
@@ -234,6 +358,54 @@ final class ImagePromptV3 {
             "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident side-view pose that fits its body plan. " +
             "The distinctive features listed in the origin above must still be clearly visible, evolved and exaggerated rather than dropped. " +
             "It is still the same creature (same face identity and palette), not a generic cute mascot and not a generic standing hero.";
+
+    // ---------------- 잉크 진화 시안 v1 (LandCatalog.INK_STYLE_V1) ----------------
+    /** v1: 색은 잉크가 바꾸므로 "색 유지"를 빼고, 얼굴·눈·몸 구조만 지킨다 */
+    private static final String THEME_KEEP = "Keep it recognizably the SAME character as image 1 and image 2: the same face, the same eye design, " +
+            "the same body plan and pose family, and its most distinctive features. Its colors, surface material and part shapes WILL change to the ink theme below.";
+
+    private static final String CHILD_THEME_GROWTH = "This is the second stage: a slightly more developed form of image 1 " +
+            "(a little more detail and a little more confident), and above all the ink-themed version of it.";
+
+    /** v1 완성작: 강하고 무섭게가 아니라, 귀여운 스타터의 마지막 진화처럼 화려하고 완성된 느낌 */
+    private static final String ADULT_THEME_GROWTH = "This is the FINAL form: like the last evolution of a cute starter monster that stays charming. " +
+            "Make it feel complete and special rather than stronger: richer theme details, a more elegant and graceful line, a proud happy pose, " +
+            "and one signature theme feature that clearly stands out. Image 1 should look like its younger form.";
+
+    // ---------------- 잉크 진화 시안 v4: 완전체는 얼굴까지 새로 디자인 ----------------
+    /**
+     * v4 완전체: 옛 얼굴을 새 몸에 스티커처럼 붙이지 않는다(키메라). 머리·얼굴·몸을 한 그림체로 다시 그리고,
+     * 누구였는지는 색·표정·대표 특징 한두 개를 새 몸의 구조로 바꿔서 잇는다 (고양이 귀 → 귀 모양 지느러미·뿔).
+     */
+    private static final String THEME_REDESIGN_V4 = "This is a real evolution, like a monster evolving into its final form: " +
+            "REDESIGN the whole creature, head and face included, as ONE new species. Do NOT keep the old face of image 1 as a flat sticker on a new body; " +
+            "the head, face, body, limbs and tail are drawn together in one style and one level of detail, and the body's texture continues over the head. " +
+            "It is still recognizably the same individual through three things: its body color palette, its gentle personality and expression, " +
+            "and its one or two most iconic traits TRANSLATED into the new anatomy instead of pasted on " +
+            "(for example a cat's pointed ears become ear-shaped frills or horns on the new head, whiskers become thin feelers or fins, a long neck stays long). " +
+            "Do not stack new parts on top of old ones (no horns piled on top of the old ears).";
+
+    /** v4 완전체의 귀여움: 비율은 풀어 주고(새 몸을 디자인하게), 표정·둥근 선·눈으로만 지킨다 */
+    static final String CUTE_ANCHOR_V4 = "It must stay lovable, the kind of pet people want to raise: soft rounded shapes, " +
+            "a friendly face with big round eyes, and a gentle happy or proud expression. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates or weapon-like spikes.";
+
+    /** v4 완전체의 눈: 모양은 새 얼굴에 맞게 바뀌어도 되고, 하이라이트만 꼭 지킨다 */
+    private static final String EYES_V4 = "Eyes: big, round and friendly, drawn as part of the new face, " +
+            "each with a clear small white highlight so it never becomes a blank solid-black oval.";
+
+    /** v1에서 반드시 지키는 귀여움의 기준. 다마고치라 키우고 싶은 느낌이 먼저다 */
+    static final String CUTE_ANCHOR = "It must stay lovable, the kind of pet people want to raise: a big head (about 40% of its height), " +
+            "a round, soft silhouette, short stubby limbs, and a gentle happy or curious expression. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws, " +
+            "and do not make it taller, bulkier or more heroic than image 1.";
+
+    /** v2: 머리 비율을 숫자로 정하지 않는다. 낙서 단계의 비율·몸 구조를 지키고 표정·둥근 선으로 귀여움을 지킨다 */
+    static final String CUTE_ANCHOR_V2 = "It must stay lovable, the kind of pet people want to raise. Keep the proportions and body plan of image 1 " +
+            "exactly (a long neck stays long, a long tail stays long, the same species shape as image 2), and keep the cuteness through soft rounded shapes, " +
+            "a gentle happy or curious expression and the same eyes. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws, " +
+            "and do not make it taller, bulkier or more heroic than image 1.";
 
     /** 스카프·망토는 여러 진영에 겹쳐 모든 캐릭터가 비슷해 보이게 하므로 진영 모티프에서 뺀다 */
     static String withoutScarves(String motifs) {

@@ -30,7 +30,15 @@ public final class LandCatalog {
      * prompt: 이 잉크의 전체 특징(많이 바뀌는 단계). part: 조금 바뀌는 단계에서 쓰는 한 부위(없으면 prompt).
      * body: 크게 바뀌는 단계에서 희귀·전설이 바꾸는 하체 분류(없으면 체형 유지)
      */
-    public record Ink(String id, String emoji, String name, Grade grade, String family, String prompt, String part, Body body) {
+    /**
+     * colors: 몸을 칠할 대표 색(v2~). paint: 이 잉크가 몸 색을 바꾸는지(v3~, 없으면 계열로 정한다 — PAINT_FAMILIES)
+     */
+    public record Ink(String id, String emoji, String name, Grade grade, String family, String prompt, String part, Body body,
+                      String colors, Boolean paint) {
+        public Ink(String id, String emoji, String name, Grade grade, String family, String prompt, String part, Body body) {
+            this(id, emoji, name, grade, family, prompt, part, body, null, null);
+        }
+
         public String partOrPrompt() {
             return part != null ? part : prompt;
         }
@@ -161,6 +169,122 @@ public final class LandCatalog {
      * 85%~는 등급마다 정해진 한 가지: 흔한 잉크는 얼굴 유지, 희귀는 부위 이식, 전설은 키메라. 체형(하체 분류)은 이 구간의 희귀·전설만 바꾼다.
      * 고른 잉크가 하나도 없으면 null.
      */
+    // ---------------- 잉크 진화 시안 버전 (image.ink-style) ----------------
+    // 시안마다 버전 이름과 git 태그(ink-evo-vN)를 붙여, 설정값 하나로 언제든 돌아갈 수 있게 한다.
+    /** v0: 지금 방식. 비율만큼 장식 → 부위 하나 교체 → 체형 변화. 귀여움을 넣으면 변화가 작고(날개 하나), 변화를 키우면 귀여움이 사라졌다 */
+    public static final String INK_STYLE_V0 = "v0";
+    /**
+     * v1: 속성 재해석(속성 진화형 방식). 부위를 붙이지 않고, 같은 귀여운 생물을 그 잉크의 색·재질·실루엣으로 다시 그린다.
+     * 귀여움의 기준(큰 머리·둥근 몸·짧은 팔다리·같은 눈)은 고정하고, 근육·이빨·화난 눈·갑옷은 금지한다.
+     */
+    public static final String INK_STYLE_V1 = "v1";
+    /**
+     * v2: v1 + 고친 점 세 가지. ① 잉크마다 대표 색(colors)을 데이터로 정해 문장에 넣는다(없으면 실제 색을 모델이 고르게).
+     * ② "머리는 키의 40%" 규칙을 빼고 낙서 단계의 비율을 지킨다(긴 목 공룡이 고양이가 됐다). ③ 진영 색 문장을 뺀다(잉크 색과 섞였다).
+     */
+    public static final String INK_STYLE_V2 = "v2";
+    /**
+     * v3: v2 + 잉크마다 "몸 색을 바꾸는지" 나눈다. 불·얼음·젤리·과자처럼 재질이 곧 정체인 잉크만 몸을 칠하고,
+     * 와이번·여우처럼 모양이 정체인 잉크는 원래 몸 색을 지키고 모양·재질로만 바뀐다 (갑자기 색이 바뀌면 어색하다).
+     */
+    public static final String INK_STYLE_V3 = "v3";
+    /** v3에서 몸 색을 바꾸는 계열: 재질이 곧 그 잉크인 것들. 잉크 데이터의 paint로 하나씩 바꿀 수 있다 */
+    static final java.util.Set<String> PAINT_FAMILIES = java.util.Set.of("fire", "ice", "tentacle", "sweet", "cosmic", "ghost", "shadow", "steel");
+    /** v3 문장 머리말 (v1·v2 머리말을 포함하지 않는다) */
+    public static final String THEME_MARK_V3 = "INK THEME EVOLUTION (v3): ";
+    /**
+     * v4: v3 + 완전체는 얼굴까지 새로 디자인한다. v1~v3는 "같은 얼굴·같은 눈"을 지키게 해서 몸만 용이 되고
+     * 얼굴은 낙서 단계 고양이 그대로 남아 키메라가 됐다. 누구였는지는 색·표정·대표 특징을 새 몸에 "번역"해서 잇는다.
+     * 잉크 문장은 v3와 같고, 다른 점은 ImagePromptV3가 머리말을 보고 완전체 문장을 바꾸는 것이다.
+     */
+    public static final String INK_STYLE_V4 = "v4";
+    /**
+     * v5: 단계마다 역할을 나눈다. 스케치 = 잉크를 입은 아기(v3 잉크 문장 + 아기 체형), 완성작 = 정수를 뽑아 다시 태어남(디자인 후보 3개 중 고름).
+     * 잉크 문장은 스케치에서만 쓰고(v3와 같다), 완성작은 inkTheme()을 디자이너에게 글로 준다. 그림 문장은 ImagePromptV3의 v5 부분.
+     */
+    public static final String INK_STYLE_V5 = "v5";
+
+    public static boolean isV5(String style) {
+        return INK_STYLE_V5.equalsIgnoreCase(style);
+    }
+
+    /** v5 완성작 디자이너에게 줄 잉크 설명(대표 잉크 + 계열). 고른 잉크가 없으면 null */
+    public static String inkTheme(String mainId, List<String> familyIds) {
+        Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
+        List<String> families = familyIds == null ? List.of() : familyIds.stream()
+                .map(LandCatalog::ink).flatMap(Optional::stream)
+                .filter(i -> i.grade() == Grade.FAMILY).map(Ink::prompt).distinct().toList();
+        if (main == null && families.isEmpty()) return null;
+        String theme = main != null ? main.name() + " (" + main.prompt() + ")" : String.join(" and ", families);
+        return main != null && !families.isEmpty() ? theme + ", mixed with " + String.join(" and ", families) : theme;
+    }
+    public static final String THEME_MARK_V4 = "INK THEME EVOLUTION (v4): ";
+
+    /** v3: 이 잉크가 몸 색을 바꾸는지. 데이터의 paint가 먼저, 없으면 계열로 정한다 */
+    public static boolean paints(Ink ink) {
+        return ink.paint() != null ? ink.paint() : PAINT_FAMILIES.contains(ink.family());
+    }
+
+    /** v1 문장 머리말: 이 문구가 있으면 ImagePromptV3가 "강하고 멋있게" 대신 귀여움을 지키는 성장 문장을 쓴다 */
+    public static final String THEME_MARK = "INK THEME EVOLUTION: ";
+    /** v2 문장 머리말 (v1 머리말을 포함하지 않는다) */
+    public static final String THEME_MARK_V2 = "INK THEME EVOLUTION (v2): ";
+
+    /** 시안 버전에 맞는 잉크 문장. v1은 스케치·완성작에만 쓰고, 낙서(유체)는 장식만이라 v0와 같다 */
+    public static String absorbedPrompt(String mainId, List<String> familyIds, String stage, String style) {
+        if ("baby".equals(stage)) return absorbedPrompt(mainId, familyIds, stage);
+        if (INK_STYLE_V1.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 1);
+        if (INK_STYLE_V2.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 2);
+        if (INK_STYLE_V3.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 3);
+        if (INK_STYLE_V4.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 4);
+        if (isV5(style)) return themePrompt(mainId, familyIds, stage, 3); // 스케치용. 완성작은 inkTheme()으로 디자이너가 쓴다
+        return absorbedPrompt(mainId, familyIds, stage);
+    }
+
+    /**
+     * v1: 색(몸 대부분) + 재질(몸 전체 표면) + 실루엣(자기 부위 1~2곳의 모양)을 함께 바꿔 작은 썸네일에서도 확 달라 보이게 한다.
+     * 완성작은 더 짙게(색 대부분·부위 2~3곳). 희귀·전설이 85% 이상이면 체형(하체 분류)도 v0처럼 바뀐다.
+     */
+    static String themePrompt(String mainId, List<String> familyIds, String stage, int version) {
+        boolean v2 = version >= 2;
+        Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
+        List<Ink> familyInks = familyIds == null ? List.of() : familyIds.stream()
+                .map(LandCatalog::ink).flatMap(Optional::stream)
+                .filter(i -> i.grade() == Grade.FAMILY).distinct().toList();
+        List<String> families = familyInks.stream().map(Ink::prompt).distinct().toList();
+        // v3: 대표 잉크가 있으면 그 잉크로, 계열만 있으면 하나라도 칠하는 계열이면 칠한다. v1·v2는 늘 칠한다
+        boolean paint = version < 3 || (main != null ? paints(main) : familyInks.stream().anyMatch(LandCatalog::paints));
+        if (main == null && families.isEmpty()) return null;
+        boolean adult = !"child".equals(stage);
+        String theme = main != null ? main.prompt() : String.join(" and ", families);
+        String mix = main != null && !families.isEmpty() ? " mixed with " + String.join(" and ", families) : "";
+        StringBuilder sb = new StringBuilder(version >= 4 ? THEME_MARK_V4 : version == 3 ? THEME_MARK_V3 : v2 ? THEME_MARK_V2 : THEME_MARK);
+        sb.append("The player chose this ink theme: ").append(theme).append(mix).append(". ");
+        if (v2 && paint) {
+            sb.append(main != null && main.colors() != null
+                    ? "The theme colors are " + main.colors() + ". "
+                    : "The theme colors are the real-life colors of that theme; pick them clearly and use them boldly. ");
+        }
+        sb
+          .append("Like the elemental evolutions of one cute monster family, this creature evolves into the ink-themed version of ITSELF: ")
+          .append("the same lovable creature, reborn in that theme. Do NOT glue a foreign part onto it; re-imagine its own body in the theme. ")
+          .append("The change must be obvious even as a tiny thumbnail, through all three of these together: ")
+          .append(paint
+                ? "(1) COLOR: repaint " + (adult ? "almost all (about 80%)" : "most (about 60%)") + " of the body in "
+                  + (v2 ? "the theme colors" : "the colors of that theme") + "; its old colors stay only as small accents such as the belly, cheeks or markings. "
+                : "(1) COLOR: KEEP the body colors of image 1 exactly (the same main body color, belly and markings): this theme is about shape, not color. "
+                  + "New theme parts use deeper or lighter shades of its OWN colors (for example wing membranes in a deeper shade of its body color), "
+                  + "with at most one small accent in another color. ")
+          .append("(2) MATERIAL: its own surface (fur, skin, shell or metal) becomes the material of that theme all over the body, not in one small spot. ")
+          .append("(3) SILHOUETTE: reshape ").append(adult ? "two or three" : "one or two")
+          .append(" of its OWN parts (ears, tail, crest, top of the head, cheeks or back) into shapes of that theme so the outline itself changes; ")
+          .append("they grow out of its body as soft, rounded shapes. ");
+        int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
+        Body body = main == null || main.grade() == Grade.COMMON || ratio < FULL_RATIO ? null : main.body();
+        if (body != null) sb.append(body.prompt());
+        return sb.toString().trim();
+    }
+
     public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
         Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
         List<String> families = familyIds == null ? List.of() : familyIds.stream()
@@ -271,7 +395,9 @@ public final class LandCatalog {
                 if (grade == Grade.FAMILY) throw new IllegalStateException("계열 잉크는 families.json 에: " + text(i, "id"));
                 put(new Ink(text(i, "id"), text(i, "emoji"), text(i, "name"), grade, family, text(i, "prompt"),
                         i.hasNonNull("part") ? i.get("part").asText() : null,
-                        i.hasNonNull("body") ? Body.valueOf(i.get("body").asText()) : null));
+                        i.hasNonNull("body") ? Body.valueOf(i.get("body").asText()) : null,
+                        i.hasNonNull("colors") ? i.get("colors").asText() : null,
+                        i.hasNonNull("paint") ? i.get("paint").asBoolean() : null));
                 HOME.put(text(i, "id"), text(r, "id"));
                 HOME_INKS.computeIfAbsent(text(r, "id"), k -> new ArrayList<>()).add(INKS.get(text(i, "id")));
             }
