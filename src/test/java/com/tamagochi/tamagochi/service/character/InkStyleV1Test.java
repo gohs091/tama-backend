@@ -34,4 +34,17 @@ class InkStyleV1Test {
         assertThat(LandCatalog.absorbedPrompt("wyvern", List.of(), "baby", LandCatalog.INK_STYLE_V1))
                 .isEqualTo(LandCatalog.absorbedPrompt("wyvern", List.of(), "baby"));
     }
+
+    @Test
+    void v2는_잉크_색을_넣고_비율_규칙과_진영_색을_뺀다() {
+        String ink = LandCatalog.absorbedPrompt("jellyfish", List.of(), "child", LandCatalog.INK_STYLE_V2);
+        String prompt = ImagePromptV3.evolve("child", CAT, "nature-spirits", "green and brown color scheme", "fur tufts", ink);
+        assertThat(prompt).contains(LandCatalog.THEME_MARK_V2).contains("pale aqua").contains(ImagePromptV3.CUTE_ANCHOR_V2)
+                .doesNotContain("about 40% of its height").doesNotContain("green and brown color scheme as accent");
+    }
+
+    @Test
+    void v2_색이_없는_잉크는_실제_색을_고르게_한다() {
+        assertThat(LandCatalog.absorbedPrompt("kobold", List.of(), "child", LandCatalog.INK_STYLE_V2)).contains("real-life colors");
+    }
 }

@@ -126,9 +126,10 @@ final class ImagePromptV3 {
         boolean hasInk = !blank(absorbed);
         boolean strong = hasInk && absorbed.contains(LandCatalog.FULL_MARK);                 // 85% 이상(몸 전체가 바뀜): 겉모습이 크게 바뀔 수 있다
         boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);  // 하체 분류가 바뀐다
-        boolean theme = hasInk && absorbed.contains(LandCatalog.THEME_MARK);              // 잉크 시안 v1: 속성 재해석
+        boolean themeV2 = hasInk && absorbed.contains(LandCatalog.THEME_MARK_V2);         // 잉크 시안 v2
+        boolean theme = themeV2 || hasInk && absorbed.contains(LandCatalog.THEME_MARK);   // 잉크 시안 v1·v2: 속성 재해석
         String fidelity = theme ? THEME_KEEP : child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
-        String growth = theme ? (child ? CHILD_THEME_GROWTH : ADULT_THEME_GROWTH) + " " + CUTE_ANCHOR
+        String growth = theme ? (child ? CHILD_THEME_GROWTH : ADULT_THEME_GROWTH) + " " + (themeV2 ? CUTE_ANCHOR_V2 : CUTE_ANCHOR)
                 : child ? CHILD_GROWTH : ADULT_GROWTH;
         String identity = origin == null || blank(origin.subject()) ? "" :
                 "Origin of this creature: " + origin.subject() + "." +
@@ -140,8 +141,8 @@ final class ImagePromptV3 {
                 : "";
         String decor = "Faction theme (small accents only, about " + (theme ? 10 : child ? 20 : 30) + "% intensity): " +
                 (KNIGHT_FACTION.equals(faction) ? motifs : withoutScarves(motifs)) + ". " +
-                "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity. " +
-                "Use " + colors + " as accent colors.";
+                "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity." +
+                (themeV2 ? " Do not use faction colors; the ink theme colors decide the palette." : " Use " + colors + " as accent colors.");
         String eyes = blankEyesAllowed(faction, absorbed) ? "" : EYES + " ";
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
@@ -195,6 +196,13 @@ final class ImagePromptV3 {
     /** v1에서 반드시 지키는 귀여움의 기준. 다마고치라 키우고 싶은 느낌이 먼저다 */
     static final String CUTE_ANCHOR = "It must stay lovable, the kind of pet people want to raise: a big head (about 40% of its height), " +
             "a round, soft silhouette, short stubby limbs, and a gentle happy or curious expression. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws, " +
+            "and do not make it taller, bulkier or more heroic than image 1.";
+
+    /** v2: 머리 비율을 숫자로 정하지 않는다. 낙서 단계의 비율·몸 구조를 지키고 표정·둥근 선으로 귀여움을 지킨다 */
+    static final String CUTE_ANCHOR_V2 = "It must stay lovable, the kind of pet people want to raise. Keep the proportions and body plan of image 1 " +
+            "exactly (a long neck stays long, a long tail stays long, the same species shape as image 2), and keep the cuteness through soft rounded shapes, " +
+            "a gentle happy or curious expression and the same eyes. " +
             "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws, " +
             "and do not make it taller, bulkier or more heroic than image 1.";
 
