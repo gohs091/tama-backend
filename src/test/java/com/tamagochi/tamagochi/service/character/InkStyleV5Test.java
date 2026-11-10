@@ -31,7 +31,7 @@ class InkStyleV5Test {
         String ink = LandCatalog.absorbedPrompt("wyvern", List.of(), "child", LandCatalog.INK_STYLE_V5);
         String p = ImagePromptV3.sketchV5(CAT, ink);
         assertThat(p).contains(ImagePromptV3.CHIBI_V5).contains(ImagePromptV3.SIDE_SKETCH_V5).contains(ImagePromptV3.FACTION_PARTS_V5)
-                .contains("KEEP the body colors")
+                .contains("KEEP the body colors").contains(ImagePromptV3.SOLID_V5)
                 .doesNotContain("Keep the proportions and body plan of image 1 exactly")
                 .doesNotContain("pointed animal ears");
     }
@@ -59,7 +59,7 @@ class InkStyleV5Test {
         var c = om.readTree("{\"newForm\":\"Volt Serpent\",\"essence\":\"a calm guardian.\",\"bodyPlan\":\"coiled\",\"silhouette\":\"S\",\"face\":\"kind\"," +
                 "\"palette\":\"green, yellow\",\"motifs\":[\"antenna -> crest\"],\"details\":[\"lightning mane\"]}");
         String p = ImagePromptV3.finalFromDesignV5(c);
-        assertThat(p).contains("Volt Serpent").contains("antenna -> crest").contains("RESTING").contains("SIMPLE").contains("fully opaque");
+        assertThat(p).contains("Volt Serpent").contains("antenna -> crest").contains("RESTING").contains("SIMPLE").contains(ImagePromptV3.SOLID_V5);
     }
 
     @Test

@@ -52,6 +52,13 @@ final class ImagePromptV3 {
             "Draw it with chunky pixels: about 48 pixels across the whole canvas, so each pixel is a big visible square. " +
             "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws.";
 
+    /**
+     * 몸은 끝까지 불투명하게: 젤리·유리·얼음·유령·물 재질을 반투명하게 그리면 알파 정리(binarizeAlpha)에서 지워져 몸에 구멍이 난다.
+     * v5는 solid=true라 앱이 구멍을 흰색으로 메우지 않으므로, 그대로 배경이 비쳐 보인다. 유리 느낌은 밝은 하이라이트 색으로만 낸다 (#52에서 가져옴)
+     */
+    static final String SOLID_V5 = "Fill the whole body with solid, fully opaque flat colors: even jelly, glass, ice, ghost or water materials are drawn as opaque colors " +
+            "that only LOOK glassy through lighter highlight shades, never see-through or translucent. ";
+
     /** 진영 장식이 귀·꼬리를 붙여 로봇·공룡에 고양이 귀가 생겼다 → 색·작은 무늬만 */
     static final String FACTION_PARTS_V5 = "Faction theme: only as subtle colors or small patterns, never as new body parts " +
             "(no ears, tails, horns or paws added for the faction).";
@@ -78,7 +85,7 @@ final class ImagePromptV3 {
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + FACTION_PARTS_V5 + " " + eyes +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + FACTION_PARTS_V5 + " " + eyes + SOLID_V5 +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + SIDE_SKETCH_V5 + FRAME;
     }
 
@@ -126,7 +133,7 @@ final class ImagePromptV3 {
             "in whatever body it has: a walker stands still with feet on the ground, a serpent rests calmly coiled or in a gentle S-curve near the ground, " +
             "a flyer or floater hovers calmly just above the ground. Never an attack, a jump or a mid-motion action. ";
     private static final String FRAME_FINAL_V5 = "Single character centered, filling about 70% of the frame, transparent background, no shadow, no glow, " +
-            "no ground, no other characters, no text. Fill the whole body with solid, fully opaque flat colors.";
+            "no ground, no other characters, no text. " + SOLID_V5;
 
     /** v5 완성작 그림 프롬프트: 고른 디자인 후보 하나를 글로만 그린다 (그림 입력 없음) */
     static String finalFromDesignV5(com.fasterxml.jackson.databind.JsonNode c) {
