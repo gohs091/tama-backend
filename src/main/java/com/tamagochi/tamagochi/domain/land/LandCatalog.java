@@ -208,6 +208,27 @@ public final class LandCatalog {
         return INK_STYLE_V5.equalsIgnoreCase(style);
     }
 
+    /** 잉크 한 칸(특정 잉크 또는 계열 잉크 하나)의 진화 문장. 없으면 null */
+    public static String singleInkPrompt(String inkId, String stage, String style) {
+        Ink ink = ink(inkId).orElse(null);
+        if (ink == null) return null;
+        return ink.grade() == Grade.FAMILY
+                ? absorbedPrompt(null, List.of(ink.id()), stage, style)
+                : absorbedPrompt(ink.id(), List.of(), stage, style);
+    }
+
+    /** 잉크 한 칸의 디자이너용 설명. 희귀·전설은 완성작을 더 크게 바꾸라고 덧붙인다. 없으면 null */
+    public static String singleInkTheme(String inkId) {
+        Ink ink = ink(inkId).orElse(null);
+        if (ink == null) return null;
+        String theme = ink.grade() == Grade.FAMILY ? inkTheme(null, List.of(ink.id())) : inkTheme(ink.id(), List.of());
+        return theme + switch (ink.grade()) {
+            case RARE -> " (a RARE ink: let it shape the final form strongly)";
+            case LEGEND -> " (a LEGENDARY ink: let it shape the final form boldly and dominantly)";
+            default -> "";
+        };
+    }
+
     /** v5 완성작 디자이너에게 줄 잉크 설명(대표 잉크 + 계열). 고른 잉크가 없으면 null */
     public static String inkTheme(String mainId, List<String> familyIds) {
         Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
@@ -279,6 +300,13 @@ public final class LandCatalog {
           .append("(3) SILHOUETTE: reshape ").append(adult ? "two or three" : "one or two")
           .append(" of its OWN parts (ears, tail, crest, top of the head, cheeks or back) into shapes of that theme so the outline itself changes; ")
           .append("they grow out of its body as soft, rounded shapes. ");
+        if (version >= 3 && main == null && !paint) {
+            // 계열 잉크 하나(새·곤충·짐승 등 모양 계열): 몸 색을 지키면 작은 부위만 생겨 변화가 조용했다 → 무늬·포인트 색까지
+            sb.append("Because this is a broad family ink, show it boldly: besides the new parts, add clear theme patterns and one accent color of the theme ")
+              .append("over about a third of the body (for example feather patterns and a bright crest color for bird traits), while the main body color stays. ");
+        }
+        if (version >= 3 && main != null && main.grade() == Grade.RARE) sb.append("This is a RARE ink: make the theme bold and prominent. ");
+        if (version >= 3 && main != null && main.grade() == Grade.LEGEND) sb.append("This is a LEGENDARY ink: make the theme dominant and spectacular. ");
         int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
         Body body = main == null || main.grade() == Grade.COMMON || ratio < FULL_RATIO ? null : main.body();
         if (body != null) sb.append(body.prompt());
