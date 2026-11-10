@@ -22,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -65,8 +66,26 @@ public class ImageGenerationService {
     @Value("${openai.image-quality:medium}")
     private String openAiImageQuality;
 
+    // 잉크 진화 시안 (LandCatalog.INK_STYLE_*). v5면 낙서 측면·스케치 아기 체형·완성작 디자인 후보 방식을 쓴다
+    @Value("${image.ink-style:v0}")
+    private String inkStyle = LandCatalog.INK_STYLE_V0;
+
+    // v5 스케치·완성작을 그리는 모델과 품질 (낙서 단계는 openai.image-model 그대로)
+    @Value("${image.v5-model:gpt-image-2.6-sunburst}")
+    private String v5Model = "gpt-image-2.6-sunburst";
+
+    @Value("${image.v5-quality:low}")
+    private String v5Quality = "low";
+
+    @Autowired(required = false)
+    private FinalDesignService finalDesignService;
+
+    @Autowired(required = false)
+    private com.tamagochi.tamagochi.service.land.InkLoadoutService inkLoadoutService;
+
     private static final String OPENAI_URL = "https://api.openai.com";
     private static final String OPENAI_EDIT_ENDPOINT = "/v1/images/edits";
+    private static final String OPENAI_GENERATE_ENDPOINT = "/v1/images/generations";
     private static final int MAX_IN_MEMORY_BYTES = 16 * 1024 * 1024;
 
     private static final String STABILITY_URL = "https://api.stability.ai";
@@ -194,14 +213,15 @@ public class ImageGenerationService {
             boolean hasReference = referenceBase64 != null && !referenceBase64.isBlank();
             byte[] referenceBytes = hasReference ? decodeBase64Image(referenceBase64) : null;
             String referenceMime = hasReference ? extractMimeType(referenceBase64) : null;
-            byte[] responseBytes = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
-                    faction, stage, controlStrength, null, absorbedInk, tossUserId).bytes();
+            Generated generated = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
+                    faction, stage, controlStrength, null, absorbedInk, tossUserId);
+            byte[] responseBytes = generated.bytes();
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, detectFacing(responseBytes)));
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, detectFacing(responseBytes), generated.solid()));
             log.info("Evolved ({}) image generation done for job: {}", stage, jobId);
 
         } catch (Exception e) {
@@ -215,8 +235,10 @@ public class ImageGenerationService {
     // openai    : 편집형 모델이 낙서를 캐릭터로 재해석, 투명 배경 직접 출력 (배경 제거 호출 없음)
     // stability : sketch control + remove-background (롤백용)
     // ----------------------------------------------------------------
-    /** 생성된 이미지와, 그 과정에서 분석한 손그림의 정체(한글, 없으면 null) */
-    private record Generated(byte[] bytes, String species) {}
+    /** 생성된 이미지와, 그 과정에서 분석한 손그림의 정체(한글, 없으면 null). solid: 몸 안 투명 틈은 진짜 배경이라 앱이 메우지 않는다 */
+    private record Generated(byte[] bytes, String species, boolean solid) {
+        Generated(byte[] bytes, String species) { this(bytes, species, false); }
+    }
 
     private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
                                     String faction, String stage, String controlStrength, Long variationSeed,
@@ -249,6 +271,14 @@ public class ImageGenerationService {
         String colors = getFactionPixelColors(faction);
         DoodleSubject subject;
         String prompt;
+        boolean v5 = LandCatalog.isV5(inkStyle);
+        if (evolving && v5 && "child".equals(stage)) {
+            // v5 스케치: 아기 체형 + 측면, sunburst로 그리고 64칸으로 다시 찍는다
+            subject = originFor(tossUserId, imageBytes, mimeType);
+            prompt = ImagePromptV3.sketchV5(subject, absorbedInk);
+            byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt, v5Model, v5Quality));
+            return new Generated(PixelSnap.snap(image, PixelSnap.GRID), null, true);
+        }
         if (evolving) {
             subject = originFor(tossUserId, imageBytes, mimeType);
             prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk)
@@ -258,7 +288,7 @@ public class ImageGenerationService {
             if (subject != null && !subject.isAbstract()) {
                 saveOrigin(tossUserId, subject);
                 log.info("v3 낙서 - subject: {}, kind: {}, bodyPlan: {}, faction: {}", subject.subject(), subject.kind(), subject.bodyPlan(), faction);
-                prompt = ImagePromptV3.baby(subject, colors);
+                prompt = v5 ? ImagePromptV3.babyV5(subject, colors) : ImagePromptV3.baby(subject, colors);
             } else {
                 // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다
                 prompt = buildOpenAiPrompt(faction, stage, false, subject, FusionMode.SELF);
@@ -298,6 +328,93 @@ public class ImageGenerationService {
     }
 
     // ----------------------------------------------------------------
+    // v5 완성작: 디자인 후보(Redis)에서 고른 하나를 글로만 그린다. 후보가 없으면 지금 만들고 무작위로 하나 고른다
+    // ----------------------------------------------------------------
+    public boolean finalDesignEnabled() {
+        return LandCatalog.isV5(inkStyle) && finalDesignService != null && "openai".equalsIgnoreCase(provider);
+    }
+
+    /** 완성작 후보 3개 (한글 이름·한 줄·몸 종류). v5가 아니거나 실패하면 빈 목록 */
+    public java.util.List<FinalDesignService.Choice> finalChoices(String tossUserId, String doodleBase64, String sketchBase64, boolean refresh) {
+        if (!finalDesignEnabled()) return java.util.List.of();
+        byte[] doodle = decodeBase64Image(doodleBase64);
+        String doodleMime = extractMimeType(doodleBase64);
+        DoodleSubject subject = originFor(tossUserId, doodle, doodleMime);
+        return finalDesignService.choices(designOwner(tossUserId), decodeBase64Image(sketchBase64), doodle, doodleMime,
+                subject == null ? null : subject.subject(), inkTheme(tossUserId), refresh);
+    }
+
+    /** 후보 저장 키: 유저 + 지금 끄적이. 끄적이를 새로 키우면 이전 끄적이의 후보가 다시 나오지 않는다 */
+    private String designOwner(String tossUserId) {
+        if (userRepository == null || tamagotchiRepository == null || tossUserId == null) return tossUserId;
+        try {
+            return userRepository.findByTossUserId(tossUserId)
+                    .flatMap(u -> tamagotchiRepository.findActiveByUserId(u.getId()))
+                    .map(p -> tossUserId + ":" + p.getId())
+                    .orElse(tossUserId);
+        } catch (Exception e) {
+            return tossUserId;
+        }
+    }
+
+    private String inkTheme(String tossUserId) {
+        if (inkLoadoutService == null || userRepository == null || tossUserId == null) return null;
+        try {
+            return userRepository.findByTossUserId(tossUserId).map(inkLoadoutService::themeFor).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Async("imageExecutor")
+    public void generateFinalAsync(String jobId, String tossUserId, String doodleBase64, String sketchBase64, Integer designIndex) {
+        jobStore.put(jobId, ImageJobResult.pending());
+        try {
+            var design = finalDesignService.pick(designOwner(tossUserId), designIndex).orElse(null);
+            if (design == null) {
+                // 앱이 후보를 먼저 받지 않았으면 지금 만든다 (예전 앱, 구간 끝 자동 진화 등)
+                if (finalChoices(tossUserId, doodleBase64, sketchBase64, false).isEmpty()) {
+                    jobStore.put(jobId, ImageJobResult.failed("완성작 디자인 실패"));
+                    return;
+                }
+                design = finalDesignService.pick(designOwner(tossUserId), designIndex).orElseThrow();
+            }
+            log.info("v5 완성작 - user: {}, 후보: {} ({})", tossUserId, design.path("nameKo").asText(), design.path("body").asText());
+            byte[] image = binarizeAlpha(callOpenAiGenerate(ImagePromptV3.finalFromDesignV5(design), v5Model, v5Quality));
+            if (image == null || image.length == 0) {
+                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                return;
+            }
+            image = PixelSnap.snap(image, PixelSnap.GRID);
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
+        } catch (Exception e) {
+            log.error("Final image generation failed for job: {}", jobId, e);
+            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+        }
+    }
+
+    /** OpenAI images/generations: 그림 입력 없이 글로만 그린다 (v5 완성작) */
+    private byte[] callOpenAiGenerate(String prompt, String model, String quality) {
+        Map<String, Object> body = Map.of("model", model, "prompt", prompt, "size", "1024x1024", "quality", quality,
+                "background", "transparent", "output_format", "png");
+        String json = openAiClient.post()
+                .uri(OPENAI_GENERATE_ENDPOINT)
+                .header("Authorization", "Bearer " + openAiApiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(180))
+                .block();
+        try {
+            String b64 = objectMapper.readTree(json).path("data").path(0).path("b64_json").asText("");
+            return b64.isEmpty() ? null : Base64.getDecoder().decode(b64);
+        } catch (Exception e) {
+            throw new IllegalStateException("OpenAI 응답 파싱 실패: " + e.getMessage(), e);
+        }
+    }
+
+    // ----------------------------------------------------------------
     // 자는 모습: 지금 단계의 캐릭터 이미지를 엎드려 자는 같은 캐릭터로 다시 그린다
     // 실패하면 onFail 을 부른다 (결제한 잉크를 돌려주는 데 쓴다)
     // ----------------------------------------------------------------
@@ -331,16 +448,21 @@ public class ImageGenerationService {
     // ----------------------------------------------------------------
     private byte[] callOpenAiEdit(byte[] sketchBytes, String sketchMime, byte[] referenceBytes, String referenceMime,
                                   String prompt) {
+        return callOpenAiEdit(sketchBytes, sketchMime, referenceBytes, referenceMime, prompt, openAiImageModel, openAiImageQuality);
+    }
+
+    private byte[] callOpenAiEdit(byte[] sketchBytes, String sketchMime, byte[] referenceBytes, String referenceMime,
+                                  String prompt, String model, String quality) {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         String field = referenceBytes != null ? "image[]" : "image";
         if (referenceBytes != null) {
             addImagePart(builder, field, referenceBytes, referenceMime, "current.png");
         }
         addImagePart(builder, field, sketchBytes, sketchMime, sketchMime.contains("png") ? "sketch.png" : "sketch.jpg");
-        builder.part("model", openAiImageModel);
+        builder.part("model", model);
         builder.part("prompt", prompt);
         builder.part("size", "1024x1024");
-        builder.part("quality", openAiImageQuality);
+        builder.part("quality", quality);
         builder.part("background", "transparent");
         builder.part("output_format", "png");
 

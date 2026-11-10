@@ -16,4 +16,6 @@ public class EvolveImageRequest {
     private String faction;
     /** baby | child | adult */
     private String stage;
+    /** v5 완성작: 고른 디자인 후보 번호(0~2). 없으면 서버가 무작위로 고른다 */
+    private Integer designIndex;
 }

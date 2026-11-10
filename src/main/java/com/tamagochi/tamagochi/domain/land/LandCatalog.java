@@ -198,6 +198,26 @@ public final class LandCatalog {
      * 잉크 문장은 v3와 같고, 다른 점은 ImagePromptV3가 머리말을 보고 완전체 문장을 바꾸는 것이다.
      */
     public static final String INK_STYLE_V4 = "v4";
+    /**
+     * v5: 단계마다 역할을 나눈다. 스케치 = 잉크를 입은 아기(v3 잉크 문장 + 아기 체형), 완성작 = 정수를 뽑아 다시 태어남(디자인 후보 3개 중 고름).
+     * 잉크 문장은 스케치에서만 쓰고(v3와 같다), 완성작은 inkTheme()을 디자이너에게 글로 준다. 그림 문장은 ImagePromptV3의 v5 부분.
+     */
+    public static final String INK_STYLE_V5 = "v5";
+
+    public static boolean isV5(String style) {
+        return INK_STYLE_V5.equalsIgnoreCase(style);
+    }
+
+    /** v5 완성작 디자이너에게 줄 잉크 설명(대표 잉크 + 계열). 고른 잉크가 없으면 null */
+    public static String inkTheme(String mainId, List<String> familyIds) {
+        Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
+        List<String> families = familyIds == null ? List.of() : familyIds.stream()
+                .map(LandCatalog::ink).flatMap(Optional::stream)
+                .filter(i -> i.grade() == Grade.FAMILY).map(Ink::prompt).distinct().toList();
+        if (main == null && families.isEmpty()) return null;
+        String theme = main != null ? main.name() + " (" + main.prompt() + ")" : String.join(" and ", families);
+        return main != null && !families.isEmpty() ? theme + ", mixed with " + String.join(" and ", families) : theme;
+    }
     public static final String THEME_MARK_V4 = "INK THEME EVOLUTION (v4): ";
 
     /** v3: 이 잉크가 몸 색을 바꾸는지. 데이터의 paint가 먼저, 없으면 계열로 정한다 */
@@ -217,6 +237,7 @@ public final class LandCatalog {
         if (INK_STYLE_V2.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 2);
         if (INK_STYLE_V3.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 3);
         if (INK_STYLE_V4.equalsIgnoreCase(style)) return themePrompt(mainId, familyIds, stage, 4);
+        if (isV5(style)) return themePrompt(mainId, familyIds, stage, 3); // 스케치용. 완성작은 inkTheme()으로 디자이너가 쓴다
         return absorbedPrompt(mainId, familyIds, stage);
     }
 

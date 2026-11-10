@@ -82,6 +82,15 @@ public class InkLoadoutService {
                 java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList(), stage, inkStyle);
     }
 
+    /** v5 완성작 디자이너에게 줄 잉크 설명. 고른 잉크가 없으면 null */
+    @Transactional
+    public String themeFor(User user) {
+        Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
+        if (pet == null) return null;
+        return LandCatalog.inkTheme(pet.getInkMain(),
+                java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList());
+    }
+
     private Loadout view(Tamagotchi pet) {
         InkView main = LandCatalog.ink(pet.getInkMain()).map(InkView::of).orElse(null);
         List<InkView> families = java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2())

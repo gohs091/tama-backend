@@ -50,7 +50,9 @@ stability:
 
 image:
   prompt-version: ${IMAGE_PROMPT_VERSION:v3}  # v3(칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
-  ink-style: ${IMAGE_INK_STYLE:v0}  # 잉크 진화 시안: v0(부위 교체, 지금) | v1(속성 재해석) | v2(v1+잉크 색·비율 유지·진영 색 제외) | v3(v2+모양 잉크는 몸 색 유지) | v4(v3+완전체는 얼굴까지 새로 디자인)
+  ink-style: ${IMAGE_INK_STYLE:v0}  # 잉크 진화 시안: v0(부위 교체, 지금) | v1(속성 재해석) | v2(v1+잉크 색·비율 유지·진영 색 제외) | v3(v2+모양 잉크는 몸 색 유지) | v4(v3+완성작은 얼굴까지 새로 디자인) | v5(낙서 측면·스케치 아기 체형·완성작 디자인 후보 3개)
+  v5-model: ${IMAGE_V5_MODEL:gpt-image-2.6-sunburst}  # v5 스케치·완성작 모델 (낙서 단계는 openai.image-model)
+  v5-quality: ${IMAGE_V5_QUALITY:low}
   provider: ${IMAGE_PROVIDER:openai}
 
 openai:
