@@ -161,6 +161,54 @@ public final class LandCatalog {
      * 85%~는 등급마다 정해진 한 가지: 흔한 잉크는 얼굴 유지, 희귀는 부위 이식, 전설은 키메라. 체형(하체 분류)은 이 구간의 희귀·전설만 바꾼다.
      * 고른 잉크가 하나도 없으면 null.
      */
+    // ---------------- 잉크 진화 시안 버전 (image.ink-style) ----------------
+    // 시안마다 버전 이름과 git 태그(ink-evo-vN)를 붙여, 설정값 하나로 언제든 돌아갈 수 있게 한다.
+    /** v0: 지금 방식. 비율만큼 장식 → 부위 하나 교체 → 체형 변화. 귀여움을 넣으면 변화가 작고(날개 하나), 변화를 키우면 귀여움이 사라졌다 */
+    public static final String INK_STYLE_V0 = "v0";
+    /**
+     * v1: 속성 재해석(속성 진화형 방식). 부위를 붙이지 않고, 같은 귀여운 생물을 그 잉크의 색·재질·실루엣으로 다시 그린다.
+     * 귀여움의 기준(큰 머리·둥근 몸·짧은 팔다리·같은 눈)은 고정하고, 근육·이빨·화난 눈·갑옷은 금지한다.
+     */
+    public static final String INK_STYLE_V1 = "v1";
+    /** v1 문장 머리말: 이 문구가 있으면 ImagePromptV3가 "강하고 멋있게" 대신 귀여움을 지키는 성장 문장을 쓴다 */
+    public static final String THEME_MARK = "INK THEME EVOLUTION: ";
+
+    /** 시안 버전에 맞는 잉크 문장. v1은 스케치·완성작에만 쓰고, 낙서(유체)는 장식만이라 v0와 같다 */
+    public static String absorbedPrompt(String mainId, List<String> familyIds, String stage, String style) {
+        if (INK_STYLE_V1.equalsIgnoreCase(style) && !"baby".equals(stage)) return themePrompt(mainId, familyIds, stage);
+        return absorbedPrompt(mainId, familyIds, stage);
+    }
+
+    /**
+     * v1: 색(몸 대부분) + 재질(몸 전체 표면) + 실루엣(자기 부위 1~2곳의 모양)을 함께 바꿔 작은 썸네일에서도 확 달라 보이게 한다.
+     * 완성작은 더 짙게(색 대부분·부위 2~3곳). 희귀·전설이 85% 이상이면 체형(하체 분류)도 v0처럼 바뀐다.
+     */
+    static String themePrompt(String mainId, List<String> familyIds, String stage) {
+        Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
+        List<String> families = familyIds == null ? List.of() : familyIds.stream()
+                .map(LandCatalog::ink).flatMap(Optional::stream)
+                .filter(i -> i.grade() == Grade.FAMILY).map(Ink::prompt).distinct().toList();
+        if (main == null && families.isEmpty()) return null;
+        boolean adult = !"child".equals(stage);
+        String theme = main != null ? main.prompt() : String.join(" and ", families);
+        String mix = main != null && !families.isEmpty() ? " mixed with " + String.join(" and ", families) : "";
+        StringBuilder sb = new StringBuilder(THEME_MARK);
+        sb.append("The player chose this ink theme: ").append(theme).append(mix).append(". ")
+          .append("Like the elemental evolutions of one cute monster family, this creature evolves into the ink-themed version of ITSELF: ")
+          .append("the same lovable creature, reborn in that theme. Do NOT glue a foreign part onto it; re-imagine its own body in the theme. ")
+          .append("The change must be obvious even as a tiny thumbnail, through all three of these together: ")
+          .append("(1) COLOR: repaint ").append(adult ? "almost all (about 80%)" : "most (about 60%)")
+          .append(" of the body in the colors of that theme; its old colors stay only as small accents such as the belly, cheeks or markings. ")
+          .append("(2) MATERIAL: its own surface (fur, skin, shell or metal) becomes the material of that theme all over the body, not in one small spot. ")
+          .append("(3) SILHOUETTE: reshape ").append(adult ? "two or three" : "one or two")
+          .append(" of its OWN parts (ears, tail, crest, top of the head, cheeks or back) into shapes of that theme so the outline itself changes; ")
+          .append("they grow out of its body as soft, rounded shapes. ");
+        int ratio = main == null ? 0 : absorbRatio(2 + families.size(), stage);
+        Body body = main == null || main.grade() == Grade.COMMON || ratio < FULL_RATIO ? null : main.body();
+        if (body != null) sb.append(body.prompt());
+        return sb.toString().trim();
+    }
+
     public static String absorbedPrompt(String mainId, List<String> familyIds, String stage) {
         Ink main = ink(mainId).filter(i -> i.grade() != Grade.FAMILY).orElse(null);
         List<String> families = familyIds == null ? List.of() : familyIds.stream()

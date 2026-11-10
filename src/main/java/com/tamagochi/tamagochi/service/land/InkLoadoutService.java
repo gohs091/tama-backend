@@ -10,6 +10,7 @@ import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.land.AdventureService.InkView;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -30,6 +31,10 @@ public class InkLoadoutService {
 
     private final TamagotchiRepository tamagotchiRepository;
     private final LandInkRepository inkRepository;
+
+    /** 잉크 진화 시안 버전: v0(부위 교체, 지금 방식) | v1(속성 재해석). LandCatalog.INK_STYLE_* 참고 */
+    @Value("${image.ink-style:v0}")
+    private String inkStyle = LandCatalog.INK_STYLE_V0;
 
     public record Loadout(InkView main, List<InkView> families) {}
 
@@ -74,7 +79,7 @@ public class InkLoadoutService {
         Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet == null) return null;
         return LandCatalog.absorbedPrompt(pet.getInkMain(),
-                java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList(), stage);
+                java.util.stream.Stream.of(pet.getInkFamily1(), pet.getInkFamily2()).filter(Objects::nonNull).toList(), stage, inkStyle);
     }
 
     private Loadout view(Tamagotchi pet) {

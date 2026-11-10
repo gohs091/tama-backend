@@ -126,8 +126,10 @@ final class ImagePromptV3 {
         boolean hasInk = !blank(absorbed);
         boolean strong = hasInk && absorbed.contains(LandCatalog.FULL_MARK);                 // 85% 이상(몸 전체가 바뀜): 겉모습이 크게 바뀔 수 있다
         boolean bodyChanges = hasInk && absorbed.contains(LandCatalog.BODY_CHANGE_MARK);  // 하체 분류가 바뀐다
-        String fidelity = child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
-        String growth = child ? CHILD_GROWTH : ADULT_GROWTH;
+        boolean theme = hasInk && absorbed.contains(LandCatalog.THEME_MARK);              // 잉크 시안 v1: 속성 재해석
+        String fidelity = theme ? THEME_KEEP : child ? (hasInk ? CLOSE : SAME) : (strong ? LOOSE : CLOSE);
+        String growth = theme ? (child ? CHILD_THEME_GROWTH : ADULT_THEME_GROWTH) + " " + CUTE_ANCHOR
+                : child ? CHILD_GROWTH : ADULT_GROWTH;
         String identity = origin == null || blank(origin.subject()) ? "" :
                 "Origin of this creature: " + origin.subject() + "." +
                 (blank(origin.traits()) ? "" : " Its distinctive features: " + origin.traits() + ".") + " ";
@@ -136,7 +138,7 @@ final class ImagePromptV3 {
         String ink = hasInk
                 ? LandCatalog.fillOrigin(absorbed, origin == null ? null : origin.subject(), origin == null ? null : origin.traits()) + " "
                 : "";
-        String decor = "Faction theme (small accents only, about " + (child ? 20 : 30) + "% intensity): " +
+        String decor = "Faction theme (small accents only, about " + (theme ? 10 : child ? 20 : 30) + "% intensity): " +
                 (KNIGHT_FACTION.equals(faction) ? motifs : withoutScarves(motifs)) + ". " +
                 "Use at most two of these motifs, expressed on the creature's own parts; they must never replace or hide the creature's own identity. " +
                 "Use " + colors + " as accent colors.";
@@ -176,6 +178,25 @@ final class ImagePromptV3 {
             "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident pose that fits its body plan. " +
             "The distinctive features listed in the origin above must still be clearly visible, evolved and exaggerated rather than dropped. " +
             "It is still the same creature (same face identity and palette), not a generic cute mascot and not a generic standing hero.";
+
+    // ---------------- 잉크 진화 시안 v1 (LandCatalog.INK_STYLE_V1) ----------------
+    /** v1: 색은 잉크가 바꾸므로 "색 유지"를 빼고, 얼굴·눈·몸 구조만 지킨다 */
+    private static final String THEME_KEEP = "Keep it recognizably the SAME character as image 1 and image 2: the same face, the same eye design, " +
+            "the same body plan and pose family, and its most distinctive features. Its colors, surface material and part shapes WILL change to the ink theme below.";
+
+    private static final String CHILD_THEME_GROWTH = "This is the second stage: a slightly more developed form of image 1 " +
+            "(a little more detail and a little more confident), and above all the ink-themed version of it.";
+
+    /** v1 완성작: 강하고 무섭게가 아니라, 귀여운 스타터의 마지막 진화처럼 화려하고 완성된 느낌 */
+    private static final String ADULT_THEME_GROWTH = "This is the FINAL form: like the last evolution of a cute starter monster that stays charming. " +
+            "Make it feel complete and special rather than stronger: richer theme details, a more elegant and graceful line, a proud happy pose, " +
+            "and one signature theme feature that clearly stands out. Image 1 should look like its younger form.";
+
+    /** v1에서 반드시 지키는 귀여움의 기준. 다마고치라 키우고 싶은 느낌이 먼저다 */
+    static final String CUTE_ANCHOR = "It must stay lovable, the kind of pet people want to raise: a big head (about 40% of its height), " +
+            "a round, soft silhouette, short stubby limbs, and a gentle happy or curious expression. " +
+            "Do NOT add muscles, fangs or sharp teeth, angry or fierce eyes, armor plates, weapon-like spikes or big claws, " +
+            "and do not make it taller, bulkier or more heroic than image 1.";
 
     /** 스카프·망토는 여러 진영에 겹쳐 모든 캐릭터가 비슷해 보이게 하므로 진영 모티프에서 뺀다 */
     static String withoutScarves(String motifs) {
