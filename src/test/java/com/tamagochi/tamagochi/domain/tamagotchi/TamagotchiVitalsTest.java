@@ -79,38 +79,48 @@ class TamagotchiVitalsTest {
     }
 
     @Test
-    @DisplayName("자는 동안 응가는 멈추고 포만감·파워는 3배 느리게 준다")
-    void sleeping_slowsDecay() {
-        LocalDateTime night = LocalDateTime.of(2026, 10, 23, 22, 0); // 시작 시각이 없으면 id로 정한다 (id 없음 → 21시)
-        Tamagotchi p = baby(50, 50);
-        p.applyTime(night, RULE);
-        p.sleep(night);
-        p.applyTime(night.plusMinutes(180), RULE);
-        assertThat(p.getHunger()).isEqualTo(60);   // 18분마다 1
-        assertThat(p.getStrength()).isEqualTo(45); // 36분마다 1
-        assertThat(p.getPoopCount()).isZero();
+    @DisplayName("자는 동안은 배도 안 고프고 응가도 안 하며, 피로만큼 자고 혼자 깬다")
+    void sleeping_freezesVitals_andWakesByItself() {
+        Tamagotchi p = baby(10, 90);
+        p.applyTime(T0, RULE);
+        p.applyTime(T0.plusHours(5), RULE);                  // 깨어 있던 5시간: 피로 +20
+        int hunger = p.getHunger(), strength = p.getStrength(), poop = p.getPoopCount();
+        LocalDateTime slept = T0.plusHours(5);
+        p.sleep(slept);
+        assertThat(p.sleepLength()).isEqualTo(Duration.ofSeconds(Math.round(0.2 * 7 * 3600))); // 1.4시간
+        p.applyTime(slept.plusHours(1), RULE);
+        assertThat(p.isSleeping()).isTrue();
+        assertThat(p.getHunger()).isEqualTo(hunger);
+        assertThat(p.getStrength()).isEqualTo(strength);
+        assertThat(p.getPoopCount()).isEqualTo(poop);
 
-        p.wakeUp();
-        p.applyTime(night.plusMinutes(181), RULE);
-        assertThat(p.getPoopCount()).isZero(); // 깨어난 직후 한꺼번에 생기지 않는다
+        p.applyTime(slept.plusHours(2), RULE);                // 1.4시간에 혼자 깼다
+        assertThat(p.isSleeping()).isFalse();
+        assertThat(p.fatigue()).isCloseTo(2.4, org.assertj.core.data.Offset.offset(0.05)); // 깬 뒤 0.6시간 × 4
     }
 
     @Test
-    @DisplayName("졸린 시간대가 아니면 불을 꺼도 잠들지 않는다")
-    void sleep_onlyInSleepyTime() {
-        assertThatThrownBy(() -> pet.sleep(T0)).isInstanceOf(IllegalStateException.class);
+    @DisplayName("불을 끄면 언제든 잠든다. 방금 깼거나 활동이 없으면 짧게(20분) 잔다")
+    void sleep_anytime_shortWhenRested() {
+        pet.applyTime(T0, RULE);
+        pet.sleep(T0);
+        assertThat(pet.isSleeping()).isTrue();
+        assertThat(pet.sleepLength()).isEqualTo(Tamagotchi.SLEEP_MIN);
+        pet.applyTime(T0.plusMinutes(21), RULE);
         assertThat(pet.isSleeping()).isFalse();
     }
 
     @Test
-    @DisplayName("졸린 시간대는 시작 시각부터 8시간이고 자정을 넘어간다")
-    void sleepyTime_wrapsMidnight() {
-        Tamagotchi p = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).sleepyStartHour(23).build();
-        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 23, 22, 59))).isFalse();
-        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 23, 23, 0))).isTrue();
-        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 24, 6, 59))).isTrue();
-        assertThat(p.isSleepyTime(LocalDateTime.of(2026, 10, 24, 7, 0))).isFalse();
-        assertThat(p.isSleepy(LocalDateTime.of(2026, 10, 24, 1, 0))).isTrue();
+    @DisplayName("피곤하면(피로 70 이상) 졸려 하고, 활동이 많으면 7시간을 다 잔다")
+    void sleepy_byFatigue() {
+        pet.applyTime(T0, RULE);
+        assertThat(pet.isSleepy(T0)).isFalse();
+        for (int i = 0; i < 10; i++) pet.addFatigue(Tamagotchi.FATIGUE_TRAINING);
+        assertThat(pet.isSleepy(T0)).isTrue();
+        pet.sleep(T0);
+        assertThat(pet.sleepLength()).isEqualTo(Tamagotchi.SLEEP_MAX);
+        pet.wakeUp();
+        assertThat(pet.isSleeping()).isFalse();
     }
 
     @Test
