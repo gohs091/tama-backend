@@ -328,8 +328,10 @@ public final class LandCatalog {
             if (body != null) sb.append(body.prompt());
         }
         if (!families.isEmpty()) {
-            sb.append("Its surface texture, colors and mood also carry ").append(String.join(" and ", families))
-              .append("; use these only as texture, pattern and mood, not as extra body parts. ");
+            // 계열 잉크를 "질감·무늬"로만 넣으라 하면 몸 전체에 회색·무지개 점을 뿌린다. 모양이 분명한 부위 한두 개로 넣는다.
+            sb.append("It also carries ").append(String.join(" and ", families))
+              .append(". Show this as one or two clearly shaped parts picked from that list (for each), drawn in clean flat colors on the matching body area. ")
+              .append("Never spread it as speckles, noise, mottled dots or a texture over the whole body. ");
         }
         if (ratio < FULL_RATIO) sb.append("Keep the doodle's identity and the faction theme.");
         return sb.toString().trim();
