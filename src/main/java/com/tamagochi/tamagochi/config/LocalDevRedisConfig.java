@@ -84,6 +84,7 @@ public class LocalDevRedisConfig {
                     (proxy, method, args) -> switch (method.getName()) {
                         case "setIfAbsent" -> setIfAbsent((String) args[0], (String) args[1], args);
                         case "increment" -> increment((String) args[0]);
+                        case "set" -> { set((String) args[0], (String) args[1], args); yield null; }
                         case "get" -> {
                             Entry e = live((String) args[0]);
                             yield e == null ? null : e.value();
@@ -102,6 +103,14 @@ public class LocalDevRedisConfig {
             else if (args.length == 3) ttlMillis = ((Duration) args[2]).toMillis();
             store.put(key, new Entry(value, ttlMillis > 0 ? System.currentTimeMillis() + ttlMillis : 0));
             return true;
+        }
+
+        /** set(key, value) / set(key, value, Duration) / set(key, value, long, TimeUnit) */
+        private synchronized void set(String key, String value, Object[] args) {
+            long ttlMillis = 0;
+            if (args.length == 4) ttlMillis = ((TimeUnit) args[3]).toMillis((Long) args[2]);
+            else if (args.length == 3 && args[2] instanceof Duration d) ttlMillis = d.toMillis();
+            store.put(key, new Entry(value, ttlMillis > 0 ? System.currentTimeMillis() + ttlMillis : 0));
         }
 
         private synchronized Long increment(String key) {
