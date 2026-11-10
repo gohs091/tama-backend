@@ -60,6 +60,7 @@ jobs:
             ADMIN_KEY=${{ secrets.ADMIN_KEY }}
             S3_ENABLED=${{ secrets.S3_ENABLED }}
             S3_MIGRATE_EXISTING=${{ secrets.S3_MIGRATE_EXISTING }}
+            IMAGE_INK_STYLE=${{ vars.IMAGE_INK_STYLE }}
             ENVEOF
             chmod 600 .env
             docker compose -f docker-compose.prod.yml up -d --build
