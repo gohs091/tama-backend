@@ -30,6 +30,19 @@ final class ImagePromptV3 {
             "the same dark dots if image 1 has dots), and make sure every eye keeps a small white highlight so it never becomes a blank solid-black oval. " +
             "Do not make the eyes smaller, flatter or emptier than in image 1.";
 
+    /** 잉크가 닿지 않은 부위(꼬리 등)까지 물들고, 점이 자글자글해지고, 칸 크기가 달라지는 걸 막는다 */
+    static final String CLEAN = "Every part that the absorbed ink does not change (for example the tail, wings, eyes, belly and main body color) keeps EXACTLY " +
+            "its colors and shape from image 1. Use a limited palette (about 12 colors at most) with large clean flat color areas: " +
+            "no speckled, mottled, noisy or rainbow pixels. Keep the same pixel size as image 1. ";
+
+    /** 정면 그림은 방향이 없어 앱이 뒤집을 수 없다 (11/2 결정). 진화 프롬프트에 빠져 있어 완성작이 정면으로 나왔다 */
+    static final String SIDE_VIEW = "View: a SIDE VIEW (or three-quarter side view) facing the same direction as image 1, the whole body turned to that side. " +
+            "Never a front view facing the viewer. ";
+
+    /** 젤리·유령·얼음 같은 재질도 불투명하게: 반투명하게 그리면 알파 정리에서 지워져 몸에 구멍이 난다 */
+    static final String SOLID = "Fill the whole body with solid, fully opaque flat colors: even jelly, glass, ice, ghost or water materials are drawn " +
+            "as opaque colors, never see-through, translucent or white. ";
+
     private static final String FRAME = "Single character centered, filling about 70% of the frame, transparent background, " +
             "no shadow, no glow, no ground, no other characters.";
 
@@ -144,8 +157,53 @@ final class ImagePromptV3 {
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given two images. Image 1 is the CURRENT form of a tamagotchi-style pet. Image 2 is the original doodle the player drew: " +
                 "the root of this creature's identity (silhouette, proportions, distinctive features). " +
-                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes +
+                identity + fidelity + " " + bodyPlan + growth + " " + toolGrowth(origin) + ink + decor + " " + eyes + CLEAN + SIDE_VIEW + SOLID +
                 "It must be ONE single creature. Never draw blueprints, diagrams or text. " + FRAME;
+    }
+
+    /**
+     * 완성작 디자인 단계(텍스트 모델)의 지시문. 재료를 콘셉트 하나로 합쳐 콜라주를 막는다.
+     * 정체성은 머리·얼굴, 주 몸 색, 처음 그림의 대표 특징이 들고 가고, 몸 구조는 자유롭게 바꿀 수 있다 (네발 → 직립 기사 등).
+     */
+    static String finalDesigner(DoodleSubject origin) {
+        String signature = origin == null || blank(origin.traits()) ? "its most distinctive features in the image" : origin.traits();
+        return "You are the lead character designer of a monster-raising game whose evolutions feel like Digimon or Pokemon evolutions.\n" +
+                "You get the CURRENT form of a player's creature (image) and the ingredients of its next evolution: its origin, its stage, the ink data the player absorbed, and a faction theme.\n" +
+                "Merge them into ONE coherent evolved character design, NOT a collage of stickers. The classic failure you must avoid: a skull from the faction, wings from one ink " +
+                "and armor plates from another, each glued on separately in unrelated colors. Instead, find a single concept that explains every element, so each part looks like it was designed together.\n" +
+                "Freedom is allowed: armor, helmets, masks, fierce looks, big bodies, cool or cute are all fine, as long as the design is unified.\n" +
+                "Rules:\n" +
+                "- Respect the transformation strength written in the ink data (decoration only / one part / prominent / full transformation).\n" +
+                "- IDENTITY is carried by: the head and face shape (snout, horns, ears, eye style), the MAIN BODY COLOR read from the image " +
+                "(it must be the first color of the palette; faction colors are only accents), and these signature features: " + signature +
+                ". They must all survive, clearly visible, in the new concept.\n" +
+                "- The BODY PLAN is NOT part of identity. For this FINAL form you may freely change it to fit the concept: a four-legged creature may stand up " +
+                "into an upright two-legged warrior or knight, gain wings, etc. Choose what makes the most impressive evolution.\n" +
+                "- Faction theme is optional seasoning: use at most one faction element, and only if it fits the concept; otherwise just use its colors or drop it.\n" +
+                "- One clear focal point: the eyes stay vivid and readable (they may be partly covered by a helmet, but at least one eye clearly shines).\n" +
+                "- A tight palette: 3 main colors + 1 accent, each repeated on several parts so the whole body reads as one design.\n" +
+                "- It is ONE single creature: any companion, pet or rider in the ink data becomes part of its own body.\n" +
+                "- Side view, facing the same direction as the image.\n" +
+                "- Describe it in neutral design words (no gore, no violence).\n" +
+                "Reply with JSON only: {\"concept\": one short phrase, \"palette\": \"...\", \"bodyPlan\": \"the new body plan and pose\", " +
+                "\"silhouette\": \"how the outline changes and why\", \"focal\": \"...\", " +
+                "\"parts\": [\"2-4 parts, each saying which ingredient it comes from and how it fits the concept\"], " +
+                "\"dropped\": \"ingredients reduced to color or left out to keep it clean\"}";
+    }
+
+    /** 디자인 설계서대로 완성작을 그리는 그림 프롬프트 */
+    static String finalFromBrief(com.fasterxml.jackson.databind.JsonNode b) {
+        StringBuilder parts = new StringBuilder();
+        b.path("parts").forEach(p -> parts.append(p.asText()).append(' '));
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given two images. Image 1 is the CURRENT form of a pet creature, image 2 is the original drawing it came from. " +
+                "Draw its evolved form following this design brief exactly.\n" +
+                "Concept: " + b.path("concept").asText() + ". Palette: " + b.path("palette").asText() + ". " +
+                "Body plan and pose: " + b.path("bodyPlan").asText() + ". Silhouette: " + b.path("silhouette").asText() + ". " +
+                "Focal point: " + b.path("focal").asText() + ". Parts: " + parts.toString().trim() + "\n" +
+                "Everything on the body belongs to this one concept and palette; do not add any other decorations. Keep it recognizable as the creature of image 1.\n" +
+                "View: a side view (or three-quarter side view) facing the same direction as image 1, never a front view. " +
+                "Fill the whole body with solid, fully opaque flat colors, nothing see-through. It must be ONE single creature, no text. " + FRAME;
     }
 
     /** 친구와 배틀을 잘한 끄적이는 진화한 모습에 그 기세가 보인다 (같은 생물 그대로, 무기·글자 없이) */
@@ -164,8 +222,8 @@ final class ImagePromptV3 {
     private static final String LOOSE = "Keep its color palette and its essence, but its outer design may change a lot: new proportions, a new silhouette, new parts.";
 
     private static final String CHILD_GROWTH = "This is the second stage: a more mature, more developed form, NOT merely a bigger copy of image 1. " +
-            "Add exactly ONE new signature feature that fits its nature (for example a crest, longer limbs, a distinctive marking or a tail), " +
-            "and keep everything else recognizable.";
+            "Make ONE clear change to its SILHOUETTE that fits its nature (for example a taller crest, longer legs, a bigger tail or a more upright, " +
+            "confident posture) so the outline itself looks more grown-up; a new color or pattern alone does not count. Keep everything else recognizable.";
 
     /** 스케치 → 완성작: 정규 진화처럼 눈에 띄게 강하고 멋있어지되, 같은 생물이어야 한다 */
     private static final String ADULT_GROWTH =
@@ -173,7 +231,7 @@ final class ImagePromptV3 {
             "It must look visibly stronger, cooler and more mature than image 1, and image 1 should look like its younger form. " +
             "Make the proportions more mature and imposing (a taller or more athletic build, longer limbs, a broader chest or a more refined body line, " +
             "a sharper face and a more confident or fierce expression), add refined armor-like plates, bands, spikes, markings or a signature accessory " +
-            "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident pose that fits its body plan. " +
+            "that grow out of ITS OWN features, strengthen the color contrast, and choose a dynamic, confident side-view pose that fits its body plan. " +
             "The distinctive features listed in the origin above must still be clearly visible, evolved and exaggerated rather than dropped. " +
             "It is still the same creature (same face identity and palette), not a generic cute mascot and not a generic standing hero.";
 

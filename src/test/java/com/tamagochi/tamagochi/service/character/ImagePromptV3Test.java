@@ -48,7 +48,7 @@ class ImagePromptV3Test {
 
         assertThat(p).contains("Image 1 is the CURRENT form").contains("Image 2 is the original doodle");
         assertThat(p).contains("Origin of this creature: a person").contains("zigzag arms, very large head");
-        assertThat(p).contains("recognizably the SAME character").contains("Add exactly ONE new signature feature");
+        assertThat(p).contains("recognizably the SAME character").contains("ONE clear change to its SILHOUETTE");
         assertThat(p).contains("Keep the body plan of image 1");
         assertThat(p).doesNotContain("Absorbed ink");
     }

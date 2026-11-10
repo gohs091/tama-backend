@@ -52,6 +52,10 @@ public class ImageGenerationService {
     @Autowired(required = false)
     private com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository tamagotchiRepository;
 
+    // 완성작은 그리기 전에 콘셉트 하나로 디자인한다 (없거나 실패하면 기존 프롬프트)
+    @Autowired(required = false)
+    private EvolutionDesignService evolutionDesignService;
+
     // image.prompt-version: v3(기본, 칸으로 나눈 프롬프트) | v2(이전 프롬프트, 롤백용)
     @Value("${image.prompt-version:v3}")
     private String promptVersion = "v3";
@@ -251,8 +255,23 @@ public class ImageGenerationService {
         String prompt;
         if (evolving) {
             subject = originFor(tossUserId, imageBytes, mimeType);
-            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk)
-                    + ImagePromptV3.champion(championTier(tossUserId));
+            String champion = ImagePromptV3.champion(championTier(tossUserId));
+            prompt = ImagePromptV3.evolve(stage, subject, faction, colors, getFactionThemeMotifs(faction), absorbedInk) + champion;
+            if ("adult".equals(stage) && evolutionDesignService != null) {
+                String inkText = absorbedInk == null ? null
+                        : LandCatalog.fillOrigin(absorbedInk, subject == null ? null : subject.subject(), subject == null ? null : subject.traits());
+                var brief = evolutionDesignService.designFinal(referenceBytes, referenceMime, subject, inkText, getFactionThemeMotifs(faction), colors);
+                if (brief.isPresent()) {
+                    String designed = ImagePromptV3.finalFromBrief(brief.get()) + champion;
+                    try {
+                        byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, designed));
+                        if (image != null && image.length > 0) return new Generated(image, null);
+                    } catch (Exception e) {
+                        // 안전 필터 거절 등: 거절된 요청은 과금되지 않으므로 기존 프롬프트로 한 번 그린다
+                        log.warn("디자인 완성작 생성 실패, 기존 프롬프트로 다시 그림: {}", e.getMessage());
+                    }
+                }
+            }
         } else {
             subject = describeDoodle(imageBytes, mimeType);
             if (subject != null && !subject.isAbstract()) {
@@ -374,7 +393,13 @@ public class ImageGenerationService {
             log.warn("알파 정리 실패, 원본 사용");
             return png;
         }
-        return cleaned;
+        // 도트 크기가 그림마다 달라 같은 격자로 다시 찍는다
+        byte[] snapped = PixelSnap.snap(cleaned);
+        if (snapped == null) {
+            log.warn("격자 맞추기 실패, 알파만 정리한 그림 사용");
+            return cleaned;
+        }
+        return snapped;
     }
 
     private void addImagePart(MultipartBodyBuilder builder, String field, byte[] bytes, String mime, String filename) {
