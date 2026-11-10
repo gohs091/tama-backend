@@ -47,31 +47,39 @@ class InkLoadoutServiceTest {
     }
 
     @Test
-    void mainInkBecomesTheBodyAndFamiliesOnlyTexture() {
-        service.set(user, "cat", List.of("family.spirit", "family.flower"));
-        String prompt = service.promptFor(user, "child");
-        assertThat(prompt).contains("a cat's pointed ears").contains("spirit traits").contains("flower traits")
-                .contains("not as extra body parts");
+    void oneSpecificInkGoesInTheSingleSlot() {
+        InkLoadoutService.Loadout l = service.set(user, "cat", List.of());
+        assertThat(l.main().id()).isEqualTo("cat");
+        assertThat(l.families()).isEmpty();
+        assertThat(service.promptFor(user, "child")).contains("a cat's pointed ears");
     }
 
     @Test
-    void familyOnlyLoadoutIsAllowed() {
-        service.set(user, null, List.of("family.beast"));
-        assertThat(service.promptFor(user, "adult")).doesNotContain("truly takes on").contains("beast traits");
+    void aFamilyInkAloneIsAGoodInkToo() {
+        InkLoadoutService.Loadout l = service.set(user, "family.beast", List.of());
+        assertThat(l.main().id()).isEqualTo("family.beast");
+        assertThat(service.promptFor(user, "child")).contains("beast traits");
     }
 
     @Test
-    void rejectsUnownedWrongSlotOrTooMany() {
+    void oldAppFamilySlotsBecomeTheSingleSlotAndExtrasAreIgnored() {
+        service.set(user, null, List.of("family.spirit", "family.flower"));
+        assertThat(service.get(user).main().id()).isEqualTo("family.spirit");
+        assertThat(service.promptFor(user, "child")).contains("spirit traits").doesNotContain("flower traits");
+
+        service.set(user, "cat", List.of("family.spirit"));
+        assertThat(service.promptFor(user, "child")).contains("a cat's pointed ears").doesNotContain("spirit traits");
+    }
+
+    @Test
+    void rejectsUnownedOrUnknownInk() {
         assertThatThrownBy(() -> service.set(user, "tiger", List.of())).hasMessageContaining("찾지 못한");
-        assertThatThrownBy(() -> service.set(user, "family.spirit", List.of())).hasMessageContaining("계열 칸");
-        assertThatThrownBy(() -> service.set(user, null, List.of("cat"))).hasMessageContaining("특정 칸");
-        assertThatThrownBy(() -> service.set(user, null, List.of("family.spirit", "family.flower", "family.beast")))
-                .hasMessageContaining("2개까지");
+        assertThatThrownBy(() -> service.set(user, "no-such-ink", List.of())).hasMessageContaining("알 수 없는");
     }
 
     @Test
     void evolvingClearsTheLoadout() {
-        service.set(user, "cat", List.of("family.spirit"));
+        service.set(user, "cat", List.of());
         pet.evolve(EvolutionStage.CHILD);
         assertThat(service.get(user).main()).isNull();
         assertThat(service.promptFor(user, "adult")).isNull();
