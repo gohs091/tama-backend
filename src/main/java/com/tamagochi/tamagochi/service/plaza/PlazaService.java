@@ -28,8 +28,13 @@ import java.util.function.LongSupplier;
  * 사람이 적은 방은 최근에 다녀간 끄적이(ghost)로 채워 보낸다. 다녀간 끄적이는 움직이지 않는 기록이라 앱이 알아서 걷게 하고 인사를 받아 준다.
  * 방은 서버 메모리에만 있다 (서버 한 대).
  *
- * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, ping, leave
- * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m}, leave{id}, move{id,x,y}, emote{id,k,to?,re?}, error{message}
+ * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, skill{x,y,tx,ty,to?}, hit{by}, ping, leave
+ * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m}, leave{id}, move{id,x,y}, emote{id,k,to?,re?},
+ *              skill{id,x,y,tx,ty,to?}, knock{id,by,kb}, error{message}
+ * 기술(skill): 자기 끄적이의 배틀 기술을 광장에서 보여 준다. 기술은 쏜 순간 상대가 있던 자리(tx,ty)로 날아가므로 움직이면 피할 수 있다.
+ *   맞았는지는 맞는 쪽 앱이 정해 hit으로 알린다(자기 위치는 자기가 가장 정확하다. 다녀간 끄적이는 쏜 사람 앱이 알린다).
+ *   서버는 그 기술이 정말 그 상대를 겨눈 것인지 확인하고, 튕김 세기(kb)를 붙여 knock으로 방 모두에게 알린다.
+ *   kb는 레벨 차이로 조금만 달라진다: 실력(피하기)으로 뒤집을 수 있게 차이를 작게 둔다.
  * 좌표는 광장 폭·높이의 천분율(0~1000).
  */
 @Slf4j
@@ -45,11 +50,17 @@ public class PlazaService {
     static final int MAX_IMAGE_CHARS = 64 * 1024;
     static final long MOVE_GAP_MS = 120;
     static final long EMOTE_GAP_MS = 500;
+    static final long SKILL_GAP_MS = 2500;
+    /** 튕김 세기: 같은 레벨이면 1, 레벨 차이 하나에 KB_PER_LEVEL씩 달라지고 KB_MIN~KB_MAX 사이로 둔다 */
+    static final double KB_PER_LEVEL = 0.02, KB_MIN = 0.7, KB_MAX = 1.4;
+    /** 쏜 기술이 맞았다고 알릴 수 있는 시간 */
+    static final long HIT_WINDOW_MS = 3000;
     static final Set<String> EMOTES = Set.of("bow", "hi", "heart", "laugh");
     private static final String KEY_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     /** 들어오려는 사람의 끄적이 (서버가 DB에서 읽은 값) */
-    public record Profile(Long userId, String nickname, String petName, int level, String stage, String imageUrl, String publicId) {}
+    public record Profile(Long userId, String nickname, String petName, int level, String stage, String imageUrl, String publicId,
+                          com.tamagochi.tamagochi.domain.battle.BattleSkill skill) {}
 
     static final class Member {
         final Peer peer;
@@ -59,7 +70,9 @@ public class PlazaService {
         String image;     // CDN 주소 또는 앱이 보낸 작은 그림(data URL)
         String facing = "right";
         int x, y;
-        long lastMove, lastEmote;
+        long lastMove, lastEmote, lastSkill;
+        String castTo;      // 마지막으로 쏜 기술이 겨눈 상대 (맞았다는 알림을 한 번만 받는다)
+        double castKb;
         Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; }
     }
 
@@ -71,7 +84,8 @@ public class PlazaService {
     }
 
     /** 다녀간 끄적이 한 마리 */
-    record Ghost(Long userId, String id, String nickname, String petName, int level, String stage, String image, String facing) {}
+    record Ghost(Long userId, String id, String nickname, String petName, int level, String stage, String image, String facing,
+                 com.tamagochi.tamagochi.domain.battle.BattleSkill skill) {}
 
     private final ObjectMapper om = new ObjectMapper();
     private final SecureRandom random = new SecureRandom();
@@ -107,6 +121,8 @@ public class PlazaService {
             case "hello" -> hello(m, msg);
             case "move" -> move(m, msg);
             case "emote" -> emote(m, msg);
+            case "skill" -> skill(m, msg);
+            case "hit" -> hit(m, msg);
             case "leave" -> { remove(m, true); m.peer.close(); }
             default -> { /* ping 등 */ }
         }
@@ -212,6 +228,56 @@ public class PlazaService {
         broadcast(m.room, out, m);
     }
 
+    /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다: 쓴 사람도 서버가 정한 튕김 세기를 받아야 같은 장면을 본다 */
+    private void skill(Member m, JsonNode msg) {
+        if (!inRoom(m)) return;
+        long now = clock.getAsLong();
+        if (now - m.lastSkill < SKILL_GAP_MS) return;
+        m.lastSkill = now;
+        m.x = clamp(msg.path("x").asInt(m.x), 20, 980);
+        m.y = clamp(msg.path("y").asInt(m.y), 0, 1000);
+        ObjectNode out = event("skill").put("id", m.id).put("x", m.x).put("y", m.y)
+                .put("tx", clamp(msg.path("tx").asInt(m.x), 0, 1000)).put("ty", clamp(msg.path("ty").asInt(m.y), 0, 1000));
+        String to = msg.path("to").asText("");
+        m.castTo = null;
+        if (!to.isEmpty() && to.length() <= 16 && !to.equals(m.id)) {
+            out.put("to", to);
+            Integer targetLevel = levelOf(m.room, to);
+            if (targetLevel != null) { m.castTo = to; m.castKb = knockback(m.profile.level(), targetLevel); }
+        }
+        broadcast(m.room, out, null);
+    }
+
+    /**
+     * 기술에 맞았다는 알림. 맞은 본인이 보내거나(by = 쏜 사람), 다녀간 끄적이가 맞았으면 쏜 사람이 보낸다.
+     * 쏜 사람이 정말 그 상대를 겨눠 방금 쏜 기술일 때만 받아서, 튕김 세기를 붙여 방 모두에게 알린다.
+     */
+    private void hit(Member m, JsonNode msg) {
+        if (!inRoom(m)) return;
+        Member caster = m.room.members.get(msg.path("by").asText(""));
+        if (caster == null || caster.castTo == null) return;
+        if (clock.getAsLong() - caster.lastSkill > HIT_WINDOW_MS) return;
+        boolean byTarget = caster.castTo.equals(m.id);
+        boolean ghostByCaster = caster == m && caster.castTo.startsWith("g");
+        if (!byTarget && !ghostByCaster) return;
+        ObjectNode out = event("knock").put("id", caster.castTo).put("by", caster.id).put("kb", caster.castKb);
+        caster.castTo = null;
+        broadcast(m.room, out, null);
+    }
+
+    /** 레벨 차이에 따른 튕김 세기 (같은 레벨 1.0). 높은 레벨이 낮은 레벨을 치면 멀리, 반대면 조금만 밀린다 */
+    static double knockback(int attackerLevel, int targetLevel) {
+        double kb = 1 + (attackerLevel - targetLevel) * KB_PER_LEVEL;
+        return Math.round(Math.max(KB_MIN, Math.min(KB_MAX, kb)) * 100) / 100.0;
+    }
+
+    /** 방 사람이거나 다녀간 끄적이의 레벨 (모르는 상대면 null) */
+    private Integer levelOf(Room room, String id) {
+        Member member = room.members.get(id);
+        if (member != null) return member.profile.level();
+        return recent.stream().filter(g -> g.id().equals(id)).findFirst().map(Ghost::level).orElse(null);
+    }
+
     private void remove(Member m, boolean remember) {
         byPeer.remove(m.peer.id());
         byUser.remove(m.profile.userId(), m);
@@ -227,7 +293,7 @@ public class PlazaService {
 
     private void remember(Member m) {
         recent.removeIf(g -> g.userId().equals(m.profile.userId()));
-        recent.addFirst(new Ghost(m.profile.userId(), "g" + newId(), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing));
+        recent.addFirst(new Ghost(m.profile.userId(), "g" + newId(), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill()));
         while (recent.size() > RECENT_MAX) recent.removeLast();
     }
 
@@ -251,6 +317,7 @@ public class PlazaService {
         n.put("id", m.id).put("nickname", m.profile.nickname()).put("petName", m.profile.petName())
                 .put("level", m.profile.level()).put("stage", m.profile.stage())
                 .put("image", m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
+        if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
         return n;
     }
 
@@ -260,6 +327,7 @@ public class PlazaService {
         n.put("id", g.id()).put("nickname", g.nickname()).put("petName", g.petName())
                 .put("level", g.level()).put("stage", g.stage())
                 .put("image", g.image()).put("facing", g.facing()).put("x", 80 + r.nextInt(840)).put("y", 420 + r.nextInt(520));
+        if (g.skill() != null) n.set("skill", om.valueToTree(g.skill()));
         return n;
     }
 
