@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.config;
 
 import com.tamagochi.tamagochi.controller.battle.MeetBattleSocketHandler;
+import com.tamagochi.tamagochi.controller.plaza.PlazaSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class MeetBattleSocketConfig implements WebSocketConfigurer {
 
     private final MeetBattleSocketHandler handler;
+    private final PlazaSocketHandler plazaHandler;
 
     @Value("${app.cors.allowed-origins:*}")
     private String[] allowedOrigins;
@@ -22,6 +24,8 @@ public class MeetBattleSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(handler, "/ws/battle").setAllowedOriginPatterns(allowedOrigins);
+        // 끄적 광장: /ws/plaza?token=... (&room=열쇠 면 친구가 있는 방으로)
+        registry.addHandler(plazaHandler, "/ws/plaza").setAllowedOriginPatterns(allowedOrigins);
     }
 
 }
