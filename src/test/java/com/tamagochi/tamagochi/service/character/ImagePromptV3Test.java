@@ -195,4 +195,27 @@ class ImagePromptV3Test {
         assertThat(p).contains("zigzag arms, very large head").contains("fast asleep");
         assertThat(ImagePromptV3.sleep(null)).contains("Use EXACTLY the colors that are in the image");
     }
+
+    @Test
+    @DisplayName("자는 모습: 깔아 보낸 배경은 캐릭터가 아니라고 알리고, 테두리를 불투명하게 지키고 같은 쪽을 보게 한다 (테두리가 통째로 사라지던 문제)")
+    void sleep_keepsOutlineAndDirection() {
+        String p = ImagePromptV3.sleep(PERSON);
+
+        assertThat(p).contains("on a plain flat backdrop (the backdrop is not part of the character)");
+        assertThat(p).contains("keep its bold dark outline").contains("solid opaque pixels (never transparent, never left out)");
+        assertThat(p).contains("It faces the same direction as in the image");
+        assertThat(p).contains("transparent background");
+    }
+
+    @Test
+    @DisplayName("자는 모습: 낙서·스케치는 엎드려 자고, 완성작은 앉아서 얼굴이 크게 보이게 존다 (테두리·색 규칙은 같다)")
+    void sleep_posePerStage() {
+        String lying = ImagePromptV3.sleep(PERSON), dozing = ImagePromptV3.sleep(null, true);
+
+        assertThat(lying).contains("lying down on its belly").doesNotContain("dozing off");
+        assertThat(dozing).contains("dozing off in a cozy, compact pose").contains("Its head and face stay as large as in the image");
+        assertThat(dozing).doesNotContain("lying down on its belly").doesNotContain("It was generated from these keywords");
+        assertThat(dozing).contains("Use EXACTLY the colors that are in the image").contains("keep its bold dark outline");
+        assertThat(ImagePromptV3.sleep(PERSON, false)).isEqualTo(lying);
+    }
 }

@@ -207,19 +207,42 @@ final class ImagePromptV3 {
     /**
      * 자는 모습: 지금 모습의 색을 그대로 써야 한다. 진영 색·진영 장식은 넣지 않는다
      * (넣으면 "깊은 바다 = 파랑"처럼 진영 색으로 다시 칠해 주황 고양이가 파란 고양이가 됐다).
+     * 입력 그림은 옅은 단색 배경을 깔아 보낸다 (SpriteBackdrop): 투명 배경 그대로 보내면 모델이 어두운 테두리를 배경으로 여겨
+     * 테두리·감은 눈·입 선을 투명하게 비웠다. 그래서 배경은 캐릭터가 아니라고 알리고, 테두리를 불투명하게 지키라고 따로 적는다.
      */
     static String sleep(DoodleSubject o) {
+        return sleep(o, false);
+    }
+
+    /** 엎드려 자는 자세 (낙서·스케치) */
+    private static final String SLEEP_LYING = "Now draw THIS SAME character fast asleep, lying down on its belly with its body low and flat on the ground " +
+            "and its head resting down on its front limbs, face lowered, eyes closed (if it has a face). ";
+
+    /**
+     * 앉아서 조는 자세 (v5 완성작). 완성작은 몸이 크고 장식이 많아, 납작하게 엎드리면 얼굴이 작아지고 로브 입은 사람형은 형태가 뭉개진다.
+     * 앉은 채 고개만 숙이면 얼굴이 크게 보이고 관·갈기·볏 같은 장식도 그대로 남는다 (2026-11-12 로봇·사자·새 완성작으로 비교, 사용자 선택).
+     */
+    private static final String SLEEP_DOZING = "Now draw THIS SAME character dozing off in a cozy, compact pose: it has settled down where it stood, " +
+            "with its legs folded or tucked under its body (a four-legged creature rests like a loaf, an upright two-legged character sits or kneels), " +
+            "its body still rounded and upright rather than flattened on the ground, and its head nodding forward a little. " +
+            "Its head and face stay as large as in the image and clearly visible, with closed eyes drawn as gentle curved lines " +
+            "and a small peaceful smile (if it has a face). ";
+
+    /** @param dozing true면 앉아서 조는 자세(v5 완성작), false면 엎드려 자는 자세 */
+    static String sleep(DoodleSubject o, boolean dozing) {
         String based = o == null || blank(o.subject()) ? "" : "It was generated from these keywords: it is based on the player's doodle of " + o.subject() + ". ";
         String parts = o == null || blank(o.parts()) ? "" : "Its parts: " + o.parts() + ". ";
         String traits = o == null || blank(o.traits()) ? "" : "Distinctive features that define it: " + o.traits() + ". ";
         String plan = o == null || blank(o.bodyPlan()) || "other".equalsIgnoreCase(o.bodyPlan()) ? "" : "Body plan: " + o.bodyPlan() + ". ";
-        return "This image is the current pixel art form of a tamagotchi-style pet. " + based + parts + traits + plan +
+        return "This image shows the current pixel art form of a tamagotchi-style pet on a plain flat backdrop (the backdrop is not part of the character). " +
+                based + parts + traits + plan +
                 "Use EXACTLY the colors that are in the image (same body color, same markings, same light belly or face patches) — do not recolor anything. " +
-                "Now draw THIS SAME character fast asleep, lying down on its belly with its body low and flat on the ground and its head resting down on its front limbs, " +
-                "face lowered, eyes closed (if it has a face). " +
+                (dozing ? SLEEP_DOZING : SLEEP_LYING) +
                 "Keep every listed part, feature, marking and color clearly visible in the new pose, in the same colors as the image. " +
                 "Do NOT add new parts such as wings, horns or accessories, and do not change the species, colors or color pattern. " +
-                "Keep the exact same 16-bit pixel art style, pixel size, outline style and flat color palette as the image. " +
+                "Keep the exact same 16-bit pixel art style, pixel size and flat color palette as the image, and keep its bold dark outline: " +
+                "the same outline color and thickness around the whole silhouette and between its parts, drawn as solid opaque pixels (never transparent, never left out). " +
+                "It faces the same direction as in the image. " +
                 "Single character centered, filling about 70% of the frame, transparent background, no shadow, no glow, no ground, no other characters, no text.";
     }
 

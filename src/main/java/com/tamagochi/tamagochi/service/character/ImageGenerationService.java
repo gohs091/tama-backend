@@ -437,15 +437,32 @@ public class ImageGenerationService {
     // 실패하면 onFail 을 부른다 (결제한 잉크를 돌려주는 데 쓴다)
     // ----------------------------------------------------------------
     @Async("imageExecutor")
-    public void generateSleepAsync(String jobId, String imageBase64, String faction, String tossUserId, Runnable onFail) {
+    public void generateSleepAsync(String jobId, String imageBase64, String faction, String tossUserId,
+                                   com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage stage, Runnable onFail) {
         jobStore.put(jobId, ImageJobResult.pending());
         try {
             String mimeType = extractMimeType(imageBase64);
             byte[] spriteBytes = decodeBase64Image(imageBase64);
-            DoodleSubject subject = originFor(tossUserId, spriteBytes, mimeType);
+            // v5 완성작은 처음 낙서와 다른 존재로 다시 태어난 모습이다. 낙서의 키워드(부위·특징)를 함께 주면 모델이 그림보다 키워드를 따라
+            // 낙서 모습으로 되돌려 그린다 (2026-11-12 확인: 완성작 3마리 모두 그랬고, 키워드를 빼자 3마리 모두 완성작 그대로 그렸다).
+            // 그릴 모델도 완성작을 그린 모델로 맞춘다: 도트 굵기와 세부(갈기·관·무늬)가 깨어 있는 모습과 같아진다.
+            boolean reborn = rebornFinal(stage);
+            DoodleSubject subject = reborn ? null : originFor(tossUserId, spriteBytes, mimeType);
+            String model = reborn ? v5Model : openAiImageModel, quality = reborn ? v5Quality : openAiImageQuality;
             // 진영 색은 넣지 않는다: 자는 모습은 지금 모습의 색 그대로여야 한다
-            String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject);
-            byte[] image = binarizeAlpha(callOpenAiEdit(spriteBytes, mimeType, null, null, prompt));
+            // 완성작은 앉아서 조는 자세로: 엎드리면 얼굴이 작아지고 사람형은 형태가 뭉개진다
+            String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject, reborn);
+            // 투명 배경 그대로 보내면 모델이 어두운 테두리를 배경으로 여겨 지운다 → 옅은 단색 배경을 깔아 보낸다
+            byte[] flat = SpriteBackdrop.flatten(spriteBytes);
+            byte[] input = flat != null ? flat : spriteBytes;
+            String inputMime = flat != null ? "image/png" : mimeType;
+            byte[] image = binarizeAlpha(callOpenAiEdit(input, inputMime, null, null, prompt, model, quality));
+            if (image != null && image.length > 0 && SpriteOutline.lost(spriteBytes, image)) {
+                // 그래도 테두리가 빠졌으면 한 번만 다시 그린다 (자는 모습은 단계마다 한 번만 만들 수 있어 그대로 내보내면 고칠 길이 없다)
+                log.warn("Sleep image lost its outline, drawing once more - job: {}", jobId);
+                byte[] again = binarizeAlpha(callOpenAiEdit(input, inputMime, null, null, prompt, model, quality));
+                if (again != null && again.length > 0 && !SpriteOutline.lost(spriteBytes, again)) image = again;
+            }
             if (image == null || image.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 if (onFail != null) onFail.run();
@@ -458,6 +475,11 @@ public class ImageGenerationService {
             jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
             if (onFail != null) onFail.run();
         }
+    }
+
+    /** 낙서와 다른 존재로 다시 태어난 완성작인가 (v5 방식의 완성작). 자는 모습을 그릴 때 낙서 키워드를 빼고 완성작을 그린 모델을 쓴다 */
+    boolean rebornFinal(com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage stage) {
+        return stage == com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.ADULT && LandCatalog.isV5(inkStyle);
     }
 
     // ----------------------------------------------------------------

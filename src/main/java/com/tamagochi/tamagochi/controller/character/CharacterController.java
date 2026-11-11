@@ -138,7 +138,7 @@ public class CharacterController {
         SleepImageService.Start start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey(), request.isRedo());
         String jobId = UUID.randomUUID().toString();
         imageGenerationService.storeJob(jobId, ImageJobResult.pending());
-        imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(),
+        imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(), start.stage(),
                 () -> sleepImageService.abort(user, start, request.getIdempotencyKey()));
         return ResponseEntity.ok(new GenerateImageResponse(jobId));
     }

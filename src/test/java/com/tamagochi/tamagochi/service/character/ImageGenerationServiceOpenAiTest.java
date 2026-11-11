@@ -41,6 +41,18 @@ class ImageGenerationServiceOpenAiTest {
     // ── 프롬프트 ─────────────────────────────────────────────
 
     @Test
+    @DisplayName("자는 모습: v5 완성작만 다시 태어난 모습으로 본다 (낙서 키워드를 빼고 완성작 모델로 그린다)")
+    void sleepTreatsV5FinalAsReborn() {
+        var ADULT = com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.ADULT;
+        var CHILD = com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.CHILD;
+        ReflectionTestUtils.setField(service, "inkStyle", com.tamagochi.tamagochi.domain.land.LandCatalog.INK_STYLE_V5);
+        assertThat(service.rebornFinal(ADULT)).isTrue();
+        assertThat(service.rebornFinal(CHILD)).isFalse();      // 스케치는 낙서의 몸 구조를 잇는다
+        ReflectionTestUtils.setField(service, "inkStyle", com.tamagochi.tamagochi.domain.land.LandCatalog.INK_STYLE_V0);
+        assertThat(service.rebornFinal(ADULT)).isFalse();      // 예전 방식 완성작은 같은 생물이 자란 모습이다
+    }
+
+    @Test
     @DisplayName("낙서 프롬프트: 빈 선화를 색으로 채우고 특징을 유지하라고 지시한다")
     void babyPrompt() {
         String p = service.buildOpenAiPrompt("nightmare-soldiers", "baby", false);
