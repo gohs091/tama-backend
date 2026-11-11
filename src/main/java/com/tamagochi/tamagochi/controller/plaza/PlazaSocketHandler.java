@@ -60,7 +60,8 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
-                pet.getEvolutionStage().name(), PetImageUrls.of(pet.getCurrentImageKey()), pet.getPublicId()), params.getFirst("room"));
+                pet.getEvolutionStage().name(), PetImageUrls.of(pet.getCurrentImageKey()), pet.getPublicId(),
+                com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"));
     }
 
     @Override
