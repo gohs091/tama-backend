@@ -36,6 +36,42 @@ public final class YardCatalog {
         PROPS = java.util.Collections.unmodifiableMap(m);
     }
 
+    // ── 끄적이 방 (잘 때 가는 곳). 가구도 열매로 사고, 종류(kind)가 맞는 자리에만 놓는다
+    //    벽지·바닥·침대 자리가 비어 있으면 앱이 기본 그림을 그린다
+
+    /** 방 가구 하나: 값(열매)과 종류 */
+    public record RoomItem(String id, int price, String kind) {}
+
+    /** 방 자리 → 놓을 수 있는 종류 */
+    public static final Map<String, String> ROOM_SLOTS;
+    /** 방 가구. 순서대로 상점에 보인다 */
+    public static final Map<String, RoomItem> ROOM_ITEMS;
+    static {
+        Map<String, String> s = new LinkedHashMap<>();
+        s.put("r-wallpaper", "wallpaper");
+        s.put("r-floor", "floor");
+        s.put("r-bed", "bed");
+        s.put("r-w0", "wall");
+        s.put("r-w1", "wall");
+        s.put("r-s0", "stand");
+        s.put("r-s1", "stand");
+        s.put("r-rug", "rug");
+        ROOM_SLOTS = java.util.Collections.unmodifiableMap(s);
+
+        Map<String, RoomItem> m = new LinkedHashMap<>();
+        for (RoomItem i : List.of(
+                new RoomItem("bed-wood", 12, "bed"), new RoomItem("bed-cloud", 25, "bed"), new RoomItem("bed-royal", 40, "bed"),
+                new RoomItem("wp-sky", 6, "wallpaper"), new RoomItem("wp-dot", 6, "wallpaper"), new RoomItem("wp-flower", 10, "wallpaper"),
+                new RoomItem("wp-star", 10, "wallpaper"), new RoomItem("wp-wood", 8, "wallpaper"),
+                new RoomItem("fl-check", 6, "floor"), new RoomItem("fl-carpet", 8, "floor"), new RoomItem("fl-grass", 8, "floor"),
+                new RoomItem("frame", 5, "wall"), new RoomItem("garland", 5, "wall"), new RoomItem("clock", 6, "wall"), new RoomItem("shelf", 8, "wall"),
+                new RoomItem("plant", 5, "stand"), new RoomItem("lamp", 8, "stand"), new RoomItem("toybox", 8, "stand"),
+                new RoomItem("drawer", 10, "stand"), new RoomItem("bookshelf", 12, "stand"),
+                new RoomItem("rug-round", 6, "rug"), new RoomItem("rug-star", 8, "rug"), new RoomItem("rug-heart", 8, "rug")))
+            m.put(i.id(), i);
+        ROOM_ITEMS = java.util.Collections.unmodifiableMap(m);
+    }
+
     /** 배경으로 고를 수 있는 진영 (진영 배경 그림과 같은 이름) */
     public static final List<String> BACKGROUNDS = List.of(
             "nature-spirits", "deep-savers", "nightmare-soldiers", "wind-guardians", "metal-empire", "virus-busters",
@@ -44,12 +80,22 @@ public final class YardCatalog {
 
     public static int propPrice(String propId) {
         Integer price = PROPS.get(propId);
-        if (price == null) throw new IllegalArgumentException("없는 소품이에요.");
-        return price;
+        if (price != null) return price;
+        RoomItem item = ROOM_ITEMS.get(propId);
+        if (item == null) throw new IllegalArgumentException("없는 소품이에요.");
+        return item.price();
     }
 
     public static void requireSlot(String slot) {
-        if (!SLOTS.contains(slot)) throw new IllegalArgumentException("없는 자리예요.");
+        if (!SLOTS.contains(slot) && !ROOM_SLOTS.containsKey(slot)) throw new IllegalArgumentException("없는 자리예요.");
+    }
+
+    /** 마당 소품은 마당 자리에, 방 가구는 종류가 같은 방 자리에만 놓는다 */
+    public static void requireFit(String slot, String propId) {
+        requireSlot(slot);
+        RoomItem item = ROOM_ITEMS.get(propId);
+        boolean fits = item == null ? SLOTS.contains(slot) && PROPS.containsKey(propId) : item.kind().equals(ROOM_SLOTS.get(slot));
+        if (!fits) throw new IllegalArgumentException("이 자리에는 놓을 수 없어요.");
     }
 
     public static void requireBackground(String background) {

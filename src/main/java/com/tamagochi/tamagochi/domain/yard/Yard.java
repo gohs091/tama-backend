@@ -138,7 +138,7 @@ public class Yard {
             slots.remove(slot);
             return;
         }
-        YardCatalog.propPrice(propId);
+        YardCatalog.requireFit(slot, propId);
         if (propId.equals(slots.get(slot))) return;
         if (stored(propId) <= 0) throw new IllegalStateException("보관 중인 소품이 아니에요.");
         slots.put(slot, propId);
