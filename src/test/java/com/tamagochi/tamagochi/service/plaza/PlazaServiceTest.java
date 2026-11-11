@@ -41,6 +41,25 @@ class PlazaServiceTest {
         return p;
     }
 
+    private static final PlazaService.EventTimes T = PlazaService.EventTimes.HOURLY;
+
+    /** 다음 정각으로 가서 모이기 → 준비(주어진 사람들이 참가) → 밀어내기까지 넘긴다 */
+    private void startFight(FakePeer... joiners) {
+        now.set((now.get() / T.period() + 1) * T.period());
+        plaza.tick();                                   // 모이기
+        now.addAndGet(T.gather());
+        plaza.tick();                                   // 준비: 놀이터 안에 있는 앱이 참가를 알린다
+        for (FakePeer p : joiners) plaza.onMessage(p, "{\"t\":\"join\"}");
+        now.addAndGet(T.ready());
+        plaza.tick();                                   // 밀어내기
+    }
+
+    private static List<String> ids(JsonNode array) {
+        List<String> out = new ArrayList<>();
+        array.forEach(n -> out.add(n.isTextual() ? n.asText() : n.path("id").asText()));
+        return out;
+    }
+
     @Test
     void 들어오면_같은_방에_모이고_서로_들어온_것을_안다() {
         FakePeer a = enter(null), b = enter(null);
@@ -129,6 +148,7 @@ class PlazaServiceTest {
         FakePeer strong = enter(null, 20), weak = enter(null, 4), other = enter(null, 4);
         String strongId = strong.last("room").path("me").asText(), weakId = weak.last("room").path("me").asText();
         String otherId = other.last("room").path("me").asText();
+        startFight(strong, weak, other);
         plaza.onMessage(weak, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");    // 쏜 적이 없는 사람에게 맞았다는 알림은 버린다
         assertThat(other.count("knock")).isZero();
         now.addAndGet(5000);
@@ -174,6 +194,7 @@ class PlazaServiceTest {
         assertThat(ghostId).startsWith(PlazaService.GHOST_PREFIX);
         String aId = a.last("room").path("me").asText();
 
+        startFight(a, b);
         now.addAndGet(5000);
         plaza.onMessage(a, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":580,\"ty\":500,\"d\":1}");
         plaza.onMessage(b, "{\"t\":\"hit\",\"by\":\"" + aId + "\",\"id\":\"" + ghostId + "\"}");   // 쏜 사람이 아니면 자기만 맞았다고 알릴 수 있다
@@ -195,5 +216,120 @@ class PlazaServiceTest {
         plaza.disconnect(late);
         FakePeer next = enter(null);
         assertThat(next.last("room").path("ghosts")).extracting(g -> g.path("id").asText()).contains(ghostId);
+    }
+
+    private static final String SKILL = "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":580,\"ty\":500,\"d\":1}";
+
+    @Test
+    void 기술은_정각_밀어내기_동안에만_쓸_수_있고_모이기_준비_밀어내기_순서로_열린다() {
+        FakePeer a = enter(null), b = enter(null), watcher = enter(null);
+        String aId = a.last("room").path("me").asText(), bId = b.last("room").path("me").asText();
+        JsonNode idle = a.last("room").path("ev");
+        assertThat(idle.path("phase").asText()).isEqualTo("idle");
+        assertThat(idle.path("next").asLong()).isEqualTo((now.get() / T.period() + 1) * T.period());   // 다음 정각
+        now.addAndGet(5000);
+        plaza.onMessage(a, SKILL);                                                 // 정각이 아니면 기술이 나가지 않는다
+        assertThat(b.count("skill")).isZero();
+
+        now.set((now.get() / T.period() + 1) * T.period());
+        plaza.tick();
+        assertThat(b.last("ev").path("phase").asText()).isEqualTo("gather");       // 정각: 모이기
+        assertThat(b.last("ev").path("start").asLong()).isEqualTo(now.get());
+        plaza.onMessage(a, SKILL);
+        plaza.onMessage(a, "{\"t\":\"join\"}");                                    // 모이는 동안에는 참가를 받지 않는다 (준비 때 놀이터 안에 있어야 한다)
+        assertThat(b.count("skill")).isZero();
+
+        now.addAndGet(T.gather());
+        plaza.tick();
+        assertThat(b.last("ev").path("phase").asText()).isEqualTo("ready");
+        plaza.onMessage(a, "{\"t\":\"join\"}");
+        plaza.onMessage(b, "{\"t\":\"join\"}");
+        now.addAndGet(T.ready());
+        plaza.tick();
+        JsonNode fight = watcher.last("ev");
+        assertThat(fight.path("phase").asText()).isEqualTo("fight");
+        assertThat(fight.path("solo").asBoolean()).isFalse();
+        assertThat(ids(fight.path("players"))).containsExactly(aId, bId);
+        assertThat(ids(fight.path("alive"))).containsExactly(aId, bId);
+
+        plaza.onMessage(watcher, SKILL);                                           // 참가하지 않은 사람은 구경만 한다
+        assertThat(a.count("skill")).isZero();
+        plaza.onMessage(a, SKILL);
+        assertThat(b.count("skill")).isEqualTo(1);
+        plaza.onMessage(watcher, "{\"t\":\"hit\",\"by\":\"" + aId + "\"}");        // 구경하는 끄적이는 맞지 않는다
+        assertThat(b.count("knock")).isZero();
+
+        plaza.onMessage(watcher, "{\"t\":\"out\"}");                               // 참가자가 아니면 탈락도 없다
+        assertThat(a.count("out")).isZero();
+        plaza.onMessage(b, "{\"t\":\"out\"}");                                     // b가 놀이터 밖으로 나갔다
+        assertThat(a.last("out").path("id").asText()).isEqualTo(bId);
+        assertThat(a.last("out").path("left").asInt()).isEqualTo(1);
+        JsonNode done = watcher.last("ev");
+        assertThat(done.path("phase").asText()).isEqualTo("done");                 // 한 마리만 남으면 끝
+        assertThat(ids(done.path("winners"))).containsExactly(aId);
+        assertThat(done.path("winners").get(0).path("name").asText()).isEqualTo("닉1");
+
+        now.addAndGet(5000);
+        plaza.onMessage(a, SKILL);                                                 // 끝난 뒤에는 다시 못 쓴다
+        assertThat(b.count("skill")).isEqualTo(1);
+        FakePeer late = enter(null);                                               // 뒤에 들어온 사람도 우승자를 본다
+        assertThat(ids(late.last("room").path("ev").path("winners"))).containsExactly(aId);
+
+        now.set((now.get() / T.period() + 1) * T.period());                        // 다음 정각에 새 판
+        plaza.tick();
+        assertThat(a.last("ev").path("phase").asText()).isEqualTo("gather");
+        assertThat(a.last("ev").path("winners")).isEmpty();
+    }
+
+    @Test
+    void 밀어내는_중에_나가면_탈락이고_시간이_끝나면_남은_끄적이가_함께_우승한다() {
+        FakePeer a = enter(null), b = enter(null), c = enter(null);
+        String aId = a.last("room").path("me").asText(), bId = b.last("room").path("me").asText();
+        startFight(a, b, c);
+        plaza.disconnect(c);                                                       // 셋 중 하나가 나가도 둘이 남아 이어진다
+        assertThat(a.last("ev").path("phase").asText()).isEqualTo("fight");
+        now.addAndGet(T.length());                                                 // 10분이 다 됐다
+        plaza.tick();
+        assertThat(a.last("ev").path("phase").asText()).isEqualTo("done");
+        assertThat(ids(a.last("ev").path("winners"))).containsExactlyInAnyOrder(aId, bId);
+
+        startFight(a, b);                                                          // 다음 판: 둘 중 하나가 앱을 끄면 남은 쪽이 우승
+        plaza.disconnect(b);
+        assertThat(a.last("ev").path("phase").asText()).isEqualTo("done");
+        assertThat(ids(a.last("ev").path("winners"))).containsExactly(aId);
+    }
+
+    @Test
+    void 참가자가_둘이_안_되면_혼자_연습이고_탈락도_우승도_없다() {
+        FakePeer a = enter(null), b = enter(null);
+        startFight(a);                                                             // b는 놀이터 밖에 있었다
+        JsonNode fight = b.last("ev");
+        assertThat(fight.path("phase").asText()).isEqualTo("fight");
+        assertThat(fight.path("solo").asBoolean()).isTrue();
+        plaza.onMessage(b, SKILL);                                                 // 연습 중에는 누구나 기술을 쓴다
+        assertThat(a.count("skill")).isEqualTo(1);
+        plaza.onMessage(a, "{\"t\":\"out\"}");
+        assertThat(b.count("out")).isZero();
+        now.addAndGet(T.length());
+        plaza.tick();
+        assertThat(b.last("ev").path("phase").asText()).isEqualTo("done");
+        assertThat(b.last("ev").path("winners")).isEmpty();
+    }
+
+    @Test
+    void 모이기가_지난_뒤에_생긴_방은_혼자_연습으로_열린다() {
+        now.set((now.get() / T.period() + 1) * T.period() + T.gather() + 120_000);  // 정각 3분 뒤
+        FakePeer a = enter(null);
+        plaza.tick();
+        assertThat(a.last("ev").path("phase").asText()).isEqualTo("fight");
+        assertThat(a.last("ev").path("solo").asBoolean()).isTrue();
+        now.addAndGet(5000);
+        plaza.onMessage(a, SKILL);
+        assertThat(a.count("skill")).isEqualTo(1);
+
+        now.set((now.get() / T.period()) * T.period() + T.length() + 60_000);       // 밀어내기 시간이 끝난 뒤에 생긴 방은 열리지 않는다
+        plaza.tick();
+        FakePeer b = enter(null);
+        assertThat(b.last("room").path("ev").path("phase").asText()).isEqualTo("done");
     }
 }

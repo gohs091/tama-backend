@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -16,6 +19,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +33,17 @@ import java.util.function.LongSupplier;
  * 사람이 적은 방은 최근에 다녀간 끄적이(ghost)로 채워 보낸다. 다녀간 끄적이는 움직이지 않는 기록이라 앱이 알아서 걷게 하고 인사를 받아 준다.
  * 방은 서버 메모리에만 있다 (서버 한 대).
  *
- * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, skill{x,y,tx,ty,d}, hit{by,id?}, ping, leave
+ * 정각 밀어내기(ev): 매 시각 정각에 방마다 열리는 놀이. 이 시간에만 기술을 쓸 수 있다.
+ *   gather(모이기) → ready(잠깐: 놀이터 안에 있는 앱이 join을 보낸다) → fight(밀어내기) → done(다음 정각까지 우승자 표시)
+ *   fight 동안 놀이터는 점점 줄어든다(줄어든 크기는 시각으로 정해지므로 앱이 서버 시각에 맞춰 스스로 계산한다).
+ *   놀이터 밖으로 나간 끄적이는 그 앱이 out으로 알려 탈락하고, 한 마리만 남으면 우승이다. 시간이 끝나면 남은 끄적이가 함께 우승한다.
+ *   참가자가 둘이 안 되면 혼자 연습(solo): 탈락·우승 없이 기술만 쓸 수 있고 놀이터도 줄지 않는다.
+ *   위치는 앱이 가장 잘 알기 때문에 참가(join)·탈락(out)은 앱이 알리는 대로 받는다 (보상이 걸리면 서버가 판정하도록 바꿔야 한다).
+ *
+ * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, skill{x,y,tx,ty,d}, hit{by,id?}, join, out, ping, leave
  * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?},
- *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, error{message}
+ *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, ev{phase,now,start,next,…,players[],alive[],solo,winners[]}, out{id,left}, error{message}
+ *              (room에도 ev가 들어 있다)
  * 다녀간 끄적이(ghost): 방을 나간 사람의 기록. 시간 제한 없이 최근 RECENT_MAX명을 서버가 켜져 있는 동안 기억한다.
  *   지금 광장에 접속해 있는 사람의 기록은 보내지 않고, 그 사람이 방에 들어오면 enter의 gone으로 알려 화면에 남은 기록을 지우게 한다.
  * 기술(skill): 자기 끄적이의 배틀 기술을 광장에서 보여 준다. 바라보는 쪽(d: 1 오른쪽, -1 왼쪽)으로 곧게 나가고, 그 길에서 벗어나면 피한다.
@@ -86,7 +98,29 @@ public class PlazaService {
         final int no;
         final String key;
         final Map<String, Member> members = new LinkedHashMap<>();
+        Match match;   // 이번(또는 지난) 정각의 밀어내기. 없으면 null
         Room(int no, String key) { this.no = no; this.key = key; }
+    }
+
+    /**
+     * 정각 밀어내기 시간표(ms): period마다 한 번 열려 length 동안 이어진다.
+     * 처음 gather 동안 모이고, ready 동안 참가를 받고, 그 뒤 shrink에 걸쳐 놀이터가 minScale까지 줄어든다.
+     */
+    public record EventTimes(long period, long gather, long ready, long length, long shrink, double minScale) {
+        static final EventTimes HOURLY = new EventTimes(3_600_000, 60_000, 3_000, 600_000, 480_000, 0.35);
+    }
+
+    /** 한 방의 밀어내기 한 판 */
+    static final class Match {
+        final long no;                                       // 몇 번째 정각인지 (시각 / period)
+        String phase;                                        // gather | ready | fight | done
+        boolean solo;                                        // 참가자가 둘이 안 돼 혼자 연습 중
+        final Set<String> players = new LinkedHashSet<>();   // 참가한 끄적이 id
+        final Set<String> alive = new LinkedHashSet<>();     // 아직 놀이터에 남은 끄적이
+        final Map<String, String> names = new LinkedHashMap<>();   // 참가자 닉네임 (나간 뒤에도 우승자 이름을 보여 주려고)
+        final List<String> winners = new ArrayList<>();
+        String lastOut;                                      // 마지막으로 탈락한 끄적이 (둘이 한꺼번에 나가면 나중에 나간 쪽이 우승)
+        Match(long no, String phase) { this.no = no; this.phase = phase; }
     }
 
     /** 다녀간 끄적이 한 마리 */
@@ -98,14 +132,22 @@ public class PlazaService {
     /** 다녀간 끄적이 id를 만드는 값. 서버가 켜져 있는 동안 같은 사람은 늘 같은 id를 받는다 (유저 번호는 드러나지 않는다) */
     private final long ghostSalt = random.nextLong();
     private final LongSupplier clock;
+    private final EventTimes times;
     private final Map<String, Member> byPeer = new LinkedHashMap<>();
     private final Map<Long, Member> byUser = new LinkedHashMap<>();
     private final Map<String, Room> rooms = new LinkedHashMap<>();   // 방 열쇠 → 방
     private final Deque<Ghost> recent = new ArrayDeque<>();
 
-    public PlazaService() { this(System::currentTimeMillis); }
+    /** 시간표는 설정으로 바꿀 수 있다 (로컬에서 짧게 돌려 보려고). 기본은 매 시각 정각부터 10분 */
+    @Autowired
+    public PlazaService(@Value("${plaza.event.period-ms:3600000}") long period, @Value("${plaza.event.gather-ms:60000}") long gather,
+                        @Value("${plaza.event.length-ms:600000}") long length, @Value("${plaza.event.shrink-ms:480000}") long shrink) {
+        this(System::currentTimeMillis, new EventTimes(period, gather, EventTimes.HOURLY.ready(), length, shrink, EventTimes.HOURLY.minScale()));
+    }
 
-    PlazaService(LongSupplier clock) { this.clock = clock; }
+    PlazaService(LongSupplier clock) { this(clock, EventTimes.HOURLY); }
+
+    PlazaService(LongSupplier clock, EventTimes times) { this.clock = clock; this.times = times; }
 
     /** 연결되면 부른다. 아직 방에 넣지 않고, 앱이 hello로 그림을 보내면 그때 들여보낸다 */
     public synchronized void connect(Peer peer, Profile profile, String inviteKey) {
@@ -131,6 +173,8 @@ public class PlazaService {
             case "emote" -> emote(m, msg);
             case "skill" -> skill(m, msg);
             case "hit" -> hit(m, msg);
+            case "join" -> join(m);
+            case "out" -> out(m);
             case "leave" -> { remove(m, true); m.peer.close(); }
             default -> { /* ping 등 */ }
         }
@@ -171,6 +215,7 @@ public class PlazaService {
         room.members.values().forEach(o -> members.add(json(o)));
         ArrayNode ghosts = out.putArray("ghosts");
         ghostsFor(room).forEach(g -> ghosts.add(json(g)));
+        out.set("ev", eventJson(room, clock.getAsLong()));
         m.peer.send(out.toString());
     }
 
@@ -238,9 +283,11 @@ public class PlazaService {
         broadcast(m.room, out, m);
     }
 
-    /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다 */
+    /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다. 정각 밀어내기 동안, 아직 남아 있는 참가자만 쓸 수 있다 (혼자 연습이면 누구나) */
     private void skill(Member m, JsonNode msg) {
         if (!inRoom(m)) return;
+        Match match = fighting(m.room);
+        if (match == null || !(match.solo || match.alive.contains(m.id))) return;
         long now = clock.getAsLong();
         if (now - m.lastSkill < SKILL_GAP_MS) return;
         m.lastSkill = now;
@@ -263,6 +310,8 @@ public class PlazaService {
      */
     private void hit(Member m, JsonNode msg) {
         if (!inRoom(m)) return;
+        Match match = fighting(m.room);
+        if (match == null) return;
         Member caster = m.room.members.get(msg.path("by").asText(""));
         if (caster == null || caster.castHits == null) return;
         if (clock.getAsLong() - caster.lastSkill > HIT_WINDOW_MS) return;
@@ -273,6 +322,8 @@ public class PlazaService {
             if (!ghost.startsWith(GHOST_PREFIX)) return;
             victim = ghost;
         }
+        // 탈락했거나 참가하지 않은 끄적이는 맞지 않는다 (다녀간 끄적이는 언제나 맞는다)
+        if (!victim.startsWith(GHOST_PREFIX) && !match.solo && !match.alive.contains(victim)) return;
         Integer level = levelOf(m.room, victim);
         if (level == null) return;
         if (caster.castHits.size() >= MAX_HITS_PER_CAST || !caster.castHits.add(victim)) return;
@@ -303,8 +354,111 @@ public class PlazaService {
         if (room.members.remove(m.id) != null) {
             broadcast(room, event("leave").put("id", m.id), null);
             if (remember && m.image != null) remember(m);
+            // 밀어내는 중에 나가면 탈락한 것으로 친다
+            Match match = fighting(room);
+            if (match != null && match.alive.remove(m.id)) { match.lastOut = m.id; settle(room, match); }
         }
         if (seats(room) == 0) rooms.remove(room.key);
+    }
+
+    // ── 정각 밀어내기
+
+    /** 시간표를 따라 방마다 단계를 넘긴다. 0.5초마다 불린다 */
+    @Scheduled(fixedRate = 500)
+    public synchronized void tick() {
+        long now = clock.getAsLong(), no = now / times.period(), t = now % times.period();
+        for (Room room : new ArrayList<>(rooms.values())) {
+            Match match = room.match;
+            if (match == null || match.no != no) {
+                // 새 정각: 모이기부터. 모이기가 지난 뒤에 생긴 방은 참가를 받을 수 없으니 혼자 연습으로 연다
+                if (t >= times.length()) { room.match = null; continue; }
+                match = room.match = new Match(no, t < times.gather() ? "gather" : "fight");
+                match.solo = !"gather".equals(match.phase);
+                broadcast(room, eventJson(room, now), null);
+                continue;
+            }
+            switch (match.phase) {
+                case "gather" -> {
+                    if (t >= times.gather()) { match.phase = "ready"; broadcast(room, eventJson(room, now), null); }
+                }
+                case "ready" -> {
+                    if (t >= times.gather() + times.ready()) {
+                        match.players.removeIf(id -> !room.members.containsKey(id));   // 그사이 나간 사람
+                        match.alive.addAll(match.players);
+                        match.solo = match.players.size() < 2;
+                        match.phase = "fight";
+                        broadcast(room, eventJson(room, now), null);
+                    }
+                }
+                case "fight" -> {
+                    if (t >= times.length()) finish(room, match);
+                }
+                default -> { /* done: 다음 정각까지 그대로 */ }
+            }
+        }
+    }
+
+    /** 참가: 준비 단계에 놀이터 안에 있는 끄적이의 앱이 보낸다 */
+    private void join(Member m) {
+        if (!inRoom(m)) return;
+        Match match = current(m.room);
+        if (match == null || !"ready".equals(match.phase)) return;
+        match.players.add(m.id);
+        match.names.put(m.id, m.profile.nickname());
+    }
+
+    /** 탈락: 놀이터 밖으로 나간 끄적이의 앱이 보낸다 */
+    private void out(Member m) {
+        if (!inRoom(m)) return;
+        Match match = fighting(m.room);
+        if (match == null || match.solo || !match.alive.remove(m.id)) return;
+        match.lastOut = m.id;
+        broadcast(m.room, event("out").put("id", m.id).put("left", match.alive.size()), null);
+        settle(m.room, match);
+    }
+
+    /** 한 마리만 남았으면 끝낸다 */
+    private void settle(Room room, Match match) {
+        if (!match.solo && match.alive.size() <= 1) finish(room, match);
+    }
+
+    /** 끝: 남은 끄적이가 우승. 아무도 안 남았으면(둘이 함께 나감) 마지막에 나간 끄적이가 우승 */
+    private void finish(Room room, Match match) {
+        match.phase = "done";
+        if (!match.solo) {
+            match.winners.addAll(match.alive);
+            if (match.winners.isEmpty() && match.lastOut != null) match.winners.add(match.lastOut);
+        }
+        broadcast(room, eventJson(room, clock.getAsLong()), null);
+    }
+
+    /** 이번 정각의 판 (없으면 null) */
+    private Match current(Room room) {
+        Match match = room.match;
+        return match != null && match.no == clock.getAsLong() / times.period() ? match : null;
+    }
+
+    /** 지금 밀어내는 중인 판 (아니면 null) */
+    private Match fighting(Room room) {
+        Match match = current(room);
+        return match != null && "fight".equals(match.phase) ? match : null;
+    }
+
+    /** 밀어내기 상태. 앱은 now로 서버 시각과의 차이를 알아내 남은 시간과 놀이터 크기를 스스로 계산한다 */
+    private ObjectNode eventJson(Room room, long now) {
+        long start = now - now % times.period();
+        Match match = room.match != null && room.match.no == now / times.period() ? room.match : null;
+        ObjectNode n = event("ev").put("phase", match == null ? "idle" : match.phase)
+                .put("now", now).put("start", start).put("next", start + times.period())
+                .put("gather", times.gather()).put("ready", times.ready()).put("length", times.length())
+                .put("shrink", times.shrink()).put("min", times.minScale());
+        if (match == null) return n;
+        n.put("solo", match.solo);
+        ArrayNode players = n.putArray("players"), alive = n.putArray("alive"), winners = n.putArray("winners");
+        match.players.forEach(players::add);
+        match.alive.forEach(alive::add);
+        for (String id : match.winners) winners.addObject().put("id", id).put("name", match.names.getOrDefault(id, ""));
+        return n;
     }
 
     private void remember(Member m) {
