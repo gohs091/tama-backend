@@ -128,31 +128,72 @@ class PlazaServiceTest {
     void 기술은_방_모두에게_전하고_맞은_쪽이_알리면_레벨_차이만큼만_다른_세기로_튕긴다() {
         FakePeer strong = enter(null, 20), weak = enter(null, 4), other = enter(null, 4);
         String strongId = strong.last("room").path("me").asText(), weakId = weak.last("room").path("me").asText();
+        String otherId = other.last("room").path("me").asText();
+        plaza.onMessage(weak, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");    // 쏜 적이 없는 사람에게 맞았다는 알림은 버린다
+        assertThat(other.count("knock")).isZero();
         now.addAndGet(5000);
-        plaza.onMessage(strong, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":600,\"ty\":500,\"to\":\"" + weakId + "\"}");
+        plaza.onMessage(strong, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":580,\"ty\":500,\"d\":1}");
         assertThat(strong.last("skill")).isNotNull();                              // 쓴 사람도 받는다
         assertThat(weak.last("skill").path("id").asText()).isEqualTo(strongId);
-        assertThat(weak.last("skill").has("kb")).isFalse();                        // 쏜 것만으로는 튕기지 않는다 (피할 수 있다)
-        plaza.onMessage(strong, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":600,\"ty\":500}");   // 쉬는 시간 안에는 못 쓴다
+        assertThat(weak.last("skill").path("d").asInt()).isEqualTo(1);             // 바라보는 쪽
+        plaza.onMessage(strong, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":580,\"ty\":500,\"d\":1}");   // 쉬는 시간 안에는 못 쓴다
         assertThat(weak.count("skill")).isEqualTo(1);
+        assertThat(weak.count("knock")).isZero();                                  // 쏜 것만으로는 튕기지 않는다 (피할 수 있다)
 
-        plaza.onMessage(other, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");   // 겨눈 상대가 아닌 사람의 알림은 버린다
-        assertThat(weak.count("knock")).isZero();
         plaza.onMessage(weak, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");    // 맞은 본인이 알린다
         assertThat(other.last("knock").path("id").asText()).isEqualTo(weakId);
         assertThat(other.last("knock").path("by").asText()).isEqualTo(strongId);
         assertThat(other.last("knock").path("kb").asDouble()).isEqualTo(1.32);     // 16레벨 위 → 1 + 16×0.02
-        plaza.onMessage(weak, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");    // 한 번 쏜 기술은 한 번만 맞는다
+        assertThat(other.last("knock").path("s").asInt()).isPositive();            // 벽에 튕길 때 모두 같은 길로 튕기게 하는 씨앗
+        plaza.onMessage(weak, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");    // 같은 기술에 두 번 맞지 않는다
         assertThat(other.count("knock")).isEqualTo(1);
+        plaza.onMessage(other, "{\"t\":\"hit\",\"by\":\"" + strongId + "\"}");   // 같은 길에 있던 다른 끄적이도 맞는다
+        assertThat(weak.last("knock").path("id").asText()).isEqualTo(otherId);
+        plaza.onMessage(strong, "{\"t\":\"hit\",\"by\":\"" + strongId + "\",\"id\":\"" + weakId + "\"}");   // 쏜 사람이 남을 대신해 알릴 수는 없다
+        assertThat(other.count("knock")).isEqualTo(2);
 
-        plaza.onMessage(weak, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":400,\"ty\":500,\"to\":\"" + strongId + "\"}");
+        now.addAndGet(5000);
+        plaza.onMessage(weak, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":420,\"ty\":500,\"d\":-1}");
         now.addAndGet(PlazaService.HIT_WINDOW_MS + 1);
         plaza.onMessage(strong, "{\"t\":\"hit\",\"by\":\"" + weakId + "\"}");    // 너무 늦은 알림은 버린다
-        assertThat(other.count("knock")).isEqualTo(1);
-        plaza.onMessage(weak, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":400,\"ty\":500,\"to\":\"" + strongId + "\"}");
+        assertThat(other.count("knock")).isEqualTo(2);
+        plaza.onMessage(weak, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":420,\"ty\":500,\"d\":-1}");
         plaza.onMessage(strong, "{\"t\":\"hit\",\"by\":\"" + weakId + "\"}");
         assertThat(other.last("knock").path("kb").asDouble()).isEqualTo(0.7);      // 낮은 레벨이 쳐도 하한만큼은 밀린다
         assertThat(PlazaService.knockback(10, 10)).isEqualTo(1.0);
         assertThat(PlazaService.knockback(60, 1)).isEqualTo(1.4);                  // 상한
+    }
+
+    @Test
+    void 다녀간_끄적이는_쏜_사람이_알리면_튕기고_그_사람이_다시_들어오면_지우라고_알린다() {
+        FakePeer gone = enter(null);
+        plaza.disconnect(gone);                                                    // 닉1이 다녀갔다
+        FakePeer a = enter(null), b = enter(null);
+        assertThat(a.last("room").path("ghosts")).hasSize(1);
+        String ghostId = a.last("room").path("ghosts").get(0).path("id").asText();
+        assertThat(ghostId).startsWith(PlazaService.GHOST_PREFIX);
+        String aId = a.last("room").path("me").asText();
+
+        now.addAndGet(5000);
+        plaza.onMessage(a, "{\"t\":\"skill\",\"x\":500,\"y\":500,\"tx\":580,\"ty\":500,\"d\":1}");
+        plaza.onMessage(b, "{\"t\":\"hit\",\"by\":\"" + aId + "\",\"id\":\"" + ghostId + "\"}");   // 쏜 사람이 아니면 자기만 맞았다고 알릴 수 있다
+        assertThat(a.last("knock").path("id").asText()).isEqualTo(b.last("room").path("me").asText());
+        plaza.onMessage(a, "{\"t\":\"hit\",\"by\":\"" + aId + "\",\"id\":\"" + ghostId + "\"}");   // 쏜 사람이 다녀간 끄적이를 맞혔다고 알린다
+        assertThat(b.last("knock").path("id").asText()).isEqualTo(ghostId);
+        assertThat(b.last("knock").path("kb").asDouble()).isEqualTo(1.0);
+
+        // 다녀간 사람이 다시 들어온다: 방 사람들에게 그 기록을 지우라고 알리고, 새로 들어오는 사람에게는 그 기록을 보내지 않는다
+        FakePeer back = new FakePeer("back");
+        plaza.connect(back, new PlazaService.Profile(1L, "닉1", "끄적1", 3, "CHILD", "https://cdn.example/pet1.png", "pub1", null), null);
+        plaza.onMessage(back, "{\"t\":\"hello\"}");
+        assertThat(a.last("enter").path("gone").asText()).isEqualTo(ghostId);
+        assertThat(back.last("room").path("ghosts")).isEmpty();
+        FakePeer late = enter(null);
+        assertThat(late.last("room").path("ghosts")).isEmpty();
+
+        plaza.disconnect(back);                                                    // 다시 나가면 같은 id의 기록으로 남는다
+        plaza.disconnect(late);
+        FakePeer next = enter(null);
+        assertThat(next.last("room").path("ghosts")).extracting(g -> g.path("id").asText()).contains(ghostId);
     }
 }
