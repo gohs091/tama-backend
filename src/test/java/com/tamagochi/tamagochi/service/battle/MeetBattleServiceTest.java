@@ -168,14 +168,13 @@ class MeetBattleServiceTest {
     }
 
     @Test
-    void 일분이_지나면_QR_코드가_바뀐다() {
+    void 방_코드는_방이_열려_있는_동안_바뀌지_않는다() {
         service.create(host, 1L);
         String first = code();
-        now.addAndGet(MeetBattleRules.CODE_TTL_MS);
+        now.addAndGet(5 * 60_000);
         service.sweep();
-        assertThat(code()).isNotEqualTo(first);
+        assertThat(code()).isEqualTo(first);                      // 초대 주소·불러 준 코드가 그대로 통한다
 
-        // 바뀌기 전 코드도 10분 동안은 들어올 수 있다 (앱이 처음인 친구가 끄적이를 그리는 동안)
         service.join(guest, 2L, first);
         assertThat(guest.last("error")).isNull();
         assertThat(guest.last("room").path("phase").asText()).isEqualTo("LOBBY");

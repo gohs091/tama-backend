@@ -120,13 +120,13 @@ public class MeetBattleService {
     public void join(Peer peer, Long userId, String code) {
         Room room = code == null ? null : roomsByCode.get(code.toUpperCase());
         if (room == null) {
-            error(peer, "QR이 만료됐어요. 친구 화면의 새 QR을 찍어 주세요");
+            error(peer, "초대가 만료됐어요. 친구에게 새 초대나 QR을 받아 주세요");
             peer.close();
             return;
         }
         Long issued = codeIssuedAt.get(code.toUpperCase());
         if (issued == null || clock.getAsLong() - issued > CODE_VALID_MS) {
-            error(peer, "QR이 만료됐어요. 친구 화면의 새 QR을 찍어 주세요");
+            error(peer, "초대가 만료됐어요. 친구에게 새 초대나 QR을 받아 주세요");
             peer.close();
             return;
         }
@@ -420,7 +420,7 @@ public class MeetBattleService {
         codeIssuedAt.put(code, room.codeAt);
         ObjectNode c = obj("created");
         c.put("code", code);
-        c.put("ttlMs", CODE_TTL_MS);
+        c.put("ttlMs", WAITING_ROOM_TTL_MS);
         send(room.host.peer, c);
     }
 
@@ -448,8 +448,6 @@ public class MeetBattleService {
                     close(room);
                     roomsByPeer.remove(room.host.peer.id());
                     room.host.peer.close();
-                } else if (now - room.codeAt >= CODE_TTL_MS) {
-                    assignCode(room); // QR 새로 고침
                 }
             }
         }

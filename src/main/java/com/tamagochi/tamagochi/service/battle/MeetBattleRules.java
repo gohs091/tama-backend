@@ -1,18 +1,16 @@
 package com.tamagochi.tamagochi.service.battle;
 
 /**
- * 만나서 배틀(QR 맞대기) 규칙. 두 사람이 같은 자리에서 QR을 찍어 한 방에 모이고, 5초 동안 동시에 연타해 줄다리기를 한다.
+ * 친구와 배틀 규칙. 한 사람이 방을 열어 초대(방 코드)를 보내고 친구가 들어오면, 5초 동안 동시에 연타해 줄다리기를 한다.
  */
 public final class MeetBattleRules {
     private MeetBattleRules() {}
 
-    /** 화면의 QR(방 코드)을 새로 바꾸는 간격 (캡처해서 멀리 보내기 어렵게) */
-    public static final long CODE_TTL_MS = 60_000;
-    /** 한 번 보여준 코드로 들어올 수 있는 시간. 앱이 처음인 친구가 찍고 끄적이를 그리는 동안에도 들어올 수 있게 넉넉히 */
+    /** 방 코드로 들어올 수 있는 시간. 방이 열려 있는 동안 코드는 바뀌지 않는다 (초대 주소·불러 준 코드가 그대로 통하게). 앱이 처음인 친구가 끄적이를 그리는 동안에도 들어올 수 있게 넉넉히 */
     public static final long CODE_VALID_MS = 10 * 60_000;
     /** 친구를 기다리는 방이 아무도 안 오면 닫히는 시간 */
     public static final long WAITING_ROOM_TTL_MS = 10 * 60_000;
-    /** QR을 찍자마자 나오는 시작 연출 (걸어 들어와 빙글 돌고 갈라선다) */
+    /** 친구가 들어오자마자 나오는 시작 연출 (걸어 들어와 빙글 돌고 갈라선다) */
     public static final long INTRO_MS = 2_800;
     /** 끄적이 그림이 늦게 와도 이만큼 기다린 뒤에는 시작한다 */
     public static final long PROFILE_WAIT_MS = 3_000;
