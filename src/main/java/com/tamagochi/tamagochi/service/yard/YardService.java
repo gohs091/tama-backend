@@ -33,7 +33,7 @@ public class YardService {
     public record View(int fruit, boolean ripe, long remainingSeconds, long growSeconds, int harvestAmount, int boostsLeft,
                        Map<String, String> slots, Map<String, Integer> props, String background, String ownFaction,
                        List<String> ownedBackgrounds, int backgroundPrice, List<PropPrice> shop, int balance, int harvested,
-                       List<YardCatalog.RoomItem> roomShop) {}
+                       List<YardCatalog.RoomItem> roomShop, Map<String, int[]> roomPos) {}
 
     @Transactional
     public View get(User user) {
@@ -56,19 +56,30 @@ public class YardService {
     }
 
     @Transactional
-    public View buyProp(User user, String propId, String slot) {
+    public View buyProp(User user, String propId, String slot, Integer x, Integer y) {
         Yard yard = yard(user);
         // 자리를 함께 받으면 사자마자 그 자리에 놓는다 (방 꾸미기: 놓아 보고 사기). 못 놓는 자리면 사지도 않는다
         if (slot != null && !slot.isBlank()) YardCatalog.requireFit(slot, propId);
         yard.buyProp(propId);
-        if (slot != null && !slot.isBlank()) yard.place(slot, propId);
+        if (slot != null && !slot.isBlank()) {
+            yard.place(slot, propId);
+            if (x != null && y != null) yard.moveRoom(slot, x, y);
+        }
         return view(user, yard, 0);
     }
 
     @Transactional
-    public View place(User user, String slot, String propId) {
+    public View moveRoom(User user, String slot, int x, int y) {
+        Yard yard = yard(user);
+        yard.moveRoom(slot, x, y);
+        return view(user, yard, 0);
+    }
+
+    @Transactional
+    public View place(User user, String slot, String propId, Integer x, Integer y) {
         Yard yard = yard(user);
         yard.place(slot, propId);
+        if (propId != null && !propId.isBlank() && x != null && y != null) yard.moveRoom(slot, x, y);
         return view(user, yard, 0);
     }
 
@@ -109,6 +120,15 @@ public class YardService {
         return tamagotchiRepository.findActiveByUserId(user.getId()).map(Tamagotchi::getFaction).orElse(null);
     }
 
+    private static Map<String, int[]> roomPos(Yard yard) {
+        Map<String, int[]> out = new TreeMap<>();
+        yard.getRoomPos().forEach((slot, pos) -> {
+            String[] p = pos.split(",");
+            try { out.put(slot, new int[]{Integer.parseInt(p[0]), Integer.parseInt(p[1])}); } catch (RuntimeException ignored) { /* 깨진 값은 기본 자리로 */ }
+        });
+        return out;
+    }
+
     private View view(User user, Yard yard, int harvested) {
         Instant now = clock.instant();
         List<PropPrice> shop = YardCatalog.PROPS.entrySet().stream().map(e -> new PropPrice(e.getKey(), e.getValue())).toList();
@@ -117,6 +137,6 @@ public class YardService {
                 YardCatalog.HARVEST, yard.boostsLeft(LocalDate.now(clock)),
                 new TreeMap<>(yard.getSlots()), new TreeMap<>(yard.getProps()), yard.getBackground(), ownFaction(user),
                 owned, YardCatalog.BACKGROUND_PRICE, shop, pointService.getWallet(user).getBalance(), harvested,
-                List.copyOf(YardCatalog.ROOM_ITEMS.values()));
+                List.copyOf(YardCatalog.ROOM_ITEMS.values()), roomPos(yard));
     }
 }

@@ -33,12 +33,19 @@ public class YardController {
 
     @PostMapping("/prop/buy")
     public ResponseEntity<?> buyProp(@RequestBody YardRequest request) {
-        return ResponseEntity.ok(yardService.buyProp(userIdentity.resolve(request.getTossUserId()), request.getPropId(), request.getSlot()));
+        return ResponseEntity.ok(yardService.buyProp(userIdentity.resolve(request.getTossUserId()), request.getPropId(), request.getSlot(), request.getX(), request.getY()));
     }
 
     @PostMapping("/place")
     public ResponseEntity<?> place(@RequestBody YardRequest request) {
-        return ResponseEntity.ok(yardService.place(userIdentity.resolve(request.getTossUserId()), request.getSlot(), request.getPropId()));
+        return ResponseEntity.ok(yardService.place(userIdentity.resolve(request.getTossUserId()), request.getSlot(), request.getPropId(), request.getX(), request.getY()));
+    }
+
+    /** 방 가구를 끌어서 옮긴다 (x·y는 방 폭·높이의 천분율) */
+    @PostMapping("/room/move")
+    public ResponseEntity<?> moveRoom(@RequestBody YardRequest request) {
+        if (request.getX() == null || request.getY() == null) throw new IllegalArgumentException("옮길 곳이 없어요.");
+        return ResponseEntity.ok(yardService.moveRoom(userIdentity.resolve(request.getTossUserId()), request.getSlot(), request.getX(), request.getY()));
     }
 
     @PostMapping("/background/buy")
