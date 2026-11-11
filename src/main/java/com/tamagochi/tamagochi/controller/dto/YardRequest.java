@@ -11,4 +11,6 @@ public class YardRequest {
     private String propId;
     private String slot;
     private String background;
+    private Integer x;   // 방 가구 자리 (방 폭·높이의 천분율)
+    private Integer y;
 }

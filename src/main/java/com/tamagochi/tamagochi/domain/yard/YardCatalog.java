@@ -51,10 +51,9 @@ public final class YardCatalog {
         s.put("r-wallpaper", "wallpaper");
         s.put("r-floor", "floor");
         s.put("r-bed", "bed");
-        s.put("r-w0", "wall");
-        s.put("r-w1", "wall");
-        s.put("r-s0", "stand");
-        s.put("r-s1", "stand");
+        // 벽 장식·가구는 여섯 개까지 놓는다 (자리는 이름일 뿐이고, 어디에 둘지는 roomPos가 정한다)
+        for (int i = 0; i < 6; i++) s.put("r-w" + i, "wall");
+        for (int i = 0; i < 6; i++) s.put("r-s" + i, "stand");
         s.put("r-rug", "rug");
         ROOM_SLOTS = java.util.Collections.unmodifiableMap(s);
 
@@ -88,6 +87,28 @@ public final class YardCatalog {
 
     public static void requireSlot(String slot) {
         if (!SLOTS.contains(slot) && !ROOM_SLOTS.containsKey(slot)) throw new IllegalArgumentException("없는 자리예요.");
+    }
+
+    /**
+     * 방 안에서 옮길 수 있는 범위 (방 폭·높이의 천분율, {x최소, x최대, y최소, y최대}).
+     * 벽 장식은 벽 안에서, 가구·러그·침대는 바닥 안에서만 움직인다. 벽지·바닥은 옮기는 것이 아니다.
+     * 좌표 기준: 벽 장식·러그는 그림 가운데, 가구는 발밑, 침대는 눕는 면
+     */
+    public static int[] roomZone(String slot) {
+        String kind = ROOM_SLOTS.get(slot);
+        if (kind == null) throw new IllegalArgumentException("없는 자리예요.");
+        return switch (kind) {
+            case "wall" -> new int[]{40, 960, 60, 600};
+            case "stand" -> new int[]{60, 940, 715, 985};
+            case "rug" -> new int[]{120, 880, 740, 975};
+            case "bed" -> new int[]{180, 820, 740, 920};
+            default -> throw new IllegalArgumentException("옮길 수 없는 자리예요.");
+        };
+    }
+
+    public static int[] clampRoomPos(String slot, int x, int y) {
+        int[] z = roomZone(slot);
+        return new int[]{Math.max(z[0], Math.min(z[1], x)), Math.max(z[2], Math.min(z[3], y))};
     }
 
     /** 마당 소품은 마당 자리에, 방 가구는 종류가 같은 방 자리에만 놓는다 */

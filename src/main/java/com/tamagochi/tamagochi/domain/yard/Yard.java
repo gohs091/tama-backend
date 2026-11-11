@@ -66,6 +66,13 @@ public class Yard {
     @Column(name = "background_id", nullable = false)
     private Set<String> backgrounds = new HashSet<>();
 
+    /** 방 가구를 둔 곳: 자리 → "x,y" (방 폭·높이의 천분율). 없으면 앱이 기본 자리에 그린다 */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "yard_room_pos", joinColumns = @JoinColumn(name = "yard_id"))
+    @MapKeyColumn(name = "slot")
+    @Column(name = "pos", nullable = false)
+    private Map<String, String> roomPos = new HashMap<>();
+
     /** 처음 마당: 화분이 이미 다 자라 있어서 들어오자마자 한 번 따 볼 수 있다 */
     public Yard(User user, Instant now) {
         this.user = user;
@@ -136,12 +143,20 @@ public class Yard {
         YardCatalog.requireSlot(slot);
         if (propId == null || propId.isBlank()) {
             slots.remove(slot);
+            if (!"r-bed".equals(slot)) roomPos.remove(slot); // 침대 자리는 기본 이불로 돌아가도 그 자리에 둔다
             return;
         }
         YardCatalog.requireFit(slot, propId);
         if (propId.equals(slots.get(slot))) return;
         if (stored(propId) <= 0) throw new IllegalStateException("보관 중인 소품이 아니에요.");
         slots.put(slot, propId);
+    }
+
+    /** 방 가구를 끌어서 옮긴다. 벽 장식은 벽 안, 가구·러그·침대는 바닥 안으로 맞춘다. 침대는 기본 이불이어도 옮길 수 있다 */
+    public void moveRoom(String slot, int x, int y) {
+        int[] p = YardCatalog.clampRoomPos(slot, x, y);
+        if (!slots.containsKey(slot) && !"r-bed".equals(slot)) throw new IllegalStateException("빈 자리예요.");
+        roomPos.put(slot, p[0] + "," + p[1]);
     }
 
     // ── 배경
