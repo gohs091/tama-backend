@@ -32,7 +32,8 @@ public class YardService {
 
     public record View(int fruit, boolean ripe, long remainingSeconds, long growSeconds, int harvestAmount, int boostsLeft,
                        Map<String, String> slots, Map<String, Integer> props, String background, String ownFaction,
-                       List<String> ownedBackgrounds, int backgroundPrice, List<PropPrice> shop, int balance, int harvested) {}
+                       List<String> ownedBackgrounds, int backgroundPrice, List<PropPrice> shop, int balance, int harvested,
+                       List<YardCatalog.RoomItem> roomShop) {}
 
     @Transactional
     public View get(User user) {
@@ -55,9 +56,12 @@ public class YardService {
     }
 
     @Transactional
-    public View buyProp(User user, String propId) {
+    public View buyProp(User user, String propId, String slot) {
         Yard yard = yard(user);
+        // 자리를 함께 받으면 사자마자 그 자리에 놓는다 (방 꾸미기: 놓아 보고 사기). 못 놓는 자리면 사지도 않는다
+        if (slot != null && !slot.isBlank()) YardCatalog.requireFit(slot, propId);
         yard.buyProp(propId);
+        if (slot != null && !slot.isBlank()) yard.place(slot, propId);
         return view(user, yard, 0);
     }
 
@@ -88,6 +92,14 @@ public class YardService {
         return view(user, yard, 0);
     }
 
+    /** 로컬 개발 전용 (DevController) */
+    @Transactional
+    public View devAddFruit(User user, int amount) {
+        Yard yard = yard(user);
+        yard.addFruit(amount);
+        return view(user, yard, 0);
+    }
+
     private Yard yard(User user) {
         return yardRepository.findByUserId(user.getId())
                 .orElseGet(() -> yardRepository.save(new Yard(user, clock.instant())));
@@ -104,6 +116,7 @@ public class YardService {
         return new View(yard.getFruit(), yard.ripe(now), yard.remaining(now).toSeconds(), YardCatalog.GROW.toSeconds(),
                 YardCatalog.HARVEST, yard.boostsLeft(LocalDate.now(clock)),
                 new TreeMap<>(yard.getSlots()), new TreeMap<>(yard.getProps()), yard.getBackground(), ownFaction(user),
-                owned, YardCatalog.BACKGROUND_PRICE, shop, pointService.getWallet(user).getBalance(), harvested);
+                owned, YardCatalog.BACKGROUND_PRICE, shop, pointService.getWallet(user).getBalance(), harvested,
+                List.copyOf(YardCatalog.ROOM_ITEMS.values()));
     }
 }

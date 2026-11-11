@@ -33,7 +33,7 @@ public class YardController {
 
     @PostMapping("/prop/buy")
     public ResponseEntity<?> buyProp(@RequestBody YardRequest request) {
-        return ResponseEntity.ok(yardService.buyProp(userIdentity.resolve(request.getTossUserId()), request.getPropId()));
+        return ResponseEntity.ok(yardService.buyProp(userIdentity.resolve(request.getTossUserId()), request.getPropId(), request.getSlot()));
     }
 
     @PostMapping("/place")

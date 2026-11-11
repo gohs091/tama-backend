@@ -101,4 +101,23 @@ class YardTest {
         assertThat(yard.getBackground()).isNull();
         assertThatThrownBy(() -> yard.addBackground("moon")).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void 방_가구는_종류가_맞는_방_자리에만_놓고_마당_소품과_섞이지_않는다() {
+        Yard yard = new Yard(null, t0);
+        yard.addFruit(40);
+        yard.buyProp("bed-wood");                 // 12
+        yard.buyProp("lamp");                     // 8
+        yard.buyProp("bush");                     // 3
+        assertThat(yard.getFruit()).isEqualTo(17);
+
+        yard.place("r-bed", "bed-wood");
+        yard.place("r-s1", "lamp");
+        assertThat(yard.getSlots()).containsEntry("r-bed", "bed-wood").containsEntry("r-s1", "lamp");
+        assertThatThrownBy(() -> yard.place("r-w0", "lamp")).hasMessageContaining("놓을 수 없어요");   // 스탠드는 벽에 못 건다
+        assertThatThrownBy(() -> yard.place("s0", "lamp")).hasMessageContaining("놓을 수 없어요");     // 방 가구는 마당에 못 놓는다
+        assertThatThrownBy(() -> yard.place("r-s0", "bush")).hasMessageContaining("놓을 수 없어요");   // 마당 소품은 방에 못 놓는다
+        yard.place("r-bed", null);                // 침대를 빼면 기본 침대로 돌아간다 (자리만 비움)
+        assertThat(yard.stored("bed-wood")).isEqualTo(1);
+    }
 }

@@ -29,6 +29,7 @@ public class DevController {
     private final UserIdentity userIdentity;
     private final AdventureService adventureService;
     private final EvolutionPromotionService evolutionPromotionService;
+    private final com.tamagochi.tamagochi.service.yard.YardService yardService;
 
     /** 게이지·컨디션과 무관하게 다음 단계로 올린다. */
     @PostMapping("/evolve")
@@ -54,5 +55,11 @@ public class DevController {
         LandCatalog.regions().stream().filter(LandCatalog.Region::open)
                 .forEach(r -> adventureService.devExplore(user, r.id(), minutes));
         return ResponseEntity.ok().build();
+    }
+
+    /** 열매를 준다 (기본 50). 방 꾸미기·농장 화면 확인용 */
+    @PostMapping("/fruit")
+    public ResponseEntity<?> fruit(@RequestBody EvolveRequest request, @RequestParam(defaultValue = "50") int amount) {
+        return ResponseEntity.ok(yardService.devAddFruit(userIdentity.resolve(request.getTossUserId()), amount));
     }
 }
