@@ -371,4 +371,19 @@ class PlazaServiceTest {
         plaza.onMessage(b, "{\"t\":\"hello\",\"image\":\"" + blank + "\"}");
         assertThat(b.last("room").path("members").get(0).path("image").asText()).isEqualTo("https://cdn.example/original.png");
     }
+
+    @Test
+    void 알은_광장에_들어와_구경만_한다() {
+        FakePeer a = enter(null);
+        FakePeer egg = new FakePeer("egg1");
+        plaza.connect(egg, new PlazaService.Profile(950L, "새친구", "끄적이", 1, "EGG", null, "pubegg", null), null);
+        plaza.onMessage(egg, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        assertThat(egg.last("room")).isNotNull();
+        assertThat(a.last("enter").path("m").path("stage").asText()).isEqualTo("EGG");
+
+        // 밀어내기가 열려도 알은 참가자가 되지 않는다
+        startFight(a, egg);
+        JsonNode ev = a.last("ev");
+        assertThat(ids(ev.path("players"))).doesNotContain(egg.last("room").path("me").asText());
+    }
 }
