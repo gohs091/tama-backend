@@ -380,6 +380,43 @@ public class Tamagotchi {
     @Column(name = "sketch_image_key", length = 200)
     private String sketchImageKey;
 
+    // 서버가 다음 단계 그림을 미리 만들어 S3에 올려 둔 것 (진화 후보·부화 전 낙서). 그 단계가 되는 순간 현재 그림이 된다.
+    // 그래서 진화 직후에도 서버에 그림이 있다 (전에는 폰이 다시 올려 줄 때까지 비어 있었다)
+    @Column(name = "pending_image_key", length = 200)
+    private String pendingImageKey;
+    @Column(name = "pending_image_stage", length = 10)
+    private String pendingImageStage;
+
+    private static String stageName(EvolutionStage stage) {
+        return switch (stage) {
+            case BABY -> "baby";
+            case CHILD -> "child";
+            case ADULT -> "adult";
+            case EGG -> null;
+        };
+    }
+
+    /**
+     * 서버가 방금 만들어 S3에 올린 그림을 받아 둔다. 지금 단계의 그림이면 바로 현재 그림으로 삼고(다시 그린 그림 포함),
+     * 아직 되지 않은 단계의 그림이면 맡아 두었다가 그 단계가 될 때 쓴다. 다시 그리면 나중 것이 남는다
+     */
+    public void keepGeneratedImage(String stage, String key) {
+        if (stage.equals(stageName(this.evolutionStage))) {
+            saveStageImageKey(stage, key);
+            return;
+        }
+        this.pendingImageKey = key;
+        this.pendingImageStage = stage;
+    }
+
+    /** 단계가 바뀐 직후: 이 단계 몫으로 맡아 둔 그림이 있으면 현재 그림으로 삼는다. 맡아 둔 것은 비운다 */
+    private void adoptPendingImage() {
+        String now = stageName(this.evolutionStage);
+        if (this.pendingImageKey != null && now != null && now.equals(this.pendingImageStage)) saveStageImageKey(now, this.pendingImageKey);
+        this.pendingImageKey = null;
+        this.pendingImageStage = null;
+    }
+
     /** S3에 올린 그림의 키를 저장하고, 같은 단계의 base64 원본은 DB에서 지운다 */
     public void saveStageImageKey(String stage, String key) {
         switch (stage) {
@@ -566,6 +603,7 @@ public class Tamagotchi {
             this.might = this.might + BattleRules.championMightBonus(championTier());
         }
         this.evolutionStage = nextStage;
+        adoptPendingImage();
         this.stageStartLevel = this.level; // 진화 가능 구간은 이 레벨부터 다시 센다
         this.evoGauge = 0;
         this.pendingEvoGain = 0;
@@ -870,6 +908,8 @@ public class Tamagotchi {
         this.name = DEFAULT_NAME;
         this.status = PetStatus.ACTIVE;
         this.evolutionStage = EvolutionStage.EGG;
+        this.pendingImageKey = null;   // 지난 그림으로 만들어 둔 것은 새 끄적이에게 넘기지 않는다
+        this.pendingImageStage = null;
         this.hunger = 50;
         this.strength = INITIAL_STRENGTH;
         this.poopCount = 0;

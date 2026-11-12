@@ -53,6 +53,15 @@ public class ImageGenerationService {
     @Autowired(required = false)
     private com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository tamagotchiRepository;
 
+    // 만든 그림을 바로 S3에 올려 둔다 (S3가 꺼져 있으면 아무것도 하지 않는다)
+    @Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
+
+    private void keepImage(String tossUserId, String stage, byte[] image) {
+        if (petImageService != null && stage != null) petImageService.saveGenerated(tossUserId, stage.toLowerCase(), image);
+    }
+
     // 완성작은 그리기 전에 콘셉트 하나로 디자인한다 (없거나 실패하면 기존 프롬프트)
     @Autowired(required = false)
     private EvolutionDesignService evolutionDesignService;
@@ -162,6 +171,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
+            keepImage(tossUserId, "baby", responseBytes);
             jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), detectFacing(responseBytes)));
             log.info("Baby image generation done for job: {}", jobId);
 
@@ -229,6 +239,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
+            keepImage(tossUserId, stage, responseBytes);
             jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, detectFacing(responseBytes), generated.solid()));
             log.info("Evolved ({}) image generation done for job: {}", stage, jobId);
 
@@ -394,6 +405,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
+            keepImage(tossUserId, "child", image);
             jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
             log.info("Sketch (v6) image generation done for job: {}", jobId);
         } catch (Exception e) {
@@ -489,6 +501,7 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
+            keepImage(tossUserId, "adult", image);
             jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
         } catch (Exception e) {
             log.error("Final image generation failed for job: {}", jobId, e);

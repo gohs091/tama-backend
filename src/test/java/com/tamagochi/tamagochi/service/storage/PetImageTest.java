@@ -60,7 +60,7 @@ class PetImageTest {
         Tamagotchi pet = pet(EvolutionStage.CHILD);
         pet.saveStageImage("child", "old-base64");
         when(repo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
-        PetImageService service = new PetImageService(store, repo, mock(TamagotchiService.class));
+        PetImageService service = new PetImageService(store, repo, mock(TamagotchiService.class), mock(com.tamagochi.tamagochi.repository.user.UserRepository.class));
 
         service.saveImage(User.builder().id(1L).build(), "child", PNG);
 
@@ -81,7 +81,7 @@ class PetImageTest {
         pet.saveStageImageKey("child", "public/pets/x/child.1.png");
         when(repo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
 
-        new PetImageService(store, repo, mock(TamagotchiService.class)).saveImage(User.builder().id(1L).build(), "sketch", PNG);
+        new PetImageService(store, repo, mock(TamagotchiService.class), mock(com.tamagochi.tamagochi.repository.user.UserRepository.class)).saveImage(User.builder().id(1L).build(), "sketch", PNG);
 
         assertThat(pet.getSketchImageKey()).startsWith("public/pets/" + pet.getPublicId() + "/sketch.");
         assertThat(pet.getCurrentImageKey()).isEqualTo("public/pets/x/child.1.png");
@@ -96,7 +96,7 @@ class PetImageTest {
         when(off.enabled()).thenReturn(false);
         TamagotchiService legacy = mock(TamagotchiService.class);
 
-        new PetImageService(off, mock(TamagotchiRepository.class), legacy).saveImage(User.builder().id(1L).build(), "sketch", PNG);
+        new PetImageService(off, mock(TamagotchiRepository.class), legacy, mock(com.tamagochi.tamagochi.repository.user.UserRepository.class)).saveImage(User.builder().id(1L).build(), "sketch", PNG);
 
         verify(legacy, never()).saveImage(any(), any(), any());
     }
@@ -109,7 +109,7 @@ class PetImageTest {
         TamagotchiService legacy = mock(TamagotchiService.class);
         User u = User.builder().id(1L).build();
 
-        new PetImageService(off, mock(TamagotchiRepository.class), legacy).saveImage(u, "baby", PNG);
+        new PetImageService(off, mock(TamagotchiRepository.class), legacy, mock(com.tamagochi.tamagochi.repository.user.UserRepository.class)).saveImage(u, "baby", PNG);
 
         verify(legacy).saveImage(u, "baby", PNG);
         verify(off, never()).put(any(), any(), any());
@@ -142,5 +142,32 @@ class PetImageTest {
         assertThat(good.getAdultImageKey()).isNotNull();
         assertThat(store.objects).hasSize(2);
         assertThat(broken.getBabyImageBase64()).isEqualTo("not-an-image");
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("서버가 만든 그림은 바로 S3에 올라가고, 다음 단계 그림이면 진화하는 순간 현재 그림이 된다")
+    void generatedImageIsStoredAndAdopted() {
+        FakeStore store = new FakeStore();
+        TamagotchiRepository repo = mock(TamagotchiRepository.class);
+        var users = mock(com.tamagochi.tamagochi.repository.user.UserRepository.class);
+        Tamagotchi pet = pet(EvolutionStage.BABY);
+        pet.assignPublicIdIfMissing();
+        when(users.findByTossUserId("toss_a")).thenReturn(Optional.of(User.builder().id(1L).build()));
+        when(repo.findActiveByUserId(1L)).thenReturn(Optional.of(pet));
+        byte[] png = java.util.Base64.getDecoder().decode(PNG.substring(PNG.indexOf(',') + 1));
+        PetImageService service = new PetImageService(store, repo, mock(TamagotchiService.class), users);
+
+        service.saveGenerated("toss_a", "child", png);
+        assertThat(store.objects).hasSize(1);
+        assertThat(pet.getCurrentImageKey()).isNull();   // 아직 낙서다
+
+        pet.evolve(EvolutionStage.CHILD);
+        assertThat(pet.getCurrentImageKey()).isEqualTo(store.objects.keySet().iterator().next());
+
+        // 모르는 유저, 그림이 아닌 것은 조용히 넘어간다 (그림 만들기를 망치지 않는다)
+        service.saveGenerated("toss_none", "child", png);
+        service.saveGenerated("toss_a", "adult", "그림 아님".getBytes());
+        service.saveGenerated(null, "adult", png);
+        assertThat(store.objects).hasSize(1);
     }
 }
