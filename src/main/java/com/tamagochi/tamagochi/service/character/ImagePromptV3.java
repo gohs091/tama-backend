@@ -83,6 +83,101 @@ final class ImagePromptV3 {
         return at < 0 ? base + " " + SIDE_BABY_V5 : base.substring(0, at) + SIDE_BABY_V5 + base.substring(at);
     }
 
+    // ================= 스케치 v6 (image.ink-style=v6) =================
+    // 아기 그림에 부위를 덧붙이지 않는다. 글 모델이 "무엇으로 자랐는지" 한 줄(후보 3개)을 쓰고, 그 한 줄을
+    // 스파링 상대를 그리던 프롬프트 뼈대로 그린다: 잘 다듬어진 샘플 두 장은 화풍 참고, 아기 그림은 같은 아이 참고, 색(투톤·포인트)은 맡긴다.
+    // 체형이나 분위기를 정하거나 막는 말은 넣지 않는다 ("통통하게", "마르지 않게" 같은 말은 모든 끄적이에 한 가지 답을 정한다).
+    // 어느 쪽으로 자랐는지는 끄적이마다 한 줄 설명이 정하고, 후보 셋은 서로 다른 방향이다.
+
+    /** v6 스케치 디자이너(글 모델의 시스템 지시). 후보에 순서를 매기지 않는다: 늘 첫 후보만 그리면 한쪽으로 쏠린다 */
+    static final String SKETCH_DESIGNER_V6 = """
+            You write one-line character descriptions for the illustrator of a pixel-art monster-raising game.
+
+            A baby pet is evolving into its MIDDLE form: the same creature, one stage older. Its owner should say "whoa, it grew up!" and "that's my little one" in the same breath.
+
+            You get image 1 (the pet now, as a baby), image 2 (the doodle its owner drew) and a note (what it is, what was special about the doodle, its tribe, and the ink its owner fed it, if any).
+
+            Write what it looks like now in ONE sentence of at most 40 words, the way you would brief an illustrator: what it is, its main color (the baby's own), HOW it has grown up, and ONE thing it got from its theme. The theme is the ink if the owner fed one, otherwise its tribe. That one thing is either a feature it grew or one item it wears (a hat, a scarf, a cape, a collar, a headband): whichever is more charming for this creature.
+
+            There is no single right way to grow up: any build, any mood, as long as it is clearly one stage older and it suits who this character is. Say plainly which way it grew.
+
+            Propose THREE different ones, each grown in a clearly different direction.
+
+            Reply with JSON only: {"candidates":[{"line":"the one-sentence description","lineKo":"what it grew into, in Korean, at most 18 characters, friendly tone"},{...},{...}]}
+            """;
+
+    /** 진영 이름 (스파링 상대를 그릴 때 쓰던 이름 그대로). 모르는 진영이면 빈 값 */
+    static String sketchThemeV6(String faction) {
+        return switch (faction == null ? "" : faction) {
+            case "nature-spirits" -> "forest spirits";
+            case "deep-savers" -> "deep sea";
+            case "jungle-troopers" -> "jungle";
+            case "metal-empire" -> "machine kingdom";
+            case "nightmare-soldiers" -> "playful haunted house";
+            case "wind-guardians" -> "windy valley";
+            case "virus-busters" -> "knights castle";
+            case "dragons-roar" -> "dragon nest";
+            case "dark-area" -> "mischievous dark world";
+            case "trash" -> "junkyard";
+            case "space" -> "space station";
+            case "desert" -> "desert";
+            case "snowfield" -> "snowfield";
+            case "volcano" -> "volcano";
+            case "candy-land" -> "candy land";
+            case "ninja" -> "ninja village";
+            case "magic-school" -> "magic school";
+            default -> "";
+        };
+    }
+
+    /** 디자이너에게 주는 쪽지: 무엇인지, 낙서의 별난 점, 진영, 넣은 잉크 */
+    static String sketchNoteV6(DoodleSubject origin, String faction, String inkTheme) {
+        String theme = sketchThemeV6(faction);
+        return "What it is: " + (origin == null || blank(origin.subject()) ? "the creature in the doodle" : origin.subject()) + ". " +
+                (origin == null || blank(origin.traits()) ? "" : "What was special about the doodle: " + origin.traits() + ". ") +
+                (theme.isEmpty() ? "" : "Its tribe: " + theme + ". ") +
+                "Ink: " + (blank(inkTheme) ? "none (its tribe is the theme)" : inkTheme);
+    }
+
+    /** 글 모델이 실패했을 때 쓰는 한 줄: 그림은 그대로 그린다 */
+    static String sketchFallbackLineV6(DoodleSubject origin, String inkTheme) {
+        String what = origin == null || blank(origin.subject()) ? "The creature of image 3" : cap(origin.subject());
+        return what + ", one stage older than the baby in image 3, in the baby's own main color" +
+                (blank(inkTheme) ? "." : ", showing what it got from its ink: " + inkTheme + ".");
+    }
+
+    private static String cap(String s) {
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
+
+    /** 쉬는 자세(완성작 POSE_FINAL_V5와 같은 뜻): 끄적이는 홈 화면에 가만히 있어서 걷는 발·든 앞발이 어색하다 */
+    static final String REST_V6 = "POSE: a calm RESTING pose for a pet game home screen, in whatever body it has: a walker stands still with feet on the ground, " +
+            "a serpent rests calmly coiled or in a gentle S-curve near the ground, a flyer or floater hovers calmly just above the ground. " +
+            "Never an attack, a jump or a mid-motion action. ";
+
+    /**
+     * v6 스케치 그림 문장. 그림은 세 장을 넣는다: 1·2번은 화풍 참고(잘 다듬어진 샘플), 3번은 지금 모습(아기).
+     * line은 디자이너가 쓴 한 줄 (무엇으로 자랐는지).
+     */
+    static String sketchV6(String faction, String line) {
+        String theme = sketchThemeV6(faction);
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given three images. Images 1 and 2 are STYLE REFERENCES only: copy their exact pixel size, outline thickness, flat color shading " +
+                "and cute tamagotchi proportions, but do NOT copy their characters. " +
+                "Image 3 is THIS pet as a baby. Draw the same individual grown one stage: keep what it is, its main color and what makes it special, " +
+                "but make a new drawing, do not trace it. " +
+                "Draw ONE tamagotchi-style character" + (theme.isEmpty() ? "" : " from the " + theme + " theme") + ": " + line + " " +
+                "It is a mid-evolution form: clearly one stage more grown-up than the baby in image 3, grown up in exactly the way the description says. " +
+                "It has a few more details. It is not yet its final form. " +
+                "Render it as charming and lovely: clear colors with two-tone markings (such as a lighter belly) and one accent color. " +
+                "VIEW: a three-quarter side view. Its face and body are clearly turned toward the RIGHT side of the image, looking to the right, " +
+                "like the reference sprites. Do NOT draw a front view; the pose must not be left-right symmetrical. " +
+                REST_V6 +
+                "Keep a cute simple pixel face in the style of the references, never scary. " +
+                SOLID_V5 +
+                "Single character centered, full body, filling about 70% of the frame, transparent background, no ground, no text, no other characters.";
+    }
+
     /** v5 스케치. absorbed는 잉크 문장(v3 방식: 재질 잉크만 칠한다), 없으면 null */
     static String sketchV5(DoodleSubject origin, String absorbed) {
         boolean hasInk = !blank(absorbed);

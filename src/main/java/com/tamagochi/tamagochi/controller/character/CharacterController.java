@@ -94,6 +94,13 @@ public class CharacterController {
                     request.getReferenceImageBase64(), request.getDesignIndex());
             return ResponseEntity.ok(new GenerateImageResponse(jobId));
         }
+        if ("child".equals(request.getStage()) && imageGenerationService.sketchDesignEnabled()
+                && request.getImageBase64() != null && request.getReferenceImageBase64() != null) {
+            // v6 스케치: 고른 후보(없으면 서버가 고른다)의 한 줄 설명으로 새로 그린다
+            imageGenerationService.generateSketchAsync(jobId, request.getTossUserId(), request.getImageBase64(),
+                    request.getReferenceImageBase64(), request.getFaction(), request.getDesignIndex());
+            return ResponseEntity.ok(new GenerateImageResponse(jobId));
+        }
         imageGenerationService.generateEvolvedAsync(
                 jobId,
                 request.getImageUrl(),
@@ -124,6 +131,25 @@ public class CharacterController {
                 request.getImageBase64(), request.getReferenceImageBase64(), request.isRefresh());
         if (designs.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
         return ResponseEntity.ok(new FinalDesignsResponse(true, designs));
+    }
+
+    /** v6 스케치 후보에 대한 응답. enabled=false면 예전 방식(바로 그리기)이다 */
+    public record SketchDesignsResponse(boolean enabled, List<com.tamagochi.tamagochi.service.character.SketchDesignService.Choice> designs) {}
+
+    /**
+     * v6 스케치 후보 3개(무엇으로 자랐는지 한글 한 줄). 그림을 그리기 전에 앱이 보여 주고 사용자가 고른다.
+     * 후보는 서버에 저장해 두고 같은 끄적이·같은 잉크면 다시 만들지 않는다 (글 모델 호출이라 이미지 한도와 따로 센다).
+     * Request body: { tossUserId, imageBase64(낙서), referenceImageBase64(지금 모습), faction, refresh }
+     */
+    @PostMapping("/sketch-designs")
+    public ResponseEntity<SketchDesignsResponse> sketchDesigns(@RequestBody FinalDesignsRequest request) {
+        if (request.getTossUserId() == null || request.getTossUserId().isBlank()) return ResponseEntity.badRequest().build();
+        if (!imageGenerationService.sketchDesignEnabled()) return ResponseEntity.ok(new SketchDesignsResponse(false, List.of()));
+        if (request.getImageBase64() == null || request.getReferenceImageBase64() == null) return ResponseEntity.badRequest().build();
+        var designs = imageGenerationService.sketchChoices(request.getTossUserId(),
+                request.getImageBase64(), request.getReferenceImageBase64(), request.getFaction(), request.isRefresh());
+        if (designs.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+        return ResponseEntity.ok(new SketchDesignsResponse(true, designs));
     }
 
     /**

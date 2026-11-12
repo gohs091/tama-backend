@@ -203,9 +203,20 @@ public final class LandCatalog {
      * 잉크 문장은 스케치에서만 쓰고(v3와 같다), 완성작은 inkTheme()을 디자이너에게 글로 준다. 그림 문장은 ImagePromptV3의 v5 부분.
      */
     public static final String INK_STYLE_V5 = "v5";
+    /**
+     * v6: v5에서 스케치만 바꾼다. 아기 그림에 부위를 덧붙이지 않고, 글 모델이 "무엇으로 자랐는지" 한 줄을 쓰면
+     * 잘 다듬어진 샘플 두 장을 화풍 참고로, 아기 그림을 같은 아이 참고로 넣어 새로 그린다 (ImagePromptV3의 v6 부분).
+     * 낙서·완성작·자는 모습은 v5 그대로라서 isV5()도 참이다.
+     */
+    public static final String INK_STYLE_V6 = "v6";
 
+    /** v5 방식(낙서 측면·완성작 디자인 후보)을 쓰는가. v6은 스케치만 다른 v5라서 함께 참 */
     public static boolean isV5(String style) {
-        return INK_STYLE_V5.equalsIgnoreCase(style);
+        return INK_STYLE_V5.equalsIgnoreCase(style) || isV6(style);
+    }
+
+    public static boolean isV6(String style) {
+        return INK_STYLE_V6.equalsIgnoreCase(style);
     }
 
     /** 잉크 한 칸(특정 잉크 또는 계열 잉크 하나)의 진화 문장. 없으면 null */

@@ -84,6 +84,10 @@ public class ImageGenerationService {
     @Autowired(required = false)
     private FinalDesignService finalDesignService;
 
+    // v6 스케치: 무엇으로 자랐는지 한 줄을 쓰는 글 모델 (없거나 실패하면 기본 한 줄로 그린다)
+    @Autowired(required = false)
+    private SketchDesignService sketchDesignService;
+
     @Autowired(required = false)
     private com.tamagochi.tamagochi.service.land.InkLoadoutService inkLoadoutService;
 
@@ -276,6 +280,11 @@ public class ImageGenerationService {
         DoodleSubject subject;
         String prompt;
         boolean v5 = LandCatalog.isV5(inkStyle);
+        if (evolving && LandCatalog.isV6(inkStyle) && "child".equals(stage)) {
+            // v6 스케치: 아기 그림에 덧붙이지 않고, 한 줄 설명(무엇으로 자랐는지)으로 새로 그린다
+            subject = originFor(tossUserId, imageBytes, mimeType);
+            return new Generated(sketchV6(imageBytes, mimeType, referenceBytes, faction, subject, tossUserId), null, true);
+        }
         if (evolving && v5 && "child".equals(stage)) {
             // v5 스케치: 아기 체형 + 측면, sunburst로 그린다 (64칸 다시 찍기는 binarizeAlpha 안에서 모든 그림에 한다)
             subject = originFor(tossUserId, imageBytes, mimeType);
@@ -330,6 +339,82 @@ public class ImageGenerationService {
             log.warn("champion tier lookup failed: {}", e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * v6 스케치. 그림은 세 장을 넣는다: 화풍 참고 두 장(잘 다듬어진 샘플), 지금 모습(아기).
+     * 지금 모습은 밝은 바탕에 올려 넣는다: 투명 배경 그대로 넣으면 어두운 테두리를 배경으로 읽어 테두리가 빠진다.
+     * 글 모델이 실패하면 기본 한 줄로 그대로 그린다 (진화가 막히지 않게).
+     */
+    private byte[] sketchV6(byte[] doodle, String doodleMime, byte[] current, String faction, DoodleSubject subject, String tossUserId) {
+        return sketchV6(sketchSource(doodle, doodleMime, current, faction, subject, tossUserId), tossUserId, null);
+    }
+
+    /** designIndex: 사용자가 고른 후보 번호. 없으면 서버가 지난번과 다른 후보를 고른다 */
+    private byte[] sketchV6(SketchDesignService.Source source, String tossUserId, Integer designIndex) {
+        String line = sketchDesignService == null ? null
+                : sketchDesignService.pick(designOwner(tossUserId), source, designIndex)
+                        .map(c -> c.path("line").asText("")).filter(s -> !s.isBlank()).orElse(null);
+        if (line == null) line = ImagePromptV3.sketchFallbackLineV6(source.origin(), source.inkTheme());
+        log.info("v6 스케치 - user: {}, faction: {}, 고른 번호: {}, 한 줄: {}", tossUserId, source.faction(), designIndex, line);
+        return binarizeAlpha(callOpenAiEditImages(java.util.List.of(sketchStyle(1), sketchStyle(2), source.babyPng()),
+                ImagePromptV3.sketchV6(source.faction(), line), v5Model, v5Quality));
+    }
+
+    private SketchDesignService.Source sketchSource(byte[] doodle, String doodleMime, byte[] current, String faction, DoodleSubject subject, String tossUserId) {
+        byte[] flat = SpriteBackdrop.flatten(current);
+        return new SketchDesignService.Source(flat != null ? flat : current, doodle, doodleMime, subject, faction, inkTheme(tossUserId));
+    }
+
+    /** v6 스케치를 쓰는가: 그리기 전에 후보 3개를 보여 주고 고르게 한다 */
+    public boolean sketchDesignEnabled() {
+        return LandCatalog.isV6(inkStyle) && sketchDesignService != null && "openai".equalsIgnoreCase(provider);
+    }
+
+    /** 스케치 후보 3개(한글 한 줄). v6이 아니거나 실패하면 빈 목록 */
+    public java.util.List<SketchDesignService.Choice> sketchChoices(String tossUserId, String doodleBase64, String babyBase64, String faction, boolean refresh) {
+        if (!sketchDesignEnabled()) return java.util.List.of();
+        byte[] doodle = decodeBase64Image(doodleBase64);
+        String doodleMime = extractMimeType(doodleBase64);
+        DoodleSubject subject = originFor(tossUserId, doodle, doodleMime);
+        return sketchDesignService.choices(designOwner(tossUserId),
+                sketchSource(doodle, doodleMime, decodeBase64Image(babyBase64), faction, subject, tossUserId), refresh);
+    }
+
+    /** v6 스케치 그리기: 고른 후보(designIndex)를 그린다. 후보가 아직 없으면 지금 만든다 (예전 앱, 구간 끝 자동 진화) */
+    @Async("imageExecutor")
+    public void generateSketchAsync(String jobId, String tossUserId, String doodleBase64, String babyBase64, String faction, Integer designIndex) {
+        jobStore.put(jobId, ImageJobResult.pending());
+        try {
+            byte[] doodle = decodeBase64Image(doodleBase64);
+            String doodleMime = extractMimeType(doodleBase64);
+            DoodleSubject subject = originFor(tossUserId, doodle, doodleMime);
+            byte[] image = sketchV6(sketchSource(doodle, doodleMime, decodeBase64Image(babyBase64), faction, subject, tossUserId), tossUserId, designIndex);
+            if (image == null || image.length == 0) {
+                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                return;
+            }
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
+            log.info("Sketch (v6) image generation done for job: {}", jobId);
+        } catch (Exception e) {
+            log.error("Sketch image generation failed for job: {}", jobId, e);
+            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+        }
+    }
+
+    private static final byte[][] SKETCH_STYLE = new byte[2][];
+
+    /** v6 스케치의 화풍 참고 그림 (resources/sketch-style/ref1.png, ref2.png). 처음 쓸 때 한 번 읽는다 */
+    static synchronized byte[] sketchStyle(int n) {
+        if (SKETCH_STYLE[n - 1] == null) {
+            try (var in = ImageGenerationService.class.getResourceAsStream("/sketch-style/ref" + n + ".png")) {
+                if (in == null) throw new IllegalStateException("화풍 참고 그림이 없어요: ref" + n + ".png");
+                SKETCH_STYLE[n - 1] = in.readAllBytes();
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("화풍 참고 그림을 읽지 못했어요: " + e.getMessage(), e);
+            }
+        }
+        return SKETCH_STYLE[n - 1];
     }
 
     private DoodleSubject originFor(String tossUserId, byte[] imageBytes, String mimeType) {
@@ -499,6 +584,19 @@ public class ImageGenerationService {
             addImagePart(builder, field, referenceBytes, referenceMime, "current.png");
         }
         addImagePart(builder, field, sketchBytes, sketchMime, sketchMime.contains("png") ? "sketch.png" : "sketch.jpg");
+        return postOpenAiEdit(builder, prompt, model, quality);
+    }
+
+    /** PNG 여러 장을 주어진 순서대로(image 1, 2, 3 ...) 넣는 images/edits 호출 */
+    private byte[] callOpenAiEditImages(java.util.List<byte[]> pngs, String prompt, String model, String quality) {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        for (int i = 0; i < pngs.size(); i++) {
+            addImagePart(builder, "image[]", pngs.get(i), "image/png", "image" + (i + 1) + ".png");
+        }
+        return postOpenAiEdit(builder, prompt, model, quality);
+    }
+
+    private byte[] postOpenAiEdit(MultipartBodyBuilder builder, String prompt, String model, String quality) {
         builder.part("model", model);
         builder.part("prompt", prompt);
         builder.part("size", "1024x1024");
