@@ -62,14 +62,16 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         if (pet.isAdventuring()) { reject(peer, "끄적이가 모험 중이라 광장에 갈 수 없어요"); return; }
 
         // 광장에는 작게 줄인 그림을 보낸다. 원본 주소를 보내면 끄적이마다 1024px 원본(예전 그림은 1MB 안팎)을 받느라
-        // 이름표만 먼저 뜨고 그림은 한참 뒤에 뜨거나 안 뜬다. 줄이지 못했을 때만 원본 주소를 쓴다
+        // 이름표만 먼저 뜨고 그림은 한참 뒤에 뜨거나 안 뜬다.
+        // 줄이지 못했으면(원본을 못 받았거나 빈 그림이면) 앱이 보내는 작은 그림을 쓰고, 그것도 없을 때만 원본 주소를 쓴다
         String imageKey = pet.getCurrentImageKey();
-        String image = petThumbs.of(imageKey).orElseGet(() -> PetImageUrls.of(imageKey));
+        String image = petThumbs.of(imageKey).orElse(null);
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
                 pet.getEvolutionStage().name(), image, pet.getPublicId(),
-                com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"));
+                com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"),
+                image == null ? PetImageUrls.of(imageKey) : null);
     }
 
     @Override

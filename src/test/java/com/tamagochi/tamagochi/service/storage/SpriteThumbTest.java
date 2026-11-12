@@ -79,12 +79,61 @@ class SpriteThumbTest {
     @Test
     @DisplayName("작은 그림은 키우지 않고, 길쭉한 그림은 비율을 지킨다")
     void keepsShape() throws Exception {
-        BufferedImage small = read(SpriteThumb.dataUrl(png(new BufferedImage(40, 40, BufferedImage.TYPE_INT_ARGB))));
-        BufferedImage wide = read(SpriteThumb.dataUrl(png(new BufferedImage(512, 256, BufferedImage.TYPE_INT_ARGB))));
+        BufferedImage small = read(SpriteThumb.dataUrl(png(filled(40, 40, 0xFF336699))));
+        BufferedImage wide = read(SpriteThumb.dataUrl(png(filled(512, 256, 0xFF336699))));
 
         assertThat(small.getWidth()).isEqualTo(40);
         assertThat(wide.getWidth()).isEqualTo(128);
         assertThat(wide.getHeight()).isEqualTo(64);
+    }
+
+    @Test
+    @DisplayName("몸이 반투명하게 그려진 그림은 지우지 않고 그대로 둔다 (자르면 이름표만 떠다닌다)")
+    void translucentBodyStays() throws Exception {
+        // 또렷한 눈 두 점만 불투명하고 몸은 알파 0x60인 유령
+        BufferedImage ghost = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 16; y < 48; y++) {
+            for (int x = 16; x < 48; x++) ghost.setRGB(x, y, 0x60FFFFFF);
+        }
+        ghost.setRGB(24, 24, 0xFF000000);
+        ghost.setRGB(40, 24, 0xFF000000);
+
+        BufferedImage thumb = read(SpriteThumb.dataUrl(png(ghost)));
+
+        assertThat(thumb.getRGB(30, 40) >>> 24).isEqualTo(0x60);
+        assertThat(thumb.getRGB(24, 24)).isEqualTo(0xFF000000);
+        assertThat(thumb.getRGB(5, 5) >>> 24).isZero();
+    }
+
+    @Test
+    @DisplayName("그려진 것이 없는 그림은 null (빈 그림을 보내지 않는다)")
+    void blankIsNull() throws Exception {
+        assertThat(SpriteThumb.dataUrl(png(new BufferedImage(1024, 1024, BufferedImage.TYPE_INT_ARGB)))).isNull();
+        // 거의 안 보이는 얼룩뿐인 그림
+        assertThat(SpriteThumb.dataUrl(png(filled(256, 256, 0x08FFFFFF)))).isNull();
+    }
+
+    private static BufferedImage filled(int w, int h, int argb) {
+        BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) image.setRGB(x, y, argb);
+        }
+        return image;
+    }
+
+    @Test
+    @DisplayName("앱이 보낸 그림: 투명한 빈 그림만 빈 그림으로 본다 (못 읽는 것, 너무 큰 것은 단정하지 않는다)")
+    void blankDataUrl() throws Exception {
+        String empty = "data:image/png;base64," + Base64.getEncoder().encodeToString(png(new BufferedImage(160, 160, BufferedImage.TYPE_INT_ARGB)));
+        String drawn = "data:image/png;base64," + Base64.getEncoder().encodeToString(png(filled(160, 160, 0xFF336699)));
+        String huge = "data:image/png;base64," + Base64.getEncoder().encodeToString(png(new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_ARGB)));
+
+        assertThat(SpriteThumb.blank(empty)).isTrue();
+        assertThat(SpriteThumb.blank(drawn)).isFalse();
+        assertThat(SpriteThumb.blank(huge)).isFalse();
+        assertThat(SpriteThumb.blank("data:image/png;base64,AAAA")).isFalse();
+        assertThat(SpriteThumb.blank("그림이 아님")).isFalse();
+        assertThat(SpriteThumb.blank(null)).isFalse();
     }
 
     @Test

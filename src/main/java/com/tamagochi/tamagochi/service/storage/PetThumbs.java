@@ -62,6 +62,11 @@ public class PetThumbs {
         return Optional.of(thumb);
     }
 
+    /** 앱이 보낸 작은 그림(data URL)이 그려진 것 없는 빈 그림인지. 읽지 못한 그림은 빈 그림으로 치지 않는다 */
+    public static boolean blank(String dataUrl) {
+        return SpriteThumb.blank(dataUrl);
+    }
+
     private static byte[] download(String url) {
         try {
             HttpResponse<byte[]> res = HTTP.send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(4)).build(),
