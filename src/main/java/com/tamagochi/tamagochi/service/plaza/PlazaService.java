@@ -63,7 +63,8 @@ public class PlazaService {
     /** 사람과 다녀간 끄적이를 합쳐 이만큼은 보이게 채운다 */
     static final int FILL_TO = 9;
     static final int RECENT_MAX = 60;
-    static final int MAX_IMAGE_CHARS = 64 * 1024;
+    /** 앱이 보내는 작은 그림의 길이 제한. 앱은 70,000자까지 만든다 (그보다 작으면 들어오지 못하는 끄적이가 생긴다) */
+    static final int MAX_IMAGE_CHARS = 72_000;
     static final long MOVE_GAP_MS = 120;
     static final long EMOTE_GAP_MS = 500;
     static final long SKILL_GAP_MS = 2500;
@@ -85,7 +86,8 @@ public class PlazaService {
         final Profile profile;
         final String id;
         Room room;
-        String image;     // CDN 주소 또는 앱이 보낸 작은 그림(data URL)
+        String image;     // 서버가 줄인 그림(data URL), 앱이 보낸 작은 그림(data URL), 또는 원본 CDN 주소
+        String spareImage;   // 원본 CDN 주소. 위 둘이 다 없을 때만 쓴다
         String facing = "right";
         int x, y;
         long lastMove, lastEmote, lastSkill;
@@ -151,11 +153,20 @@ public class PlazaService {
 
     /** 연결되면 부른다. 아직 방에 넣지 않고, 앱이 hello로 그림을 보내면 그때 들여보낸다 */
     public synchronized void connect(Peer peer, Profile profile, String inviteKey) {
+        connect(peer, profile, inviteKey, null);
+    }
+
+    /**
+     * spareImage: 서버가 보여 줄 그림(profile.imageUrl)을 마련하지 못했고 앱도 그림을 보내지 않았을 때만 쓰는 원본 주소.
+     * 원본은 크고(예전 그림은 1MB 안팎) 서버가 방금 받지 못한 주소일 수 있어서 맨 나중에 쓴다
+     */
+    public synchronized void connect(Peer peer, Profile profile, String inviteKey, String spareImage) {
         // 같은 사람이 다른 기기·탭으로 또 들어오면 먼저 있던 연결을 내보낸다
         Member old = byUser.get(profile.userId());
         if (old != null) { remove(old, true); old.peer.close(); }
         Member m = new Member(peer, profile, newId());
         m.image = profile.imageUrl();
+        m.spareImage = spareImage;
         m.room = pickRoom(inviteKey);   // 자리만 정해 둔다 (hello 뒤에 들어간다)
         byPeer.put(peer.id(), m);
         byUser.put(profile.userId(), m);
@@ -190,7 +201,16 @@ public class PlazaService {
     private void hello(Member m, JsonNode msg) {
         if (m.room == null || m.room.members.containsKey(m.id)) return;
         String sent = msg.path("image").asText("");
-        if (m.image == null && sent.startsWith("data:image/") && sent.length() <= MAX_IMAGE_CHARS) m.image = sent;
+        // 그림 고르는 순서: 서버가 줄인 그림 → 앱이 보낸 작은 그림(주인이 홈에서 보는 그 그림) → 원본 주소
+        String from = "서버";
+        boolean sentOk = sent.startsWith("data:image/") && sent.length() <= MAX_IMAGE_CHARS;
+        // 아이폰 앱이 가끔 투명한 빈 그림을 만들어 보낸다. 그대로 쓰면 모두의 화면에 이름표만 떠다닌다
+        boolean sentBlank = sentOk && com.tamagochi.tamagochi.service.storage.PetThumbs.blank(sent);
+        if (m.image == null && sentOk && !sentBlank) { m.image = sent; from = "앱"; }
+        if (m.image == null && m.spareImage != null) { m.image = m.spareImage; from = "원본 주소"; }
+        // 이름표만 떠다니는 끄적이가 생기면 이 기록으로 어떤 그림이 나갔는지 찾는다
+        log.info("광장 입장 - user={}, pet={}, 그림={}({}자), 앱이 보낸 그림={}자", m.profile.userId(), m.profile.publicId(), m.image == null ? "없음" : from,
+                m.image == null ? 0 : m.image.length(), sent.length() + (sentBlank ? "(빈 그림)" : ""));
         if (m.image == null) {
             m.peer.send("{\"t\":\"error\",\"message\":\"끄적이 그림을 불러오지 못했어요\"}");
             remove(m, false);

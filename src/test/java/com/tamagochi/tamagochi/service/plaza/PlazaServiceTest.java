@@ -332,4 +332,43 @@ class PlazaServiceTest {
         FakePeer b = enter(null);
         assertThat(b.last("room").path("ev").path("phase").asText()).isEqualTo("done");
     }
+
+    @Test
+    void 서버가_그림을_못_줄였으면_앱이_보낸_그림을_먼저_쓰고_없을_때만_원본_주소를_쓴다() {
+        FakePeer a = new FakePeer("spare-a");
+        plaza.connect(a, new PlazaService.Profile(901L, "닉901", "끄적", 3, "BABY", null, "pub901", null), null, "https://cdn.example/original.png");
+        plaza.onMessage(a, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        assertThat(a.last("room").path("members").get(0).path("image").asText()).isEqualTo("data:image/png;base64,AAAA");
+
+        FakePeer b = new FakePeer("spare-b");
+        plaza.connect(b, new PlazaService.Profile(902L, "닉902", "끄적", 3, "BABY", null, "pub902", null), null, "https://cdn.example/original.png");
+        plaza.onMessage(b, "{\"t\":\"hello\"}");
+        assertThat(b.last("room").path("members").get(1).path("image").asText()).isEqualTo("https://cdn.example/original.png");
+
+        // 서버가 줄인 그림이 있으면 앱이 무엇을 보내든 그것을 쓴다
+        FakePeer c = new FakePeer("spare-c");
+        plaza.connect(c, new PlazaService.Profile(903L, "닉903", "끄적", 3, "BABY", "data:image/png;base64,SERVER", "pub903", null), null, null);
+        plaza.onMessage(c, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        assertThat(c.last("room").path("members").get(2).path("image").asText()).isEqualTo("data:image/png;base64,SERVER");
+    }
+
+    @Test
+    void 앱이_빈_그림을_보내면_쓰지_않는다() throws Exception {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(160, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB), "png", out);
+        String blank = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(out.toByteArray());
+
+        // 서버에 그림이 없고 앱이 빈 그림을 보냈다: 이름표만 떠다니게 들이지 않는다
+        FakePeer a = new FakePeer("blank-a");
+        plaza.connect(a, new PlazaService.Profile(911L, "닉911", "끄적", 3, "BABY", null, "pub911", null), null);
+        plaza.onMessage(a, "{\"t\":\"hello\",\"image\":\"" + blank + "\"}");
+        assertThat(a.last("error")).isNotNull();
+        assertThat(a.last("room")).isNull();
+
+        // 원본 주소가 있으면 그것을 쓴다
+        FakePeer b = new FakePeer("blank-b");
+        plaza.connect(b, new PlazaService.Profile(912L, "닉912", "끄적", 3, "BABY", null, "pub912", null), null, "https://cdn.example/original.png");
+        plaza.onMessage(b, "{\"t\":\"hello\",\"image\":\"" + blank + "\"}");
+        assertThat(b.last("room").path("members").get(0).path("image").asText()).isEqualTo("https://cdn.example/original.png");
+    }
 }
