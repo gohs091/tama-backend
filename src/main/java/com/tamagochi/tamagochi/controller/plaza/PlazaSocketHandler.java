@@ -10,6 +10,7 @@ import com.tamagochi.tamagochi.service.auth.AuthTokenService;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
 import com.tamagochi.tamagochi.service.plaza.PlazaService;
 import com.tamagochi.tamagochi.service.storage.PetImageUrls;
+import com.tamagochi.tamagochi.service.storage.PetThumbs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -38,13 +39,15 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
     private final AuthTokenService tokenService;
     private final UserRepository userRepository;
     private final TamagotchiRepository tamagotchiRepository;
+    private final PetThumbs petThumbs;
 
     private final Map<String, Peer> peers = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession raw) throws Exception {
         raw.setTextMessageSizeLimit(96 * 1024);   // 처음 보내는 끄적이 그림(작게 줄인 PNG)
-        WebSocketSession session = new ConcurrentWebSocketSessionDecorator(raw, 5_000, 512 * 1024);
+        // 들어올 때 받는 방 정보에 끄적이 그림(작게 줄인 것)이 마리마다 실린다. 느린 통신에서도 끊기지 않게 넉넉히 둔다
+        WebSocketSession session = new ConcurrentWebSocketSessionDecorator(raw, 10_000, 1024 * 1024);
         Peer peer = peerOf(session);
 
         var params = UriComponentsBuilder.fromUri(raw.getUri()).build().getQueryParams();
@@ -58,9 +61,14 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         if (pet.getEvolutionStage() == EvolutionStage.EGG) { reject(peer, "끄적이가 태어나면 광장에 갈 수 있어요"); return; }
         if (pet.isAdventuring()) { reject(peer, "끄적이가 모험 중이라 광장에 갈 수 없어요"); return; }
 
+        // 광장에는 작게 줄인 그림을 보낸다. 원본 주소를 보내면 끄적이마다 1024px 원본(예전 그림은 1MB 안팎)을 받느라
+        // 이름표만 먼저 뜨고 그림은 한참 뒤에 뜨거나 안 뜬다. 줄이지 못했을 때만 원본 주소를 쓴다
+        String imageKey = pet.getCurrentImageKey();
+        String image = petThumbs.of(imageKey).orElseGet(() -> PetImageUrls.of(imageKey));
+
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
-                pet.getEvolutionStage().name(), PetImageUrls.of(pet.getCurrentImageKey()), pet.getPublicId(),
+                pet.getEvolutionStage().name(), image, pet.getPublicId(),
                 com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"));
     }
 
