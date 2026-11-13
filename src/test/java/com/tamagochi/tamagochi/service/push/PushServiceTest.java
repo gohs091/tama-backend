@@ -124,4 +124,16 @@ class PushServiceTest {
         assertThat(push.codeOf(PushKind.SICK)).isEqualTo("doodle-app-sick-v2");
         assertThat(push.codeOf(PushKind.POOP)).isEqualTo("doodle-app-poop");
     }
+
+    @Test
+    @DisplayName("켜 둔 종류만 보낸다 (콘솔에서 활성화하지 않은 캠페인으로는 보내지 않는다)")
+    void onlyEnabledKinds() {
+        ReflectionTestUtils.setField(push, "enabledKinds", "hungry,sick");
+        User u = user(true);
+        Tamagotchi poopy = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).poopCount(10).build();
+        assertThat(push.consider(poopy, NOON)).isFalse();      // 응가는 꺼져 있다
+        Tamagotchi both = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY).hunger(85).strength(80).poopCount(10).build();
+        assertThat(push.consider(both, NOON)).isTrue();         // 응가는 건너뛰고 배고픔을 보낸다
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "냥냥이가"))), anyMap());
+    }
 }
