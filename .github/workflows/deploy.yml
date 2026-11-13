@@ -64,6 +64,7 @@ jobs:
             PUSH_ENABLED=${{ vars.PUSH_ENABLED }}
             PUSH_CODES=${{ vars.PUSH_CODES }}
             PUSH_AGREEMENT_CODE=${{ vars.PUSH_AGREEMENT_CODE }}
+            PUSH_KINDS=${{ vars.PUSH_KINDS }}
             ENVEOF
             chmod 600 .env
             docker compose -f docker-compose.prod.yml up -d --build

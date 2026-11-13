@@ -62,6 +62,16 @@ public class PushService {
     @Value("${push.codes:}")
     private String codeOverrides = "";
 
+    /** 보내는 알림 종류 (쉼표로, 예: hungry,sick). 콘솔 캠페인이 승인된 것만 적는다. 비우면 모두 */
+    @Value("${push.kinds:}")
+    private String enabledKinds = "";
+
+    boolean kindEnabled(PushKind kind) {
+        if (enabledKinds == null || enabledKinds.isBlank()) return true;
+        for (String k : enabledKinds.split(",")) if (k.trim().equals(kind.code)) return true;
+        return false;
+    }
+
     /** 앱이 알림 동의 창을 띄울 때 쓰는 캠페인 코드 (그 캠페인에 붙은 동의문이 뜬다). 앱을 다시 내지 않고 바꾸려고 서버가 알려 준다 */
     @Value("${push.agreement-code:doodle-app-hungry}")
     private String agreementCode = "doodle-app-hungry";
@@ -129,7 +139,7 @@ public class PushService {
         if (countText != null && Integer.parseInt(countText) >= PushRules.DAILY_MAX) return false;
 
         for (PushKind kind : due) {
-            if (!PushRules.allowedAt(kind, now)) continue;
+            if (!kindEnabled(kind) || !PushRules.allowedAt(kind, now)) continue;
             if (redis.opsForValue().get(episodeKey(pet, kind)) != null) continue;
             String petName = inlineParticle.contains(kind.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), kind.particle);
             boolean ok = send(anonKey, kind, petName, pet);

@@ -26,8 +26,9 @@ services:
       S3_MIGRATE_EXISTING: ${S3_MIGRATE_EXISTING:-false}   # 켜면 DB에 남은 base64 그림을 S3로 옮긴다 (끝나면 다시 false)
       IMAGE_INK_STYLE: ${IMAGE_INK_STYLE:-v6}
       PUSH_ENABLED: ${PUSH_ENABLED:-false}
-      PUSH_CODES: ${PUSH_CODES:-}                      # 다시 만든 캠페인의 발송 코드 (예: hungry=doodle-app-hungry2)
-      PUSH_AGREEMENT_CODE: ${PUSH_AGREEMENT_CODE:-doodle-app-hungry}   # 알림 동의 창에 쓸 캠페인 코드             # 끄적이 알림. 콘솔 템플릿 검수가 끝나면 GitHub 변수 PUSH_ENABLED=true             # 잉크 진화 방식: v6(v5 + 스케치도 후보를 골라 새로 그린다). 되돌리려면 GitHub 변수 IMAGE_INK_STYLE=v5 (스케치만 예전 방식), v0(전부 예전 방식)
+      PUSH_CODES: ${PUSH_CODES:-hungry=doodle-app-hungry2,sick=doodle-app-sick2}
+      PUSH_KINDS: ${PUSH_KINDS:-hungry,sick}                # 보내는 알림 종류 (콘솔에서 활성화한 것만)                      # 다시 만든 캠페인의 발송 코드 (예: hungry=doodle-app-hungry2)
+      PUSH_AGREEMENT_CODE: ${PUSH_AGREEMENT_CODE:-doodle-app-hungry2}   # 알림 동의 창에 쓸 캠페인 코드             # 끄적이 알림. 콘솔 템플릿 검수가 끝나면 GitHub 변수 PUSH_ENABLED=true             # 잉크 진화 방식: v6(v5 + 스케치도 후보를 골라 새로 그린다). 되돌리려면 GitHub 변수 IMAGE_INK_STYLE=v5 (스케치만 예전 방식), v0(전부 예전 방식)
     volumes:
       - ./certs/iap-client.p12:/certs/iap-client.p12:ro   # 토스 IAP mTLS 인증서 (서버에만 두고 저장소/이미지에 넣지 않는다)
     depends_on:
