@@ -115,4 +115,13 @@ class PushServiceTest {
         assertThat(PushRules.calling("냥냥이")).isEqualTo("냥냥이");
         assertThat(PushRules.calling("Rex")).isEqualTo("Rex");
     }
+
+    @Test
+    @DisplayName("다시 만든 캠페인의 발송 코드를 알림별로 바꿔 쓴다")
+    void codeOverride() {
+        ReflectionTestUtils.setField(push, "codeOverrides", "hungry=doodle-app-hungry2, sick = doodle-app-sick-v2");
+        assertThat(push.codeOf(PushKind.HUNGRY)).isEqualTo("doodle-app-hungry2");
+        assertThat(push.codeOf(PushKind.SICK)).isEqualTo("doodle-app-sick-v2");
+        assertThat(push.codeOf(PushKind.POOP)).isEqualTo("doodle-app-poop");
+    }
 }

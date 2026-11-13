@@ -26,6 +26,7 @@ public class PushController {
 
     private final UserIdentity userIdentity;
     private final UserRepository userRepository;
+    private final com.tamagochi.tamagochi.service.push.PushService pushService;
 
     @Getter
     @NoArgsConstructor
@@ -49,6 +50,7 @@ public class PushController {
         User user = userIdentity.resolve(tossUserId);
         Map<String, Object> out = new HashMap<>();
         out.put("agreed", user.getPushAgreed());
+        out.put("agreementCode", pushService.agreementCode());   // 동의 창을 띄울 캠페인 코드
         return ResponseEntity.ok(out);
     }
 }
