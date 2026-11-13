@@ -23,7 +23,7 @@ push:
   enabled: ${PUSH_ENABLED:false}
   code-prefix: doodle-app-
   # 콘솔 템플릿에 {{petName}} 뒤 조사(가·의)를 이미 적어 둔 알림 코드 (쉼표로). 서버는 그 알림에 조사 없이 이름만 보낸다
-  inline-particle: ${PUSH_INLINE_PARTICLE:hungry}
+  inline-particle: ${PUSH_INLINE_PARTICLE:hungry,evo-soon}
 
 tamagotchi:
   vitals:
