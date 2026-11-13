@@ -18,6 +18,11 @@ spring:
       host: localhost
       port: 6379
 
+# 끄적이 알림(토스 스마트 발송). 콘솔 템플릿 검수가 끝나면 켠다 (PUSH_ENABLED=true)
+push:
+  enabled: ${PUSH_ENABLED:false}
+  code-prefix: doodle-app-
+
 tamagotchi:
   vitals:
     satiety-minutes-per-point: 8    # 포만감 1 감소에 걸리는 분 (8분 → 약 13시간에 100→0)

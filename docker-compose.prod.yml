@@ -24,7 +24,8 @@ services:
       ADMIN_KEY: ${ADMIN_KEY:-}
       S3_ENABLED: ${S3_ENABLED:-false}                     # 끄적이 그림을 S3에 저장 (EC2 역할 권한 필요)
       S3_MIGRATE_EXISTING: ${S3_MIGRATE_EXISTING:-false}   # 켜면 DB에 남은 base64 그림을 S3로 옮긴다 (끝나면 다시 false)
-      IMAGE_INK_STYLE: ${IMAGE_INK_STYLE:-v6}             # 잉크 진화 방식: v6(v5 + 스케치도 후보를 골라 새로 그린다). 되돌리려면 GitHub 변수 IMAGE_INK_STYLE=v5 (스케치만 예전 방식), v0(전부 예전 방식)
+      IMAGE_INK_STYLE: ${IMAGE_INK_STYLE:-v6}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}             # 끄적이 알림. 콘솔 템플릿 검수가 끝나면 GitHub 변수 PUSH_ENABLED=true             # 잉크 진화 방식: v6(v5 + 스케치도 후보를 골라 새로 그린다). 되돌리려면 GitHub 변수 IMAGE_INK_STYLE=v5 (스케치만 예전 방식), v0(전부 예전 방식)
     volumes:
       - ./certs/iap-client.p12:/certs/iap-client.p12:ro   # 토스 IAP mTLS 인증서 (서버에만 두고 저장소/이미지에 넣지 않는다)
     depends_on:

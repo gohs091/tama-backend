@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class TamagotchiController {
 
     private final TamagotchiService tamagotchiService;
+    private final com.tamagochi.tamagochi.service.push.PushService pushService;
     private final EvolutionGaugeClaimService evolutionGaugeClaimService;
     private final UserIdentity userIdentity;
     private final RedrawService redrawService;
@@ -194,6 +195,7 @@ public class TamagotchiController {
     @GetMapping("/{tossUserId}")
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
         User user = userIdentity.resolve(tossUserId);
+        pushService.seen(user.getId());   // 지금 앱을 보고 있다: 알림을 보내지 않는다
 
         Tamagotchi tamagotchi = tamagotchiService.getByUserId(user.getId());
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
