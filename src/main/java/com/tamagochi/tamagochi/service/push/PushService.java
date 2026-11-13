@@ -55,6 +55,30 @@ public class PushService {
     @Value("${push.inline-particle:}")
     private java.util.Set<String> inlineParticle = java.util.Set.of();
 
+    /**
+     * 알림별 발송 코드를 바꿔 쓴다 ("hungry=doodle-app-hungry2,sick=..."). 콘솔 캠페인은 고치거나 지울 수 없어서,
+     * 다시 만들면 새 코드를 여기에 적는다. 적지 않은 알림은 code-prefix + 코드를 쓴다
+     */
+    @Value("${push.codes:}")
+    private String codeOverrides = "";
+
+    /** 앱이 알림 동의 창을 띄울 때 쓰는 캠페인 코드 (그 캠페인에 붙은 동의문이 뜬다). 앱을 다시 내지 않고 바꾸려고 서버가 알려 준다 */
+    @Value("${push.agreement-code:doodle-app-hungry}")
+    private String agreementCode = "doodle-app-hungry";
+
+    public String agreementCode() {
+        return agreementCode;
+    }
+
+    /** 이 알림을 보낼 콘솔 발송 코드 */
+    String codeOf(PushKind kind) {
+        for (String pair : (codeOverrides == null ? "" : codeOverrides).split(",")) {
+            String[] kv = pair.trim().split("=", 2);
+            if (kv.length == 2 && kv[0].trim().equals(kind.code) && !kv[1].isBlank()) return kv[1].trim();
+        }
+        return codePrefix + kind.code;
+    }
+
     public PushService(TamagotchiRepository tamagotchiRepository, StringRedisTemplate redis, TossPartnerApiClient toss) {
         this.tamagotchiRepository = tamagotchiRepository;
         this.redis = redis;
@@ -119,7 +143,7 @@ public class PushService {
     }
 
     private boolean send(String anonKey, PushKind kind, String petName, Tamagotchi pet) {
-        String code = codePrefix + kind.code;
+        String code = codeOf(kind);
         try {
             JsonNode res = toss.post(SEND_PATH, Map.of("templateSetCode", code, "context", Map.of("petName", petName)), Map.of("x-anon-key", anonKey));
             boolean ok = "SUCCESS".equals(res.path("resultType").asText());

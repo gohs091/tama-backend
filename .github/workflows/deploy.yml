@@ -62,6 +62,8 @@ jobs:
             S3_MIGRATE_EXISTING=${{ secrets.S3_MIGRATE_EXISTING }}
             IMAGE_INK_STYLE=${{ vars.IMAGE_INK_STYLE }}
             PUSH_ENABLED=${{ vars.PUSH_ENABLED }}
+            PUSH_CODES=${{ vars.PUSH_CODES }}
+            PUSH_AGREEMENT_CODE=${{ vars.PUSH_AGREEMENT_CODE }}
             ENVEOF
             chmod 600 .env
             docker compose -f docker-compose.prod.yml up -d --build
