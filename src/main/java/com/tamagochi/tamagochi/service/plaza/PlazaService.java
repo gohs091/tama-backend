@@ -304,8 +304,13 @@ public class PlazaService {
     }
 
     /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다. 정각 밀어내기 동안, 아직 남아 있는 참가자만 쓸 수 있다 (혼자 연습이면 누구나) */
+    /** 알은 구경만 한다 (밀어내기에 끼지 않고, 기술을 쓰지도 맞지도 않는다) */
+    private static boolean spectator(Member m) {
+        return "EGG".equals(m.profile.stage());
+    }
+
     private void skill(Member m, JsonNode msg) {
-        if (!inRoom(m)) return;
+        if (!inRoom(m) || spectator(m)) return;
         Match match = fighting(m.room);
         if (match == null || !(match.solo || match.alive.contains(m.id))) return;
         long now = clock.getAsLong();
@@ -330,6 +335,7 @@ public class PlazaService {
      */
     private void hit(Member m, JsonNode msg) {
         if (!inRoom(m)) return;
+        if (spectator(m) && msg.path("id").asText("").isEmpty()) return;   // 알은 맞지 않는다
         Match match = fighting(m.room);
         if (match == null) return;
         Member caster = m.room.members.get(msg.path("by").asText(""));
@@ -420,7 +426,7 @@ public class PlazaService {
 
     /** 참가: 준비 단계에 놀이터 안에 있는 끄적이의 앱이 보낸다 */
     private void join(Member m) {
-        if (!inRoom(m)) return;
+        if (!inRoom(m) || spectator(m)) return;
         Match match = current(m.room);
         if (match == null || !"ready".equals(match.phase)) return;
         match.players.add(m.id);

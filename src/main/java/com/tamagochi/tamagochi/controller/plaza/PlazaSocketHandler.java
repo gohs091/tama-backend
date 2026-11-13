@@ -58,7 +58,7 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         if (user == null) { reject(peer, "로그인이 필요해요"); return; }
         Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
         if (pet == null || pet.isDead()) { reject(peer, "끄적이를 먼저 그려 주세요"); return; }
-        if (pet.getEvolutionStage() == EvolutionStage.EGG) { reject(peer, "끄적이가 태어나면 광장에 갈 수 있어요"); return; }
+        // 알도 광장에 들어올 수 있다 (초대받은 새 유저가 구경하게). 알은 구경만 한다: 밀어내기 참가·기술은 PlazaService가 막는다
         if (pet.isAdventuring()) { reject(peer, "끄적이가 모험 중이라 광장에 갈 수 없어요"); return; }
 
         // 광장에는 작게 줄인 그림을 보낸다. 원본 주소를 보내면 끄적이마다 1024px 원본(예전 그림은 1MB 안팎)을 받느라
