@@ -35,6 +35,18 @@ public class User {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    /** 끄적이 알림(푸시)에 동의했는지. 앱의 토스 알림 동의 창 결과를 받아 둔다. null이면 아직 묻지 않았다 */
+    @Column(name = "push_agreed")
+    private Boolean pushAgreed;
+
+    public void changePushAgreed(boolean agreed) {
+        this.pushAgreed = agreed;
+    }
+
+    public boolean isPushAgreed() {
+        return Boolean.TRUE.equals(this.pushAgreed);
+    }
+
     public void assignUserCode(String code) {
         if (this.userCode != null) throw new IllegalStateException("유저 코드는 바꿀 수 없어요.");
         this.userCode = code;

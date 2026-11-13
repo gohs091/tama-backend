@@ -124,6 +124,15 @@ public class Tamagotchi {
     @Column(nullable = false)
     private boolean sleeping;
 
+    // 마지막으로 트레이닝(스파링)한 시각. 너무 오래 안 하면 "좀이 쑤신다" 알림을 보낸다. 예전 행은 null (알림 쪽에서 처음 본 때로 채운다)
+    @Column(name = "last_trained_at")
+    private LocalDateTime lastTrainedAt;
+
+    /** 트레이닝 기록이 없던 예전 끄적이: 처음 본 때를 기준으로 삼는다 (켜자마자 "심심해요"가 가지 않게) */
+    public void markTrainingBaseline(LocalDateTime now) {
+        if (this.lastTrainedAt == null) this.lastTrainedAt = now;
+    }
+
     // 자는 모습 이미지를 만든 단계 (비트: BABY 1, CHILD 2, ADULT 4). 하나라도 있으면 값을 낸 것이라 다른 단계는 무료다. 죽어서 새로 시작하면 비운다.
     @Column(name = "sleep_image_mask")
     private Integer sleepImageMask;
@@ -716,6 +725,7 @@ public class Tamagotchi {
         ensureLevel();
         int base = LevelRules.expForTaps(taps, isInEvolutionZone());
         int bonus = win ? Math.round(base * BattleRules.WIN_EXP_BONUS_PERCENT / 100f) : 0;
+        this.lastTrainedAt = LocalDateTime.now();
         this.might = this.might + LevelRules.MIGHT_PER_TRAINING;
         this.weightDg = Math.max(LevelRules.MIN_WEIGHT_DG, this.weightDg - LevelRules.TRAINING_WEIGHT_DG);
         if (win) this.sparWins = wins() + 1; else this.sparLosses = losses() + 1;
