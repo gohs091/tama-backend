@@ -56,6 +56,17 @@ public final class PushRules {
         return h >= 8 && h < 22;
     }
 
+    /**
+     * 템플릿에 조사가 이미 적혀 있을 때("{{petName}}가")의 이름: 받침이 있으면 "이"를 붙여 부르는 이름으로 만든다 ("용" → "용이", "냥냥이" → "냥냥이").
+     * 그러면 "용이가", "용이의"처럼 자연스럽게 이어진다
+     */
+    public static String calling(String name) {
+        String n = name == null || name.isBlank() ? "끄적이" : name.trim();
+        char last = n.charAt(n.length() - 1);
+        boolean batchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
+        return batchim ? n + "이" : n;
+    }
+
     /** 이름 뒤에 조사를 붙인다. 한글 마지막 글자에 받침이 있으면 "이"/"의", 없으면 "가"/"의". 한글이 아니면 받침이 없다고 본다 */
     public static String withParticle(String name, PushKind.Particle particle) {
         String n = name == null || name.isBlank() ? "끄적이" : name.trim();

@@ -48,6 +48,13 @@ public class PushService {
     @Value("${push.code-prefix:doodle-app-}")
     private String codePrefix;
 
+    /**
+     * 템플릿 문구에 조사가 이미 적힌 알림 코드들 ("{{petName}}가 배가 고파요"). 콘솔 캠페인은 고칠 수 없어서 서버가 맞춘다:
+     * 여기 있으면 조사 없이 부르는 이름만("용이", "냥냥이"), 없으면 조사까지 붙여("용이", "냥냥이가") 보낸다
+     */
+    @Value("${push.inline-particle:}")
+    private java.util.Set<String> inlineParticle = java.util.Set.of();
+
     public PushService(TamagotchiRepository tamagotchiRepository, StringRedisTemplate redis, TossPartnerApiClient toss) {
         this.tamagotchiRepository = tamagotchiRepository;
         this.redis = redis;
@@ -100,7 +107,8 @@ public class PushService {
         for (PushKind kind : due) {
             if (!PushRules.allowedAt(kind, now)) continue;
             if (redis.opsForValue().get(episodeKey(pet, kind)) != null) continue;
-            boolean ok = send(anonKey, kind, PushRules.withParticle(pet.getName(), kind.particle), pet);
+            String petName = inlineParticle.contains(kind.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), kind.particle);
+            boolean ok = send(anonKey, kind, petName, pet);
             // 실패해도 잠시 쉰다 (설정이 틀렸을 때 5분마다 두드리지 않게). 같은 일은 다시 보내지 않는다
             redis.opsForValue().set(episodeKey(pet, kind), "1", kind.episode == PushKind.Episode.ONCE_PER_STAGE ? Duration.ofDays(60) : Duration.ofDays(3));
             redis.opsForValue().set(cooldownKey(pet), "1", PushRules.COOLDOWN);

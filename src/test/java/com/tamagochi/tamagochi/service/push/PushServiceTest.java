@@ -42,6 +42,7 @@ class PushServiceTest {
         when(toss.post(any(), any(), anyMap())).thenReturn(new ObjectMapper().readTree("{\"resultType\":\"SUCCESS\"}"));
         push = new PushService(mock(TamagotchiRepository.class), redis, toss);
         ReflectionTestUtils.setField(push, "codePrefix", "doodle-app-");
+        ReflectionTestUtils.setField(push, "inlineParticle", java.util.Set.of());
     }
 
     private static User user(boolean agreed) {
@@ -102,5 +103,16 @@ class PushServiceTest {
         Tamagotchi sick = Tamagotchi.builder().id(7L).name("용").user(u).evolutionStage(EvolutionStage.BABY).hunger(20).strength(10).build();
         assertThat(push.consider(sick, NOON)).isTrue();
         verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-sick", "context", Map.of("petName", "용의"))), anyMap());
+    }
+
+    @Test
+    @DisplayName("템플릿에 조사가 적힌 알림은 부르는 이름만 보낸다 (받침이면 \"이\"를 붙여)")
+    void inlineParticle() {
+        ReflectionTestUtils.setField(push, "inlineParticle", java.util.Set.of("hungry"));
+        User u = user(true);
+        assertThat(push.consider(Tamagotchi.builder().id(7L).name("용").user(u).evolutionStage(EvolutionStage.BABY).hunger(85).strength(80).build(), NOON)).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "용이"))), anyMap());
+        assertThat(PushRules.calling("냥냥이")).isEqualTo("냥냥이");
+        assertThat(PushRules.calling("Rex")).isEqualTo("Rex");
     }
 }
