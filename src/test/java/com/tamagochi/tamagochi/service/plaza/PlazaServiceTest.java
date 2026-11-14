@@ -130,6 +130,31 @@ class PlazaServiceTest {
     }
 
     @Test
+    void 잠자기는_방에_알리고_나중에_온_사람도_자는_것을_보며_걸으면_깬다() {
+        FakePeer a = enter(null), b = enter(null);
+        String aId = a.last("room").path("me").asText();
+        now.addAndGet(1000);
+        plaza.onMessage(a, "{\"t\":\"sleep\",\"on\":true}");
+        assertThat(b.last("sleep").path("id").asText()).isEqualTo(aId);
+        assertThat(b.last("sleep").path("on").asBoolean()).isTrue();
+        assertThat(a.count("sleep")).isZero();                            // 보낸 사람에게는 돌려보내지 않는다
+        now.addAndGet(1000);
+        plaza.onMessage(a, "{\"t\":\"sleep\",\"on\":true}");               // 이미 자고 있으면 다시 알리지 않는다
+        assertThat(b.count("sleep")).isEqualTo(1);
+
+        FakePeer c = enter(null);                                         // 나중에 온 사람은 room에서 자는 것을 안다
+        JsonNode aInC = null;
+        for (JsonNode n : c.last("room").path("members")) if (n.path("id").asText().equals(aId)) aInC = n;
+        assertThat(aInC).isNotNull();
+        assertThat(aInC.path("sleep").asBoolean()).isTrue();
+
+        now.addAndGet(1000);
+        plaza.onMessage(a, "{\"t\":\"move\",\"x\":300,\"y\":300}");        // 걸으면 깬다
+        FakePeer d = enter(null);
+        for (JsonNode n : d.last("room").path("members")) if (n.path("id").asText().equals(aId)) assertThat(n.has("sleep")).isFalse();
+    }
+
+    @Test
     void 그림이_없으면_앱이_보낸_작은_그림을_쓰고_그것도_없으면_들이지_않는다() {
         FakePeer p = new FakePeer("x1");
         plaza.connect(p, new PlazaService.Profile(900L, "닉", "끄적", 1, "BABY", null, "pub", null), null);
