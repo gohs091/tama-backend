@@ -40,8 +40,8 @@ import java.util.function.LongSupplier;
  *   참가자가 둘이 안 되면 혼자 연습(solo): 탈락·우승 없이 기술만 쓸 수 있고 놀이터도 줄지 않는다.
  *   위치는 앱이 가장 잘 알기 때문에 참가(join)·탈락(out)은 앱이 알리는 대로 받는다 (보상이 걸리면 서버가 판정하도록 바꿔야 한다).
  *
- * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, skill{x,y,tx,ty,d}, hit{by,id?}, join, out, ping, leave
- * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?},
+ * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, sleep{on}, skill{x,y,tx,ty,d}, hit{by,id?}, join, out, ping, leave
+ * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?}, sleep{id,on},
  *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, ev{phase,now,start,next,…,players[],alive[],solo,winners[]}, out{id,left}, error{message}
  *              (room에도 ev가 들어 있다)
  * 다녀간 끄적이(ghost): 방을 나간 사람의 기록. 시간 제한 없이 최근 RECENT_MAX명을 서버가 켜져 있는 동안 기억한다.
@@ -51,6 +51,8 @@ import java.util.function.LongSupplier;
  *   서버는 방금 쏜 기술인지, 같은 상대가 두 번 맞지 않는지 확인하고 튕김 세기(kb)와 튕길 때 쓸 난수 씨앗(s)을 붙여 knock으로 방 모두에게 알린다.
  *   kb는 레벨 차이로 조금만 달라진다: 실력(피하기)으로 뒤집을 수 있게 차이를 작게 둔다.
  *   s: 벽에 부딪히면 아무 각도로나 튕기는데(난반사), 방 모두가 같은 씨앗을 써서 같은 길로 튕기는 것을 본다.
+ * 잠자기(sleep): 광장에서 끄적이를 재운다. 걷거나 기술을 쓰거나 기술에 맞으면 깬다(앱들도 move·skill·knock을 보고 각자 깨운다).
+ *   나중에 들어온 사람도 자는 모습을 보도록 members[]의 끄적이에 sleep:true를 붙인다.
  * 좌표는 광장 폭·높이의 천분율(0~1000).
  */
 @Slf4j
@@ -91,6 +93,7 @@ public class PlazaService {
         String facing = "right";
         int x, y;
         long lastMove, lastEmote, lastSkill;
+        boolean sleeping;   // 광장에서 자는 중 (걷거나 기술을 쓰거나 맞으면 깬다)
         Set<String> castHits;   // 마지막으로 쏜 기술에 이미 맞은 끄적이 (같은 기술에 두 번 맞지 않는다). 쏜 적이 없으면 null
         String castTo;          // 예전 앱이 겨눈 상대 (예전 앱은 다녀간 끄적이를 맞혔을 때 id 없이 알린다)
         Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; }
@@ -182,6 +185,7 @@ public class PlazaService {
             case "hello" -> hello(m, msg);
             case "move" -> move(m, msg);
             case "emote" -> emote(m, msg);
+            case "sleep" -> sleep(m, msg);
             case "skill" -> skill(m, msg);
             case "hit" -> hit(m, msg);
             case "join" -> join(m);
@@ -286,6 +290,7 @@ public class PlazaService {
         m.lastMove = now;
         m.x = clamp(msg.path("x").asInt(m.x), 20, 980);
         m.y = clamp(msg.path("y").asInt(m.y), 0, 1000);
+        m.sleeping = false;   // 걸으면 깬다
         broadcast(m.room, event("move").put("id", m.id).put("x", m.x).put("y", m.y), m);
     }
 
@@ -301,6 +306,18 @@ public class PlazaService {
         if (!to.isEmpty() && to.length() <= 16) out.put("to", to);
         if (msg.path("re").asBoolean(false)) out.put("re", true);   // 받은 인사에 답하는 인사 (앱이 "나도 인사"를 다시 묻지 않는다)
         broadcast(m.room, out, m);
+    }
+
+    /** 잠자기·깨기. 인사와 같은 간격 제한을 쓴다. 상태가 그대로면 알리지 않는다 */
+    private void sleep(Member m, JsonNode msg) {
+        if (!inRoom(m)) return;
+        boolean on = msg.path("on").asBoolean(false);
+        if (on == m.sleeping) return;
+        long now = clock.getAsLong();
+        if (now - m.lastEmote < EMOTE_GAP_MS) return;
+        m.lastEmote = now;
+        m.sleeping = on;
+        broadcast(m.room, event("sleep").put("id", m.id).put("on", on), m);
     }
 
     /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다. 정각 밀어내기 동안, 아직 남아 있는 참가자만 쓸 수 있다 (혼자 연습이면 누구나) */
@@ -322,6 +339,7 @@ public class PlazaService {
                 .put("tx", clamp(msg.path("tx").asInt(m.x), 0, 1000)).put("ty", clamp(msg.path("ty").asInt(m.y), 0, 1000));
         int d = msg.path("d").asInt(0);
         if (d != 0) out.put("d", d > 0 ? 1 : -1);
+        m.sleeping = false;   // 기술을 쓰면 깬다
         m.castHits = new HashSet<>();
         m.castTo = null;
         String to = msg.path("to").asText("");
@@ -353,6 +371,8 @@ public class PlazaService {
         Integer level = levelOf(m.room, victim);
         if (level == null) return;
         if (caster.castHits.size() >= MAX_HITS_PER_CAST || !caster.castHits.add(victim)) return;
+        Member hitMember = m.room.members.get(victim);
+        if (hitMember != null) hitMember.sleeping = false;   // 맞으면 깬다
         broadcast(m.room, event("knock").put("id", victim).put("by", caster.id)
                 .put("kb", knockback(caster.profile.level(), level))
                 .put("s", ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE)), null);
@@ -514,6 +534,7 @@ public class PlazaService {
                 .put("level", m.profile.level()).put("stage", m.profile.stage())
                 .put("image", m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
         if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
+        if (m.sleeping) n.put("sleep", true);
         return n;
     }
 
