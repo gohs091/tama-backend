@@ -177,6 +177,37 @@ public class TamagotchiController {
         }
     }
 
+    /**
+     * 지금 단계 그림을 data URL로 돌려준다 (원본 그림과 같은 이유: CDN에 CORS가 없어 앱이 직접 받으면 주소로만 쓸 수 있다).
+     * 폰 저장소가 지워진 앱이 이 그림으로 되살린다. 예전에 S3에 올라간 낙서 그림은 구멍을 채우기 전 그림이라 여기서 채워서 준다
+     * (스케치·완성작은 몸 안 틈이 진짜 배경일 수 있어 그대로 준다). 그림이 없으면 404
+     */
+    @GetMapping("/stage-image/{tossUserId}")
+    public ResponseEntity<?> stageImage(@PathVariable String tossUserId) {
+        User user = userIdentity.resolve(tossUserId);
+        Tamagotchi t = tamagotchiService.getByUserId(user.getId());
+        String url = com.tamagochi.tamagochi.service.storage.PetImageUrls.of(t.getCurrentImageKey());
+        if (url == null) return ResponseEntity.notFound().build();
+        try {
+            java.net.http.HttpResponse<byte[]> res = SKETCH_HTTP.send(
+                    java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).timeout(java.time.Duration.ofSeconds(10)).build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+            if (res.statusCode() != 200) {
+                log.warn("단계 그림을 받지 못했어요 - user={}, status={}", user.getId(), res.statusCode());
+                return ResponseEntity.status(502).build();
+            }
+            boolean png = url.endsWith(".png");
+            boolean baby = t.getEvolutionStage() == com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.EGG
+                    || t.getEvolutionStage() == com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.BABY;
+            byte[] body = png && baby ? com.tamagochi.tamagochi.service.character.SpriteHoles.fillWhite(res.body()) : res.body();
+            return ResponseEntity.ok(java.util.Map.of("imageBase64",
+                    "data:" + (png ? "image/png" : "image/jpeg") + ";base64," + java.util.Base64.getEncoder().encodeToString(body)));
+        } catch (Exception e) {
+            log.warn("단계 그림을 받지 못했어요 - user={}", user.getId(), e);
+            return ResponseEntity.status(502).build();
+        }
+    }
+
     private static final java.net.http.HttpClient SKETCH_HTTP = java.net.http.HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(5)).build();
 
