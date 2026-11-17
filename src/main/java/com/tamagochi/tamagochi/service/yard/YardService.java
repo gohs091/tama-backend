@@ -27,6 +27,7 @@ public class YardService {
     private final TamagotchiRepository tamagotchiRepository;
     private final PointService pointService;
     private final Clock clock;
+    private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService; // 첫걸음 퀘스트 "방에 가구 놓기"
 
     public record PropPrice(String id, int price) {}
 
@@ -64,6 +65,7 @@ public class YardService {
         if (slot != null && !slot.isBlank()) {
             yard.place(slot, propId);
             if (x != null && y != null) yard.moveRoom(slot, x, y);
+            markRoomQuest(user, slot);
         }
         return view(user, yard, 0);
     }
@@ -80,6 +82,7 @@ public class YardService {
         Yard yard = yard(user);
         yard.place(slot, propId);
         if (propId != null && !propId.isBlank() && x != null && y != null) yard.moveRoom(slot, x, y);
+        if (propId != null && !propId.isBlank()) markRoomQuest(user, slot);
         return view(user, yard, 0);
     }
 
@@ -109,6 +112,13 @@ public class YardService {
         Yard yard = yard(user);
         yard.addFruit(amount);
         return view(user, yard, 0);
+    }
+
+    /** 방 자리에 가구를 놓았으면 첫걸음 퀘스트에 적는다 (마당 소품은 세지 않는다) */
+    private void markRoomQuest(User user, String slot) {
+        if (YardCatalog.ROOM_SLOTS.containsKey(slot)) {
+            starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.ROOM);
+        }
     }
 
     private Yard yard(User user) {

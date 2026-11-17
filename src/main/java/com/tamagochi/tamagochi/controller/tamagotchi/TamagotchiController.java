@@ -29,9 +29,12 @@ public class TamagotchiController {
     private final EvolutionPromotionService evolutionPromotionService;
     private final com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
     private final com.tamagochi.tamagochi.service.battle.BattleSkillService battleSkillService;
+    private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService;
 
     /** 진화 달성 보상(스케치 10원·완성작 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
     private void rewardEvolution(User user, Tamagotchi tamagotchi) {
+        // 첫걸음 퀘스트 "진화시키기" (직접 고른 진화·구간 끝 자동 진화 모두 여기를 지난다)
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.EVOLVE);
         try {
             evolutionPromotionService.onEvolved(user, tamagotchi.getEvolutionStage());
         } catch (Exception e) {
