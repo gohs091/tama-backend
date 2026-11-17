@@ -18,6 +18,7 @@ public class RedrawService {
     private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
     private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
+    private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard;
 
     public record Status(int left, int max) {}
 
@@ -29,6 +30,7 @@ public class RedrawService {
     @Transactional
     public Status redraw(User user) {
         Tamagotchi pet = pet(user);
+        expeditionGuard.requireHomeToRestart(user, pet.isDead()); // 탑 원정 중에는 다시 그릴 수 없다 (횟수를 쓰기 전에 확인)
         LocalDate today = LocalDate.now(clock);
         pet.redraw(today);
         return new Status(pet.redrawsLeft(today), Tamagotchi.REDRAWS_PER_DAY);

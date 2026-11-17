@@ -115,6 +115,8 @@ public class TamagotchiService {
     @Transactional
     public Tamagotchi reset(User user) {
         Tamagotchi existing = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
+        // 탑 원정 중에는 새로 시작할 수 없다. 죽었거나 없는 끄적이에게 원정 표시가 남아 있으면 원정만 접고 진행한다
+        expeditionGuard.requireHomeToRestart(user, existing == null || existing.isDead());
         if (existing == null) {
             return create(user, "끄적이", null);
         }
