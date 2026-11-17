@@ -13,14 +13,14 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 잉크 진화 시안 v6: v5에서 스케치만 바꾼다 (한 줄 설명 후보 3개 → 고른 하나를 새로 그린다) */
+/** 잉크 진화 시안 v6: v5에서 스케치(한 줄 설명 후보 3개 → 고른 하나를 새로 그린다)와 생물 낙서(화풍 참고 두 장 + 낙서 + 한 줄 설명)를 바꾼다 */
 class InkStyleV6Test {
 
     private static final DoodleSubject CAT = new DoodleSubject("a cat", "animal", "ears, tail", "고양이", "pointed ears, long whiskers", "quadruped", null);
     private final ObjectMapper om = new ObjectMapper();
 
     @Test
-    @DisplayName("v6은 스케치만 다른 v5다: 낙서·완성작·자는 모습은 v5 방식을 그대로 쓴다")
+    @DisplayName("v6은 v5에서 이어진다: 완성작·자는 모습은 v5 방식을 그대로 쓴다")
     void v6IsV5ExceptSketch() {
         assertThat(LandCatalog.isV6("v6")).isTrue();
         assertThat(LandCatalog.isV5("v6")).isTrue();
@@ -31,6 +31,52 @@ class InkStyleV6Test {
         ImageGenerationService service = new ImageGenerationService(om);
         ReflectionTestUtils.setField(service, "inkStyle", LandCatalog.INK_STYLE_V6);
         assertThat(service.rebornFinal(com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.ADULT)).isTrue();
+    }
+
+    private static final DoodleSubject LOOK_CAT = new DoodleSubject("a cat", "animal", "ears, tail", "고양이", "pointed ears", "quadruped", null,
+            "A simple cat drawn in one bright pink line, with a large round head, triangle ears and big eyes.");
+
+    @Test
+    @DisplayName("낙서 문장: 화풍 참고 두 장과 유저 낙서를 구분해 알리고, 한 줄 설명과 목적(내가 그린 그 아이)을 담는다")
+    void babyPromptCarriesTheLook() {
+        String p = ImagePromptV3.babyV6(LOOK_CAT, "green and brown color scheme");
+
+        assertThat(p).startsWith("Create a 16-bit PIXEL ART sprite");
+        assertThat(p).contains("Images 1 and 2 are STYLE REFERENCES only").contains("Image 3 is a rough doodle a player drew of their pet");
+        assertThat(p).contains("that's the one I drew!").contains("What the player drew: " + LOOK_CAT.look() + " Render it");
+        assertThat(p).contains("Scribbled coloring in the doodle only tells you the color of that part.");
+        // 칠한 색은 그대로, 진영 색은 칠하지 않은 부분에만
+        assertThat(p).contains("Parts the player colored keep the colors the player gave them.")
+                .contains("take their colors from its tribe (green and brown color scheme), never plain white.");
+        assertThat(ImagePromptV3.babyV6(LOOK_CAT, null)).doesNotContain("tribe");
+    }
+
+    @Test
+    @DisplayName("낙서 문장: 오른쪽을 보는 반측면이고, 옆머리에 정면 얼굴을 붙이지 않는다 (두 눈이 다 보이게 같은 말이 없다)")
+    void babyPromptFaceBelongsToTheCreature() {
+        String p = ImagePromptV3.babyV6(LOOK_CAT, "green");
+
+        assertThat(p).contains("a three-quarter side view").contains("toward the RIGHT side of the image").contains("Do NOT draw a front view");
+        assertThat(p).contains("this creature's own face as it really looks from that angle").contains("Never paste a separate front-facing face");
+        assertThat(p).doesNotContain("both eyes").doesNotContain("big round eyes");
+    }
+
+    @Test
+    @DisplayName("새 낙서 방식은 한 줄 설명이 있는 생물 낙서만: 도구·물체, 한 줄이 없는 분석은 예전 방식으로 그린다")
+    void babyLookOnlyForLivingDoodles() {
+        assertThat(ImagePromptV3.babyLookFits(LOOK_CAT)).isTrue();
+        assertThat(ImagePromptV3.babyLookFits(CAT)).isFalse();   // 한 줄 설명 없음
+        assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("a sword", "tool", "a blade", "칼", null, "other", "ears", "A sword."))).isFalse();
+        assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("a train", "object", "wheels", "기차", null, "vehicle", null, "A train."))).isFalse();
+        assertThat(ImagePromptV3.babyLookFits(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("낙서 화풍 참고 그림 두 장이 서버에 들어 있다")
+    void babyStyleRefsExist() {
+        assertThat(ImageGenerationService.styleRef("baby-style", 1)).isNotEmpty();
+        assertThat(ImageGenerationService.styleRef("baby-style", 2)).isNotEmpty();
+        assertThat(ImageGenerationService.sketchStyle(1)).isNotEmpty();
     }
 
     @Test
