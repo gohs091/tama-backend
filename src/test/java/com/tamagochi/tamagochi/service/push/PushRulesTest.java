@@ -31,8 +31,8 @@ class PushRulesTest {
         assertThat(PushRules.applicable(pet(20, 80, 0, 3, 6, false, false, NOON), NOON)).containsExactly(PushKind.HUNGRY);
         assertThat(PushRules.applicable(pet(21, 80, 0, 3, 6, false, false, NOON), NOON)).isEmpty();
         assertThat(PushRules.applicable(pet(80, 20, 0, 3, 6, false, false, NOON), NOON)).containsExactly(PushKind.SICK);
-        assertThat(PushRules.applicable(pet(80, 80, 9, 3, 6, false, false, NOON), NOON)).containsExactly(PushKind.POOP);
-        assertThat(PushRules.applicable(pet(80, 80, 8, 3, 6, false, false, NOON), NOON)).isEmpty();
+        assertThat(PushRules.applicable(pet(80, 80, 5, 3, 6, false, false, NOON), NOON)).containsExactly(PushKind.POOP); // 지저분함 디버프가 시작되는 개수
+        assertThat(PushRules.applicable(pet(80, 80, 4, 3, 6, false, false, NOON), NOON)).isEmpty();
         assertThat(PushRules.applicable(pet(80, 80, 0, 5, 6, false, false, NOON), NOON)).containsExactly(PushKind.EVO_SOON);
         assertThat(PushRules.applicable(pet(80, 80, 0, 6, 6, true, false, NOON), NOON)).containsExactly(PushKind.EVO_READY);
         assertThat(PushRules.applicable(pet(80, 80, 0, 3, 6, false, true, NOON), NOON)).containsExactly(PushKind.SLEEPY);

@@ -36,7 +36,7 @@ public class TamagotchiScheduler {
     @Value("${tamagotchi.vitals.max-tick-gap-minutes:5}")
     private int maxTickGapMinutes;
 
-    // 1분마다 포만감·파워 소진, 똥 증가, 사망 판정
+    // 1분마다 포만감·파워 소진, 똥 증가, 사망 판정 (사망은 완성작 전에만. 완성작은 디버프만: DebuffRules)
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void tick() {

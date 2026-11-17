@@ -145,6 +145,30 @@ class TowerServiceTest extends TowerLunchTestSupport {
     }
 
     @Test
+    @DisplayName("완성작 전(낙서) 끄적이가 탑에서 포만감을 다 써도 굶주림 타이머가 시작되지 않고 떠나지 않는다 (하한 포만감 1)")
+    void preAdultPetSpendingAllSatietyInTowerDoesNotStartStarvation() {
+        User user = newUser(0, 70);
+        assertThat(pet(user).getEvolutionStage()).isEqualTo(com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.BABY);
+        towerService.depart(user, null);
+        towerService.clearMap(user);                       // 70 → 35
+        TowerService.View v = towerService.clearMap(user); // 35 → 1 (하한), 가방이 비어 원정 종료
+        assertThat(v.satiety()).isEqualTo(TowerRules.SATIETY_FLOOR);
+        assertThat(v.result().expeditionEnded()).isTrue();
+
+        // 스케줄러 틱이 돌아도(운영 규칙: 포만감 0으로 6시간이면 떠남) 탑 소모만으로는 타이머가 켜지지 않는다
+        var rule = new com.tamagochi.tamagochi.domain.tamagotchi.VitalsRule(8, 16, java.time.Duration.ofHours(6), 60, 13,
+                java.time.Duration.ofMinutes(5));
+        var pet = pet(user);
+        java.time.LocalDateTime t = java.time.LocalDateTime.of(2026, 11, 18, 10, 0);
+        pet.applyTime(t, rule);
+        pet.applyTime(t.plusMinutes(4), rule);
+        pet.applyTime(t.plusMinutes(7), rule); // 포만감 1이 줄기(8분) 전
+        assertThat(pet.getHunger()).isEqualTo(99);
+        assertThat(pet.getHungryStartedAt()).isNull();
+        assertThat(pet.isDead()).isFalse();
+    }
+
+    @Test
     @DisplayName("하루에 여러 층을 이어서 처음 돌파할 수 있고, 여러 번 다시 떠날 수 있다 (횟수 제한 없음)")
     void manyFloorsInOneDay() {
         User user = newUser(0, 100);

@@ -15,8 +15,9 @@ public final class TowerRules {
     public static final int MAPS_PER_FLOOR = 3;
 
     /**
-     * 탑은 포만감을 이 아래로 내리지 않는다. 포만감 0(hunger 100)이 되면 기존 굶주림 타이머(hungryStartedAt → 일정 시간 뒤 사망)가
-     * 돌기 시작하므로, 탑 소모만으로 그 타이머가 시작되지 않게 1을 남긴다
+     * 탑은 포만감을 이 아래로 내리지 않는다. 포만감 0(hunger 100)이 되면 굶주림 타이머(hungryStartedAt)가 돌기 시작하고,
+     * 완성작 전(낙서·스케치)은 그 상태로 deathAfterEmpty(6시간)가 지나면 떠난다 (완성작은 떠나지 않고 디버프만 받는다).
+     * 탑 소모만으로 그 타이머가 시작되지 않게 1을 남긴다. 그 뒤 시간이 흘러 0이 되는 것은 집에서와 같은 기존 규칙이다
      */
     public static final int SATIETY_FLOOR = 1;
 

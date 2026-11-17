@@ -12,10 +12,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TamagotchiVitalsTest {
 
-    // 포만감 6분/1, 파워 12분/1, 0인 채 4시간이면 사망, 똥 60분/1, 8개면 사망
+    // 포만감 6분/1, 파워 12분/1, 0인 채 4시간이면 사망, 똥 60분/1, 8개면 사망 (사망은 완성작 전에만)
     private static final VitalsRule RULE = new VitalsRule(6, 12, Duration.ofHours(4), 60, 8, Duration.ofDays(365));
     // 서버 중단 감지: 틱 간격이 5분을 넘으면 그 시간은 흐르지 않은 것으로 본다
     private static final VitalsRule STRICT = new VitalsRule(6, 12, Duration.ofHours(4), 60, 8, Duration.ofMinutes(5));
+    // 운영 설정 (application.yml): 포만감 8분/1, 파워 16분/1, 0인 채 6시간이면 사망, 똥 60분/1, 13개면 사망
+    private static final VitalsRule PROD = new VitalsRule(8, 16, Duration.ofHours(6), 60, 13, Duration.ofDays(365));
     private static final LocalDateTime T0 = LocalDateTime.of(2026, 10, 23, 12, 0);
 
     private Tamagotchi pet;
@@ -27,8 +29,20 @@ class TamagotchiVitalsTest {
     }
 
     private static Tamagotchi baby(int hunger, int strength) {
+        return pet(EvolutionStage.BABY, hunger, strength);
+    }
+
+    private static Tamagotchi child(int hunger, int strength) {
+        return pet(EvolutionStage.CHILD, hunger, strength);
+    }
+
+    private static Tamagotchi adult(int hunger, int strength) {
+        return pet(EvolutionStage.ADULT, hunger, strength);
+    }
+
+    private static Tamagotchi pet(EvolutionStage stage, int hunger, int strength) {
         return Tamagotchi.builder()
-                .evolutionStage(EvolutionStage.BABY)
+                .evolutionStage(stage)
                 .hunger(hunger)
                 .strength(strength)
                 .build();
@@ -169,16 +183,84 @@ class TamagotchiVitalsTest {
         assertThat(p.getHunger()).isEqualTo(100);
         p.applyTime(after(6 + 239), RULE);
         assertThat(p.isDead()).isFalse();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.HUNGRY); // 완성작 전에도 디버프는 걸린다
     }
 
     @Test
-    @DisplayName("포만감이 0인 채 4시간이 지나면 사망한다")
+    @DisplayName("낙서·스케치는 포만감이 0인 채 4시간이 지나면 사망한다")
     void starving_diesAfterFourHours() {
-        Tamagotchi p = baby(99, 100);
-        p.applyTime(T0, RULE);
-        p.applyTime(after(6), RULE);
-        p.applyTime(after(6 + 240), RULE);
+        for (Tamagotchi p : new Tamagotchi[]{baby(99, 100), child(99, 100)}) {
+            p.applyTime(T0, RULE);
+            p.applyTime(after(6), RULE);
+            p.applyTime(after(6 + 240), RULE);
+            assertThat(p.isDead()).isTrue();
+            assertThat(p.debuffs()).isEmpty();             // 떠난 끄적이는 디버프가 없다
+        }
+    }
+
+    @Test
+    @DisplayName("운영 설정: 스케치는 포만감 0이 6시간 미만이면 살아 있고, 6시간이 되면 사망한다")
+    void prod_starving_sixHours() {
+        Tamagotchi p = child(99, 100);
+        p.applyTime(T0, PROD);
+        p.applyTime(after(8), PROD);                       // hunger 100
+        assertThat(p.getHunger()).isEqualTo(100);
+        p.applyTime(after(8 + 359), PROD);
+        assertThat(p.isDead()).isFalse();
+        p.applyTime(after(8 + 360), PROD);
         assertThat(p.isDead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("운영 설정: 낙서는 파워 0이 6시간 미만이면 살아 있고, 6시간이 되면 사망한다")
+    void prod_exhausted_sixHours() {
+        Tamagotchi p = baby(0, 1);
+        p.applyTime(T0, PROD);
+        p.applyTime(after(16), PROD);                      // strength 0
+        assertThat(p.getStrength()).isZero();
+        p.applyTime(after(16 + 359), PROD);
+        assertThat(p.isDead()).isFalse();
+        p.applyTime(after(16 + 360), PROD);
+        assertThat(p.isDead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("운영 설정: 스케치는 응가 12개까지 살아 있고, 13개가 되면 사망한다")
+    void prod_poop_thirteen() {
+        Tamagotchi p = child(0, 100);
+        p.applyTime(T0, PROD);
+        p.applyTime(after(12 * 60), PROD);
+        assertThat(p.getPoopCount()).isEqualTo(12);
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.DIRTY);
+        p.applyTime(after(13 * 60), PROD);
+        assertThat(p.getPoopCount()).isEqualTo(13);
+        assertThat(p.isDead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("완성작은 포만감이 0인 채 사흘이 지나도 떠나지 않고, 배고픔 디버프만 받는다")
+    void adult_starving_neverDies_onlyHungryDebuff() {
+        Tamagotchi p = adult(99, 100);
+        p.applyTime(T0, RULE);
+        p.applyTime(after(6), RULE);                       // hunger 100 → 굶주림 시작
+        assertThat(p.getHunger()).isEqualTo(100);
+        assertThat(p.getHungryStartedAt()).isEqualTo(after(6)); // 얼마나 굶었는지는 계속 기록한다
+        for (long h = 1; h <= 72; h++) p.applyTime(after(6 + h * 60), RULE); // 사흘 동안 굶는다
+        assertThat(p.getHunger()).isEqualTo(100);          // 100에서 멈춘다
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.getDeadAt()).isNull();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.HUNGRY);
+    }
+
+    @Test
+    @DisplayName("배고픔 디버프는 고기를 먹여 포만감이 20을 넘으면 바로 풀린다")
+    void feeding_clearsHungryDebuff() {
+        Tamagotchi p = baby(81, 100);
+        assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.HUNGRY);
+        p.feed();                                          // hunger 78
+        assertThat(p.debuffs()).isEmpty();
+        assertThat(p.getHungryStartedAt()).isNull();
     }
 
     @Test
@@ -196,7 +278,7 @@ class TamagotchiVitalsTest {
     }
 
     @Test
-    @DisplayName("파워가 0인 채 4시간이 지나면 사망한다")
+    @DisplayName("낙서는 파워가 0인 채 4시간이 지나면 사망한다")
     void exhausted_diesAfterFourHours() {
         Tamagotchi p = baby(0, 1);
         p.applyTime(T0, RULE);
@@ -206,6 +288,30 @@ class TamagotchiVitalsTest {
         assertThat(p.isDead()).isFalse();
         p.applyTime(after(12 + 240), RULE);
         assertThat(p.isDead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("완성작은 파워가 0인 채 사흘이 지나도 떠나지 않고, 기운 없음 디버프만 받는다")
+    void adult_exhausted_neverDies_onlyWeakDebuff() {
+        Tamagotchi p = adult(0, 1);
+        p.applyTime(T0, RULE);
+        p.applyTime(after(12), RULE);                      // strength 0
+        assertThat(p.getStrength()).isZero();
+        for (long h = 1; h <= 72; h++) p.applyTime(after(12 + h * 60), RULE);
+        assertThat(p.getStrength()).isZero();              // 0에서 멈춘다
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.WEAK);
+    }
+
+    @Test
+    @DisplayName("기운 없음 디버프는 알약으로 파워가 20 이상이 되면 바로 풀린다")
+    void pill_clearsWeakDebuff() {
+        Tamagotchi p = baby(0, 0);
+        assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.WEAK);
+        p.addStrength(19);
+        assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.WEAK);
+        p.addStrength(1);
+        assertThat(p.debuffs()).isEmpty();
     }
 
     @Test
@@ -246,15 +352,16 @@ class TamagotchiVitalsTest {
     }
 
     @Test
-    @DisplayName("똥이 최대치(8개)에 도달하면 사망한다")
+    @DisplayName("낙서·스케치는 똥이 최대치(8개)에 도달하면 사망한다")
     void poop_fullMeansDeath() {
-        Tamagotchi p = baby(0, 100);
-        p.applyTime(T0, RULE);
-        p.applyTime(after(7 * 60), RULE);
-        assertThat(p.getPoopCount()).isEqualTo(7);
-        assertThat(p.isDead()).isFalse();
-        p.applyTime(after(8 * 60), RULE);
-        assertThat(p.isDead()).isTrue();
+        for (Tamagotchi p : new Tamagotchi[]{baby(0, 100), child(0, 100)}) {
+            p.applyTime(T0, RULE);
+            p.applyTime(after(7 * 60), RULE);
+            assertThat(p.getPoopCount()).isEqualTo(7);
+            assertThat(p.isDead()).isFalse();
+            p.applyTime(after(8 * 60), RULE);
+            assertThat(p.isDead()).isTrue();
+        }
     }
 
     @Test
@@ -270,11 +377,114 @@ class TamagotchiVitalsTest {
     }
 
     @Test
-    @DisplayName("reset하면 부활하고 초기값으로 돌아간다")
-    void reset_revives() {
-        Tamagotchi p = baby(0, 100);
+    @DisplayName("완성작은 똥이 최대치(8개)까지 쌓여도 떠나지 않고, 거기서 더 늘지 않는다")
+    void adult_poop_full_neverDies_andStopsAtMax() {
+        Tamagotchi p = adult(0, 100);
         p.applyTime(T0, RULE);
         p.applyTime(after(8 * 60), RULE);
+        assertThat(p.getPoopCount()).isEqualTo(8);
+        assertThat(p.isDead()).isFalse();
+        p.applyTime(after(40 * 60), RULE);
+        assertThat(p.getPoopCount()).isEqualTo(8);         // 상한에서 멈춘다
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.DIRTY);
+    }
+
+    @Test
+    @DisplayName("똥이 5개 쌓이면 지저분함 디버프가 켜지고, 청소하면 바로 풀린다")
+    void dirtyDebuff_onAtFive_clearedByCleaning() {
+        Tamagotchi p = baby(0, 100);
+        p.applyTime(T0, RULE);
+        p.applyTime(after(4 * 60), RULE);
+        assertThat(p.debuffs()).isEmpty();                 // 4개까지는 괜찮다
+        p.applyTime(after(5 * 60), RULE);
+        assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.DIRTY);
+        p.cleanPoop();
+        assertThat(p.debuffs()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("지저분하면 트레이닝 경험치가 절반(올림)만 들어오고 스파링 컨디션이 20 낮아진다. 청소하면 돌아온다")
+    void dirtyDebuff_halvesTrainingExp_andLowersCondition() {
+        Tamagotchi clean = baby(20, 80);
+        Tamagotchi dirty = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(80)
+                .poopCount(DebuffRules.DIRTY_AT).build();
+        assertThat(clean.train(40, false).exp()).isEqualTo(15);  // 별 3개 × 5
+        assertThat(dirty.train(40, false).exp()).isEqualTo(8);   // 15의 절반, 올림
+        assertThat(dirty.pendingExp()).isEqualTo(8);             // 광고로 받는 몫도 같다
+        assertThat(clean.sparCondition()).isEqualTo(80);
+        assertThat(dirty.sparCondition()).isEqualTo(60);
+
+        dirty.cleanPoop();
+        assertThat(dirty.sparCondition()).isEqualTo(80);
+        assertThat(dirty.train(40, false).exp()).isEqualTo(15);
+    }
+
+    @Test
+    @DisplayName("낙서는 셋 다 최악인 채로 스케줄러가 1분마다 일주일을 돌면 사망한다")
+    void baby_worstCase_weekOfTicks_dies() {
+        Tamagotchi p = baby(100, 0);
+        p.applyTime(T0, STRICT);
+        for (long m = 1; m <= 7 * 24 * 60; m++) p.applyTime(after(m), STRICT);
+        assertThat(p.isDead()).isTrue();
+        assertThat(p.getDeadAt()).isEqualTo(after(240)); // 포만감·파워 0인 채 4시간
+    }
+
+    @Test
+    @DisplayName("완성작이 되기 전부터 굶주림 타이머가 돌고 있었어도 완성작이 된 뒤에는 떠나지 않는다")
+    void adult_ignoresTimerStartedBeforeEvolving() {
+        Tamagotchi p = child(99, 100);
+        p.applyTime(T0, RULE);
+        p.applyTime(after(6), RULE);                       // 굶주림 시작
+        p.applyTime(after(6 + 180), RULE);                 // 굶은 채 3시간 (아직 살아 있다)
+        assertThat(p.isDead()).isFalse();
+        p.evolve(EvolutionStage.ADULT);
+        p.cleanPoop();
+        p.applyTime(after(6 + 240), RULE);                 // 스케치였다면 떠났을 시각
+        p.applyTime(after(6 + 600), RULE);
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.HUNGRY);
+    }
+
+    @Test
+    @DisplayName("완성작은 셋 다 최악인 채로 스케줄러가 1분마다 일주일을 돌아도 dead=false, 디버프 셋이 모두 켜진다")
+    void adult_worstCase_weekOfTicks_neverDies() {
+        Tamagotchi p = adult(100, 0);
+        p.applyTime(T0, STRICT);
+        for (long m = 1; m <= 7 * 24 * 60; m++) p.applyTime(after(m), STRICT);
+        assertThat(p.isDead()).isFalse();
+        assertThat(p.getDeadAt()).isNull();
+        assertThat(p.getHunger()).isEqualTo(100);
+        assertThat(p.getStrength()).isZero();
+        assertThat(p.getPoopCount()).isEqualTo(8);
+        assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.HUNGRY, DebuffRules.Debuff.WEAK, DebuffRules.Debuff.DIRTY);
+    }
+
+    @Test
+    @DisplayName("알은 디버프가 없다")
+    void egg_hasNoDebuffs() {
+        Tamagotchi egg = Tamagotchi.builder().evolutionStage(EvolutionStage.EGG).hunger(100).strength(0).poopCount(8).build();
+        assertThat(egg.debuffs()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이미 떠난 끄적이는 그대로 멈춰 있다 (자동 부활 없음, 데이터를 건드리지 않는다)")
+    void legacyDead_staysFrozen() {
+        Tamagotchi p = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(30).strength(70)
+                .deadAt(T0.minusDays(1)).build();
+        p.applyTime(T0, RULE);
+        p.applyTime(after(20 * 60), RULE);
+        assertThat(p.isDead()).isTrue();
+        assertThat(p.getHunger()).isEqualTo(30);
+        assertThat(p.getPoopCount()).isZero();
+        assertThat(p.debuffs()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("예전에 떠난 끄적이도 reset하면 새 알로 시작하고 초기값으로 돌아간다")
+    void reset_revives() {
+        Tamagotchi p = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(0).strength(100)
+                .poopCount(8).deadAt(T0).build();
         p.reset();
         assertThat(p.isDead()).isFalse();
         assertThat(p.getHunger()).isEqualTo(Tamagotchi.INITIAL_HUNGER);

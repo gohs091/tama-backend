@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.service.tamagotchi;
 
 import com.tamagochi.tamagochi.domain.tamagotchi.BattleRules;
+import com.tamagochi.tamagochi.domain.tamagotchi.DebuffRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
@@ -35,6 +36,7 @@ public class TamagotchiService {
     private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
     private final com.tamagochi.tamagochi.service.farm.FarmService farmService; // 농장 오늘의 퀘스트에 먹이기·트레이닝을 센다
     private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard; // 탑 원정 중에는 집에서 포만감을 채울 수 없다
+    private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService; // 첫걸음 퀘스트: 처음 해 본 것을 적는다
 
     /**
      * 한 판만큼 회복: 고기·알약을 각각 최대 4개(+12)까지 한꺼번에 먹이고, 실제로 먹인 만큼만 잉크를 받는다(최대 40).
@@ -54,6 +56,7 @@ public class TamagotchiService {
         tamagotchi.recover(plan);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.MEAT, plan.meats());
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.PILL, plan.pills());
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.CARE);
         log.info("한 판만큼 회복 - user={}, 고기 {} · 알약 {}, 잉크 {}", user.getId(), plan.meats(), plan.pills(), plan.items() * ITEM_COST);
         return tamagotchi;
     }
@@ -79,6 +82,7 @@ public class TamagotchiService {
         // 2. 먹이주기
         tamagotchi.feed();
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.MEAT, 1);
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.CARE);
     }
 
     @Transactional
@@ -192,6 +196,7 @@ public class TamagotchiService {
         requireHome(tamagotchi);
 
         tamagotchi.sleep(LocalDateTime.now()); // 언제든 잠든다. 피로만큼 자고 혼자 깬다
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.SLEEP);
     }
 
     @Transactional
@@ -218,6 +223,7 @@ public class TamagotchiService {
         pointService.usePoint(user, 3, idempotencyKey);
 
         tamagotchi.cleanPoop();
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.CLEAN);
         log.info("청소 완료 - tamagotchi: {}", tamagotchi.getName());
     }
 
@@ -257,10 +263,10 @@ public class TamagotchiService {
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태에서는 트레이닝할 수 없어요.");
         }
-        if (tamagotchi.getHunger() >= 80) {
+        if (DebuffRules.hungry(tamagotchi.getHunger())) {
             throw new IllegalStateException("배가 너무 고파서 트레이닝할 수 없어요.");
         }
-        if (tamagotchi.getStrength() < 20) {
+        if (DebuffRules.weak(tamagotchi.getStrength())) {
             throw new IllegalStateException("스트렝스가 부족해서 트레이닝할 수 없어요.");
         }
     }
@@ -277,7 +283,7 @@ public class TamagotchiService {
         // 스파링 판정: 컨디션은 트레이닝 소모 전 값. 상대와 운은 시작할 때 정해 둔 값
         int taps = Math.min(Math.max(clickCount, 0), MAX_TRAINING_CLICKS);
         if (!session.hasEnemy()) session.setEnemy(BattleRules.randomEnemy(tamagotchi.level(), tamagotchi.might()));
-        int condition = ((100 - tamagotchi.getHunger()) + tamagotchi.getStrength()) / 2;
+        int condition = tamagotchi.sparCondition(); // 지저분하면 깎인다 (DebuffRules)
         double myPower = BattleRules.power(tamagotchi.might(), taps, condition, session.getMyLuck());
         double enemyPower = BattleRules.power(session.getEnemyMight(), session.getEnemyTaps(), session.getEnemyCondition(), session.getEnemyLuck());
         boolean win = myPower > enemyPower;
@@ -286,6 +292,7 @@ public class TamagotchiService {
         tamagotchi.consumeForTraining(TRAINING_COST, TRAINING_COST);
         tamagotchi.addFatigue(Tamagotchi.FATIGUE_TRAINING);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.TRAIN, 1);
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.TRAIN);
 
         // 리워드 계산 (진화 단계별 + 클릭 수 기반)
         int baseReward = switch (tamagotchi.getEvolutionStage()) {
@@ -374,6 +381,7 @@ public class TamagotchiService {
         // 스트렝스 증가
         tamagotchi.addStrength(Tamagotchi.PILL_AMOUNT);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.PILL, 1);
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.CARE);
 
         log.info("알약 먹기 완료 - tamagotchi: {}, strength: {}",
                 tamagotchi.getName(), tamagotchi.getStrength());
