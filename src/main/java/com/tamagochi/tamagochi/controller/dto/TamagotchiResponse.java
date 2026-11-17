@@ -28,8 +28,8 @@ public class TamagotchiResponse {
     private int sleepyStartHour;    // 졸린 시간대 시작 시각(0~23시, KST). 여기서부터 8시간 졸리다
     private boolean bathing;       // 잉크통 충전 중 (돌보기·훈련 불가)
     private boolean adventuring;    // 끄적랜드 모험 중 (돌보기·훈련 불가)
-    private boolean dead;           // 예전 규칙으로 떠난 끄적이만 true. 이제 새로 true가 되지 않는다 (2026-11-17)
-    private java.util.List<String> debuffs; // 지금 걸린 디버프: HUNGRY(포만감 20 이하) | WEAK(파워 20 미만) | DIRTY(응가 5개 이상). 없으면 빈 목록
+    private boolean dead;           // 떠난 끄적이. 완성작 전(낙서·스케치)에만 새로 true가 된다. 완성작은 떠나지 않는다 (2026-11-17)
+    private java.util.List<String> debuffs; // 지금 걸린 디버프 (모든 단계): HUNGRY(포만감 20 이하) | WEAK(파워 20 미만) | DIRTY(응가 5개 이상). 없거나 알·떠난 끄적이면 빈 목록
     private int feedCount;
     private int evoGauge;          // 업데이트 전 앱용: 진화 가능 구간까지의 진행도를 예전 게이지 칸 수로 바꾼 값
     private int evoGaugeMax;       // 0이면 진화할 수 없는 단계(알·완성작)

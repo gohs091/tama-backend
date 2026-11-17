@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 돌봄이 모자랄 때의 불이익(디버프) 규칙. 끄적이는 배고픔·파워·응가로 떠나지 않고, 대신 여기 적힌 불이익만 받는다 (2026-11-17).
+ * 돌봄이 모자랄 때의 불이익(디버프) 규칙 (2026-11-17). 디버프는 모든 단계에 걸린다.
+ * 완성작(ADULT)은 배고픔·파워·응가로 떠나지 않고 여기 적힌 불이익만 받는다.
+ * 완성작 전(낙서·스케치)에는 디버프에 더해 예전처럼 떠날 수 있다: 포만감 0이나 파워 0이 VitalsRule.deathAfterEmpty만큼 이어지거나
+ * 응가가 VitalsRule.maxPoop 이상이면 떠난다 (Tamagotchi.checkDeath).
  * 모두 고정 규칙이고(운 없음), 먹이기·알약·청소를 하면 바로 풀린다. 수치는 여기서만 고친다.
  *
  * <ul>
@@ -13,7 +16,7 @@ import java.util.List;
  *   <li>WEAK (strength &lt; {@value #WEAK_BELOW}): 트레이닝을 할 수 없다. 무료 판을 다 쓴 친구 배틀도 파워가 모자라면 할 수 없다.
  *       알약으로 파워가 20 이상이 되면 풀린다.</li>
  *   <li>DIRTY (응가 ≥ {@value #DIRTY_AT}개): 트레이닝 경험치가 {@value #DIRTY_EXP_PERCENT}%만 들어오고(올림),
- *       스파링 컨디션이 {@value #DIRTY_CONDITION_PENALTY} 낮아진다. 응가는 VitalsRule.maxPoop에서 더 늘지 않는다. 청소하면 풀린다.</li>
+ *       스파링 컨디션이 {@value #DIRTY_CONDITION_PENALTY} 낮아진다. 완성작의 응가는 VitalsRule.maxPoop에서 더 늘지 않는다. 청소하면 풀린다.</li>
  * </ul>
  * 그 밖에 포만감·파워가 낮을수록 스파링 컨디션(전투력 보정 0.90~1.10)이 내려가는 것은 전과 같다 (BattleRules.conditionMul).
  */

@@ -19,8 +19,9 @@ tamagotchi:
   vitals:
     satiety-minutes-per-point: 8    # 포만감 1 감소에 걸리는 분 (8분 → 약 13시간에 100→0)
     strength-minutes-per-point: 16  # 파워 1 감소에 걸리는 분 (16분 → 약 27시간에 100→0)
+    death-after-empty-hours: 6      # 포만감/파워가 0인 채 이 시간이 지나면 사망 (완성작 전에만. 완성작은 디버프만)
     poop-interval-minutes: 60       # 똥이 1개 늘어나는 간격
-    max-poop: 13                    # 똥은 이 개수에서 더 늘지 않는다 (끄적이는 떠나지 않는다. 불이익은 DebuffRules)
+    max-poop: 13                    # 이 개수 이상이면 사망 (완성작 전에만. 완성작은 여기서 더 늘지 않을 뿐이다)
     max-tick-gap-minutes: 5         # 틱 간격이 이보다 길면 서버 중단으로 보고 그 시간은 반영하지 않음
   auth:
     enabled: true                   # 운영은 로그인 토큰 필수
