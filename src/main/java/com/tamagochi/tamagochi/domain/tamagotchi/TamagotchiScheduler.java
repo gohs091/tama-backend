@@ -24,9 +24,6 @@ public class TamagotchiScheduler {
     @Value("${tamagotchi.vitals.strength-minutes-per-point:8}")
     private int strengthMinutesPerPoint;
 
-    @Value("${tamagotchi.vitals.death-after-empty-hours:6}")
-    private int deathAfterEmptyHours;
-
     @Value("${tamagotchi.vitals.poop-interval-minutes:60}")
     private int poopIntervalMinutes;
 
@@ -36,23 +33,16 @@ public class TamagotchiScheduler {
     @Value("${tamagotchi.vitals.max-tick-gap-minutes:5}")
     private int maxTickGapMinutes;
 
-    // 1분마다 포만감·파워 소진, 똥 증가, 사망 판정
+    // 1분마다 포만감·파워 소진, 똥 증가 (끄적이는 떠나지 않는다. 불이익은 DebuffRules)
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void tick() {
         VitalsRule rule = new VitalsRule(satietyMinutesPerPoint, strengthMinutesPerPoint,
-                Duration.ofHours(deathAfterEmptyHours), poopIntervalMinutes, maxPoop,
-                Duration.ofMinutes(maxTickGapMinutes));
+                poopIntervalMinutes, maxPoop, Duration.ofMinutes(maxTickGapMinutes));
         LocalDateTime now = LocalDateTime.now();
 
         for (Tamagotchi tamagotchi : tamagotchiRepository.findAllByStatus(com.tamagochi.tamagochi.domain.tamagotchi.PetStatus.ACTIVE)) {
-            boolean wasDead = tamagotchi.isDead();
             tamagotchi.applyTime(now, rule);
-            if (!wasDead && tamagotchi.isDead()) {
-                log.info("사망 - tamagotchi: {}, hunger: {}, strength: {}, poop: {}",
-                        tamagotchi.getName(), tamagotchi.getHunger(),
-                        tamagotchi.getStrength(), tamagotchi.getPoopCount());
-            }
         }
     }
 }

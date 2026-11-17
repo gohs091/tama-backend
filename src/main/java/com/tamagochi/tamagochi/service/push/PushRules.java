@@ -14,7 +14,7 @@ public final class PushRules {
     public static final int HUNGRY_SATIATION = 20;
     /** 파워가 이 이하면 아프다 */
     public static final int SICK_STRENGTH = 20;
-    /** 응가가 이만큼 쌓이면 알린다 (13개면 떠난다: 한 시간에 하나씩 쌓이니 4시간쯤 남는다) */
+    /** 응가가 이만큼 쌓이면 알린다 (쌓여도 떠나지 않는다. 5개부터 지저분함 디버프: DebuffRules) */
     public static final int POOP_WARN = 9;
     /** 트레이닝을 이만큼 안 하면 심심해한다 */
     public static final Duration BORED_AFTER = Duration.ofHours(24);

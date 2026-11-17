@@ -75,7 +75,7 @@ public class Tamagotchi {
     private int strength; // 0~100 (트레이닝 가능 조건)
 
     @Column(nullable = false)
-    private int poopCount; // VitalsRule.maxPoop 이상이면 사망
+    private int poopCount; // VitalsRule.maxPoop에서 더 늘지 않는다. 많이 쌓이면 지저분함 디버프 (DebuffRules)
 
     @Column(nullable = false)
     private int feedCount;
@@ -113,11 +113,11 @@ public class Tamagotchi {
 
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
-    private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
-    private LocalDateTime strengthEmptySince; // 파워가 0이 된 시각 (사망 판정용)
+    private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (얼마나 굶었는지 기록만 한다. 떠나지 않는다)
+    private LocalDateTime strengthEmptySince; // 파워가 0이 된 시각 (기록만 한다. 떠나지 않는다)
     private LocalDateTime lastHungerTickAt; // 포만감 감소 기준 시각
     private LocalDateTime lastStrengthTickAt; // 파워 감소 기준 시각
-    private LocalDateTime deadAt; // 사망 시각 (null이면 생존)
+    private LocalDateTime deadAt; // 예전 규칙으로 떠난 시각. 이제 새로 채워지지 않는다 (2026-11-17, 예전 행에만 남아 있다)
     private LocalDateTime lastVitalsTickAt; // 마지막으로 시간 경과를 반영한 시각 (서버 중단 감지용)
     private LocalDateTime sleptAt; // 마지막으로 불을 끈(잠든) 시각
 
@@ -543,8 +543,20 @@ public class Tamagotchi {
         };
     }
 
+    /** 예전 규칙(배고픔·파워·응가)으로 떠난 끄적이인가. 이제 새로 떠나는 일은 없어서, 예전에 떠난 행에서만 true다 */
     public boolean isDead() {
         return this.deadAt != null;
+    }
+
+    /** 지금 걸린 디버프 (DebuffRules). 알과 예전에 떠난 끄적이는 없다 */
+    public java.util.List<DebuffRules.Debuff> debuffs() {
+        if (isDead() || this.evolutionStage == EvolutionStage.EGG) return java.util.List.of();
+        return DebuffRules.of(this.hunger, this.strength, this.poopCount);
+    }
+
+    /** 스파링 컨디션 (0~100): 포만감·파워의 평균, 지저분하면 깎인다 */
+    public int sparCondition() {
+        return DebuffRules.sparCondition(this.hunger, this.strength, this.poopCount);
     }
 
     /** 포만감이 가득(100)이면 더 먹지 않는다 (잉크를 쓰기 전에 확인한다) */
@@ -775,11 +787,11 @@ public class Tamagotchi {
     /**
      * 트레이닝(스파링) 결과를 반영한다. 기본 경험치(이기면 보너스 더)를 바로 받고,
      * 광고를 보면 기본 경험치만큼 더 받을 수 있게 대기시킨다(claimExp). 새 트레이닝을 하면 받지 않은 대기분은 사라진다.
-     * 진화 가능 구간에서는 경험치가 줄어든다. 위력·무게·승패도 바로 바뀐다.
+     * 진화 가능 구간에서는 경험치가 줄어든다. 응가가 쌓여 지저분하면 더 줄어든다 (DebuffRules). 위력·무게·승패도 바로 바뀐다.
      */
     public TrainingGain train(int taps, boolean win) {
         ensureLevel();
-        int base = LevelRules.expForTaps(taps, isInEvolutionZone());
+        int base = DebuffRules.trainingExp(LevelRules.expForTaps(taps, isInEvolutionZone()), this.poopCount);
         int bonus = win ? Math.round(base * BattleRules.WIN_EXP_BONUS_PERCENT / 100f) : 0;
         this.lastTrainedAt = LocalDateTime.now();
         this.might = this.might + LevelRules.MIGHT_PER_TRAINING;
@@ -851,10 +863,9 @@ public class Tamagotchi {
     }
 
     /**
-     * 시간 경과 반영: 포만감·파워 감소, 똥 증가, 사망 판정.
-     * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음).
-     * 자는 동안에는 응가가 멈추고 포만감·파워는 SLEEP_DECAY_SLOWDOWN배 느리게 준다.
-     * 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 사망한다.
+     * 시간 경과 반영: 포만감·파워 감소, 똥 증가.
+     * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음). 자는 동안에도 멈춘다.
+     * 포만감·파워가 0이어도, 똥이 maxPoop까지 쌓여도 떠나지 않는다. 대신 디버프를 받는다 (DebuffRules).
      */
     public void applyTime(LocalDateTime now, VitalsRule rule) {
         if (isDead() || this.evolutionStage == EvolutionStage.EGG) return;
@@ -886,14 +897,13 @@ public class Tamagotchi {
             growPoop(now, rule);
         }
         syncEmptyMarkers(now);
-        checkDeath(now, rule);
         this.lastVitalsTickAt = now;
     }
 
     /**
      * 서버가 꺼져 있던 시간은 다마고치에게 흐르지 않은 것으로 본다.
-     * 틱 간격이 maxTickGap을 넘으면 모든 기준 시각과 사망 타이머를 그 간격만큼 뒤로 민다.
-     * (재시작 직후 밀린 시간이 한꺼번에 반영되어 죽는 일을 막는다)
+     * 틱 간격이 maxTickGap을 넘으면 모든 기준 시각을 그 간격만큼 뒤로 민다.
+     * (재시작 직후 밀린 시간이 한꺼번에 반영되지 않게 한다)
      */
     private void absorbDowntime(LocalDateTime now, VitalsRule rule) {
         if (this.lastVitalsTickAt == null) return;
@@ -955,16 +965,6 @@ public class Tamagotchi {
             if (this.strengthEmptySince == null) this.strengthEmptySince = now;
         } else {
             this.strengthEmptySince = null;
-        }
-    }
-
-    private void checkDeath(LocalDateTime now, VitalsRule rule) {
-        LocalDateTime limit = now.minus(rule.deathAfterEmpty());
-        boolean starved = this.hungryStartedAt != null && !this.hungryStartedAt.isAfter(limit);
-        boolean exhausted = this.strengthEmptySince != null && !this.strengthEmptySince.isAfter(limit);
-        boolean poopFull = this.poopCount >= rule.maxPoop();
-        if (starved || exhausted || poopFull) {
-            this.deadAt = now;
         }
     }
 
