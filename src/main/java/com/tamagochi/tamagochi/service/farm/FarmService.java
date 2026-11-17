@@ -34,6 +34,7 @@ public class FarmService {
     private final UserRepository userRepository;
     private final PointService pointService;
     private final Clock clock;
+    private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService; // 첫걸음 퀘스트 "씨앗 심기"
 
     public record PlotView(int index, boolean open, String crop, double progress, long remainingSeconds, boolean ripe) {}
     public record CropView(String id, long growSeconds, int fruit, int seedCost) {}
@@ -61,6 +62,7 @@ public class FarmService {
         if (!farm.isOpen(plot)) throw new IllegalStateException("아직 열지 않은 밭이에요.");
         payInk(user, crop.seedCost(), seedKey(user, plot, farm.nextSeq(plot)));
         farm.plant(plot, cropId, clock.instant());
+        starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.FARM);
         return view(user, farm, new Result(0, crop.seedCost(), 0));
     }
 

@@ -40,6 +40,7 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final TamagotchiRepository tamagotchiRepository;
     private final PetThumbs petThumbs;
+    private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService;
 
     private final Map<String, Peer> peers = new ConcurrentHashMap<>();
 
@@ -72,6 +73,7 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
                 pet.getEvolutionStage().name(), image, pet.getPublicId(),
                 com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"),
                 image == null ? PetImageUrls.of(imageKey) : null);
+        starterQuestService.markDone(user.getId(), com.tamagochi.tamagochi.domain.quest.StarterQuest.MEET); // 첫걸음 퀘스트 "친구 배틀 또는 광장"
     }
 
     @Override
