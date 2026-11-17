@@ -75,7 +75,7 @@ public class Tamagotchi {
     private int strength; // 0~100 (트레이닝 가능 조건)
 
     @Column(nullable = false)
-    private int poopCount; // VitalsRule.maxPoop 이상이면 사망
+    private int poopCount; // VitalsRule.maxPoop에서 더 늘지 않는다. 완성작 전에는 maxPoop 이상이면 떠난다. 5개부터 지저분함 디버프 (DebuffRules)
 
     @Column(nullable = false)
     private int feedCount;
@@ -113,11 +113,11 @@ public class Tamagotchi {
 
     private LocalDateTime lastFedAt;
     private LocalDateTime lastPoopAt;
-    private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (사망 판정용)
-    private LocalDateTime strengthEmptySince; // 파워가 0이 된 시각 (사망 판정용)
+    private LocalDateTime hungryStartedAt; // 포만감이 0(hunger=100)이 된 시각 (완성작 전의 사망 판정용. 완성작은 기록만 하고 떠나지 않는다)
+    private LocalDateTime strengthEmptySince; // 파워가 0이 된 시각 (완성작 전의 사망 판정용. 완성작은 기록만 한다)
     private LocalDateTime lastHungerTickAt; // 포만감 감소 기준 시각
     private LocalDateTime lastStrengthTickAt; // 파워 감소 기준 시각
-    private LocalDateTime deadAt; // 사망 시각 (null이면 생존)
+    private LocalDateTime deadAt; // 사망 시각 (null이면 생존). 완성작(ADULT)은 새로 채워지지 않는다 (2026-11-17)
     private LocalDateTime lastVitalsTickAt; // 마지막으로 시간 경과를 반영한 시각 (서버 중단 감지용)
     private LocalDateTime sleptAt; // 마지막으로 불을 끈(잠든) 시각
 
@@ -543,8 +543,20 @@ public class Tamagotchi {
         };
     }
 
+    /** 배고픔·파워·응가로 떠난 끄적이인가. 완성작 전에만 떠날 수 있다 (완성작은 떠나기 전에 죽은 행에서만 true) */
     public boolean isDead() {
         return this.deadAt != null;
+    }
+
+    /** 지금 걸린 디버프 (DebuffRules). 모든 단계에서 계산하고, 알과 떠난 끄적이는 없다 */
+    public java.util.List<DebuffRules.Debuff> debuffs() {
+        if (isDead() || this.evolutionStage == EvolutionStage.EGG) return java.util.List.of();
+        return DebuffRules.of(this.hunger, this.strength, this.poopCount);
+    }
+
+    /** 스파링 컨디션 (0~100): 포만감·파워의 평균, 지저분하면 깎인다 */
+    public int sparCondition() {
+        return DebuffRules.sparCondition(this.hunger, this.strength, this.poopCount);
     }
 
     /** 포만감이 가득(100)이면 더 먹지 않는다 (잉크를 쓰기 전에 확인한다) */
@@ -775,11 +787,11 @@ public class Tamagotchi {
     /**
      * 트레이닝(스파링) 결과를 반영한다. 기본 경험치(이기면 보너스 더)를 바로 받고,
      * 광고를 보면 기본 경험치만큼 더 받을 수 있게 대기시킨다(claimExp). 새 트레이닝을 하면 받지 않은 대기분은 사라진다.
-     * 진화 가능 구간에서는 경험치가 줄어든다. 위력·무게·승패도 바로 바뀐다.
+     * 진화 가능 구간에서는 경험치가 줄어든다. 응가가 쌓여 지저분하면 더 줄어든다 (DebuffRules). 위력·무게·승패도 바로 바뀐다.
      */
     public TrainingGain train(int taps, boolean win) {
         ensureLevel();
-        int base = LevelRules.expForTaps(taps, isInEvolutionZone());
+        int base = DebuffRules.trainingExp(LevelRules.expForTaps(taps, isInEvolutionZone()), this.poopCount);
         int bonus = win ? Math.round(base * BattleRules.WIN_EXP_BONUS_PERCENT / 100f) : 0;
         this.lastTrainedAt = LocalDateTime.now();
         this.might = this.might + LevelRules.MIGHT_PER_TRAINING;
@@ -852,9 +864,9 @@ public class Tamagotchi {
 
     /**
      * 시간 경과 반영: 포만감·파워 감소, 똥 증가, 사망 판정.
-     * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음).
-     * 자는 동안에는 응가가 멈추고 포만감·파워는 SLEEP_DECAY_SLOWDOWN배 느리게 준다.
-     * 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 사망한다.
+     * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음). 자는 동안에도 멈춘다.
+     * 완성작 전(낙서·스케치)에는 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 떠난다.
+     * 완성작(ADULT)은 떠나지 않고 디버프만 받는다 (DebuffRules). 디버프는 모든 단계에 걸린다.
      */
     public void applyTime(LocalDateTime now, VitalsRule rule) {
         if (isDead() || this.evolutionStage == EvolutionStage.EGG) return;
@@ -958,7 +970,12 @@ public class Tamagotchi {
         }
     }
 
+    /**
+     * 완성작 전(낙서·스케치)에만 떠난다. 완성작(ADULT)은 판정하지 않는다:
+     * 진화하기 전부터 굶주림·파워 0 타이머가 돌고 있었어도 완성작이 된 뒤에는 무시한다.
+     */
     private void checkDeath(LocalDateTime now, VitalsRule rule) {
+        if (this.evolutionStage == EvolutionStage.ADULT) return;
         LocalDateTime limit = now.minus(rule.deathAfterEmpty());
         boolean starved = this.hungryStartedAt != null && !this.hungryStartedAt.isAfter(limit);
         boolean exhausted = this.strengthEmptySince != null && !this.strengthEmptySince.isAfter(limit);

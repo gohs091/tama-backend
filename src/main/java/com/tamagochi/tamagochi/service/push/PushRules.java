@@ -14,8 +14,8 @@ public final class PushRules {
     public static final int HUNGRY_SATIATION = 20;
     /** 파워가 이 이하면 아프다 */
     public static final int SICK_STRENGTH = 20;
-    /** 응가가 이만큼 쌓이면 알린다 (13개면 떠난다: 한 시간에 하나씩 쌓이니 4시간쯤 남는다) */
-    public static final int POOP_WARN = 9;
+    /** 응가가 이만큼 쌓이면 알린다: 지저분함 디버프가 시작되는 개수와 같다 (완성작 전에는 13개면 떠난다: 한 시간에 하나씩 쌓이니 8시간쯤 남는다) */
+    public static final int POOP_WARN = com.tamagochi.tamagochi.domain.tamagotchi.DebuffRules.DIRTY_AT;
     /** 트레이닝을 이만큼 안 하면 심심해한다 */
     public static final Duration BORED_AFTER = Duration.ofHours(24);
     /** 앱을 이 안에 봤으면 보내지 않는다 (보고 있는 사람에게 알림은 소음이다) */

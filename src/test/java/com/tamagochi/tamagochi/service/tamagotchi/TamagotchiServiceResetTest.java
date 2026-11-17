@@ -2,7 +2,6 @@ package com.tamagochi.tamagochi.service.tamagotchi;
 
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
-import com.tamagochi.tamagochi.domain.tamagotchi.VitalsRule;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.point.PointService;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -39,11 +37,9 @@ class TamagotchiServiceResetTest {
                 .faction("dragons-roar")
                 .hunger(64).strength(38)
                 .babyImageBase64("baby").childImageBase64("child")
+                .poopCount(8)
+                .deadAt(LocalDateTime.of(2026, 10, 23, 21, 0)) // 예전 규칙으로 떠난 행 (이제 새로 생기지 않는다)
                 .build();
-        VitalsRule rule = new VitalsRule(6, 12, Duration.ofHours(4), 60, 8, Duration.ofDays(365));
-        LocalDateTime t0 = LocalDateTime.of(2026, 10, 23, 12, 0);
-        pet.applyTime(t0, rule);
-        pet.applyTime(t0.plusHours(9), rule); // 똥 8개 → 사망
         return pet;
     }
 

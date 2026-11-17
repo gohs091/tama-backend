@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.service.tamagotchi;
 
 import com.tamagochi.tamagochi.domain.tamagotchi.BattleRules;
+import com.tamagochi.tamagochi.domain.tamagotchi.DebuffRules;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
@@ -257,10 +258,10 @@ public class TamagotchiService {
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태에서는 트레이닝할 수 없어요.");
         }
-        if (tamagotchi.getHunger() >= 80) {
+        if (DebuffRules.hungry(tamagotchi.getHunger())) {
             throw new IllegalStateException("배가 너무 고파서 트레이닝할 수 없어요.");
         }
-        if (tamagotchi.getStrength() < 20) {
+        if (DebuffRules.weak(tamagotchi.getStrength())) {
             throw new IllegalStateException("스트렝스가 부족해서 트레이닝할 수 없어요.");
         }
     }
@@ -277,7 +278,7 @@ public class TamagotchiService {
         // 스파링 판정: 컨디션은 트레이닝 소모 전 값. 상대와 운은 시작할 때 정해 둔 값
         int taps = Math.min(Math.max(clickCount, 0), MAX_TRAINING_CLICKS);
         if (!session.hasEnemy()) session.setEnemy(BattleRules.randomEnemy(tamagotchi.level(), tamagotchi.might()));
-        int condition = ((100 - tamagotchi.getHunger()) + tamagotchi.getStrength()) / 2;
+        int condition = tamagotchi.sparCondition(); // 지저분하면 깎인다 (DebuffRules)
         double myPower = BattleRules.power(tamagotchi.might(), taps, condition, session.getMyLuck());
         double enemyPower = BattleRules.power(session.getEnemyMight(), session.getEnemyTaps(), session.getEnemyCondition(), session.getEnemyLuck());
         boolean win = myPower > enemyPower;
