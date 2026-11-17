@@ -35,6 +35,7 @@ public class TamagotchiService {
     private final PromotionService promotionService;
     private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
     private final com.tamagochi.tamagochi.service.farm.FarmService farmService; // 농장 오늘의 퀘스트에 먹이기·트레이닝을 센다
+    private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard; // 탑 원정 중에는 집에서 포만감을 채울 수 없다
     private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService; // 첫걸음 퀘스트: 처음 해 본 것을 적는다
 
     /**
@@ -50,6 +51,7 @@ public class TamagotchiService {
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) throw new IllegalStateException("알 상태에서는 회복할 수 없어요.");
         Tamagotchi.Recovery plan = tamagotchi.planRecovery();
         if (plan.items() == 0) throw new IllegalStateException("포만감과 파워가 이미 가득 찼어요.");
+        if (plan.meats() > 0) expeditionGuard.requireHomeToFeed(user); // 고기가 들어가는 회복은 탑 원정 중에 할 수 없다 (잉크를 받기 전에 확인)
         pointService.usePoint(user, plan.items() * ITEM_COST, idempotencyKey);
         tamagotchi.recover(plan);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.MEAT, plan.meats());
@@ -69,6 +71,7 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
         requireHome(tamagotchi);
+        expeditionGuard.requireHomeToFeed(user); // 탑 원정 중에는 싸 간 도시락만 먹는다 (잉크를 받기 전에 확인)
         if (tamagotchi.isFull()) {
             throw new IllegalStateException("배가 불러서 더 먹을 수 없어요.");
         }
@@ -116,6 +119,8 @@ public class TamagotchiService {
     @Transactional
     public Tamagotchi reset(User user) {
         Tamagotchi existing = tamagotchiRepository.findActiveByUserId(user.getId()).orElse(null);
+        // 탑 원정 중에는 새로 시작할 수 없다. 죽었거나 없는 끄적이에게 원정 표시가 남아 있으면 원정만 접고 진행한다
+        expeditionGuard.requireHomeToRestart(user, existing == null || existing.isDead());
         if (existing == null) {
             return create(user, "끄적이", null);
         }

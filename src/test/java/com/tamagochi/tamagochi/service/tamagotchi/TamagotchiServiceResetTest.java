@@ -26,7 +26,7 @@ class TamagotchiServiceResetTest {
     @BeforeEach
     void setUp() {
         repository = mock(TamagotchiRepository.class);
-        service = new TamagotchiService(repository, mock(PointService.class), mock(TrainingSessionService.class), mock(com.tamagochi.tamagochi.service.spar.SparDropService.class), mock(PromotionService.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class), mock(com.tamagochi.tamagochi.service.farm.FarmService.class), mock(com.tamagochi.tamagochi.service.quest.StarterQuestService.class));
+        service = new TamagotchiService(repository, mock(PointService.class), mock(TrainingSessionService.class), mock(com.tamagochi.tamagochi.service.spar.SparDropService.class), mock(PromotionService.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class), mock(com.tamagochi.tamagochi.service.farm.FarmService.class), mock(com.tamagochi.tamagochi.service.tower.ExpeditionGuard.class), mock(com.tamagochi.tamagochi.service.quest.StarterQuestService.class));
         user = mock(User.class);
         when(user.getId()).thenReturn(1L);
     }

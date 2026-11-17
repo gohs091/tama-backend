@@ -14,6 +14,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    // 이유 코드가 있는 거절 (도시락·탑). IllegalStateException보다 먼저 잡힌다
+    @ExceptionHandler(CodedException.class)
+    public ResponseEntity<?> handleCoded(CodedException e) {
+        log.warn("CodedException: {} {}", e.getCode(), e.getMessage());
+        return ResponseEntity
+                .badRequest()
+                .body(ErrorResponse.of(e.getCode(), e.getMessage()));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<?> handleIllegalState(IllegalStateException e) {
         log.warn("IllegalStateException: {}", e.getMessage());
