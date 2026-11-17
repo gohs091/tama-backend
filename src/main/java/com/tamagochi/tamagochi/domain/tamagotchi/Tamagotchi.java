@@ -565,6 +565,29 @@ public class Tamagotchi {
         this.hungryStartedAt = null; // 굶주림 해소
     }
 
+    /** 포만감 (0~100). hunger와 같은 값을 뒤집어 본 것이다 */
+    public int satiety() {
+        return 100 - this.hunger;
+    }
+
+    /**
+     * 포만감을 채운다 (탑에서 도시락 먹기). 100을 넘지 않는다. 실제로 찬 양을 돌려준다.
+     * 집의 먹이기(feed)와 달리 먹은 횟수·무게·피로·잠에는 손대지 않는다
+     */
+    public int refill(int satiety) {
+        int gain = Math.max(0, Math.min(satiety, this.hunger));
+        this.hunger -= gain;
+        if (this.hunger < 100) this.hungryStartedAt = null; // 굶주림 해소
+        return gain;
+    }
+
+    /** 포만감을 쓴다 (탑 맵 통과). 0 아래로 내려가지 않는다. 실제로 쓴 양을 돌려준다 */
+    public int spendSatiety(int amount) {
+        int spent = Math.max(0, Math.min(amount, satiety()));
+        this.hunger += spent;
+        return spent;
+    }
+
     public void addStrength(int amount) {
         wakeNow(); // 알약을 먹여도 깬다
         addFatigue(FATIGUE_FEED);

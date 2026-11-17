@@ -30,6 +30,14 @@ public class DevController {
     private final AdventureService adventureService;
     private final EvolutionPromotionService evolutionPromotionService;
     private final com.tamagochi.tamagochi.service.yard.YardService yardService;
+    private final com.tamagochi.tamagochi.service.lunch.LunchService lunchService;
+
+    /** 도시락을 찬장에 준다 (기본 주먹밥 1개). 열매가 들지 않고 잠긴 도시락(feast)도 준다. 도시락·탑 화면 확인용 */
+    @PostMapping("/lunch")
+    public ResponseEntity<?> lunch(@RequestBody EvolveRequest request, @RequestParam(defaultValue = "riceball") String id,
+                                   @RequestParam(defaultValue = "1") int count) {
+        return ResponseEntity.ok(lunchService.devGive(userIdentity.resolve(request.getTossUserId()), id, count));
+    }
 
     /** 게이지·컨디션과 무관하게 다음 단계로 올린다. */
     @PostMapping("/evolve")
