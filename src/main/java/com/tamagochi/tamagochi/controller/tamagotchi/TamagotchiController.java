@@ -99,6 +99,23 @@ public class TamagotchiController {
         return ResponseEntity.ok().build();
     }
 
+    @lombok.Getter
+    @lombok.NoArgsConstructor
+    static class FacingRequest {
+        private String tossUserId;
+        /** 폰이 알고 있는 방향 (left | right | front). 모르면 비운다 */
+        private String facing;
+        /** 폰이 방향을 모를 때 분석할 지금 단계 그림 (없으면 서버에 저장된 그림으로 분석한다) */
+        private String imageBase64;
+    }
+
+    /** 지금 단계 그림이 바라보는 쪽이 서버에 없으면 채운다 (폰이 아는 값, 없으면 그림 분석). 이미 있으면 그대로 돌려준다 */
+    @PostMapping("/facing")
+    public ResponseEntity<?> fillFacing(@RequestBody FacingRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+        return ResponseEntity.ok(TamagotchiResponse.from(petImageService.fillFacing(user, request.getFacing(), request.getImageBase64())));
+    }
+
     @PostMapping("/hatch")
     public ResponseEntity<?> hatch(@RequestBody FeedRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());

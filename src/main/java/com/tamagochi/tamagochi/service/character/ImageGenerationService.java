@@ -58,8 +58,12 @@ public class ImageGenerationService {
     @org.springframework.context.annotation.Lazy
     private com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
 
-    private void keepImage(String tossUserId, String stage, byte[] image) {
+    /** 만든 그림을 S3에 올리고, 그림이 바라보는 쪽을 분석해 끄적이에 적어 둔다. 분석한 방향을 돌려준다 (모르면 null) */
+    private String keepImage(String tossUserId, String stage, byte[] image) {
         if (petImageService != null && stage != null) petImageService.saveGenerated(tossUserId, stage.toLowerCase(), image);
+        String facing = detectFacing(image);
+        if (petImageService != null && stage != null) petImageService.saveGeneratedFacing(tossUserId, stage.toLowerCase(), facing);
+        return facing;
     }
 
     // 완성작은 그리기 전에 콘셉트 하나로 디자인한다 (없거나 실패하면 기존 프롬프트)
@@ -171,8 +175,8 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            keepImage(tossUserId, "baby", responseBytes);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), detectFacing(responseBytes)));
+            String facing = keepImage(tossUserId, "baby", responseBytes);
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), facing));
             log.info("Baby image generation done for job: {}", jobId);
 
         } catch (Exception e) {
@@ -239,8 +243,8 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            keepImage(tossUserId, stage, responseBytes);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, detectFacing(responseBytes), generated.solid()));
+            String facing = keepImage(tossUserId, stage, responseBytes);
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, facing, generated.solid()));
             log.info("Evolved ({}) image generation done for job: {}", stage, jobId);
 
         } catch (Exception e) {
@@ -405,8 +409,8 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            keepImage(tossUserId, "child", image);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
+            String facing = keepImage(tossUserId, "child", image);
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
             log.info("Sketch (v6) image generation done for job: {}", jobId);
         } catch (Exception e) {
             log.error("Sketch image generation failed for job: {}", jobId, e);
@@ -501,8 +505,8 @@ public class ImageGenerationService {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
-            keepImage(tossUserId, "adult", image);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), true));
+            String facing = keepImage(tossUserId, "adult", image);
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
         } catch (Exception e) {
             log.error("Final image generation failed for job: {}", jobId, e);
             jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
