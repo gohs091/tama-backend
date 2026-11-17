@@ -84,6 +84,10 @@ public class ImageGenerationService {
     private String openAiImageQuality;
 
     // 잉크 진화 시안 (LandCatalog.INK_STYLE_*). v5면 낙서 측면·스케치 아기 체형·완성작 디자인 후보 방식을 쓴다
+    // true면 낙서를 단색 배경으로 받아 배경색만 지운다. false면 모델에게 투명 배경을 직접 받는 예전 방식
+    @Value("${image.key-background:true}")
+    private boolean keyBackground = false;
+
     @Value("${image.ink-style:v0}")
     private String inkStyle = LandCatalog.INK_STYLE_V0;
 
@@ -169,14 +173,14 @@ public class ImageGenerationService {
             String mimeType = extractMimeType(imageBase64);
             byte[] imageBytes = decodeBase64Image(imageBase64);
             Generated generated = generateImage(imageBytes, mimeType, null, null, faction, "baby", "0.70", variationSeed, null, tossUserId);
-            byte[] responseBytes = generated.bytes();
+            byte[] responseBytes = solidBytes(generated);
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
             String facing = keepImage(tossUserId, "baby", responseBytes);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), facing));
+            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), facing, generated.solid()));
             log.info("Baby image generation done for job: {}", jobId);
 
         } catch (Exception e) {
@@ -237,7 +241,7 @@ public class ImageGenerationService {
             String referenceMime = hasReference ? extractMimeType(referenceBase64) : null;
             Generated generated = generateImage(imageBytes, mimeType, referenceBytes, referenceMime,
                     faction, stage, controlStrength, null, absorbedInk, tossUserId);
-            byte[] responseBytes = generated.bytes();
+            byte[] responseBytes = solidBytes(generated);
 
             if (responseBytes == null || responseBytes.length == 0) {
                 jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
@@ -261,6 +265,14 @@ public class ImageGenerationService {
     /** 생성된 이미지와, 그 과정에서 분석한 손그림의 정체(한글, 없으면 null). solid: 몸 안 투명 틈은 진짜 배경이라 앱이 메우지 않는다 */
     private record Generated(byte[] bytes, String species, boolean solid) {
         Generated(byte[] bytes, String species) { this(bytes, species, false); }
+    }
+
+    /**
+     * 앱에 돌려주고 S3에 남길 그림. 몸 안 틈이 진짜 배경인 그림(solid)이 아니면 남은 투명 구멍을 흰색으로 채운다.
+     * 전에는 앱이 받은 뒤에 채웠는데, 그러면 S3에는 구멍 난 그림이 남아 서버 그림을 받아 쓰는 폰에서 배경이 비쳤다
+     */
+    private static byte[] solidBytes(Generated generated) {
+        return generated.solid() ? generated.bytes() : SpriteHoles.fillWhite(generated.bytes());
     }
 
     private Generated generateImage(byte[] imageBytes, String mimeType, byte[] referenceBytes, String referenceMime,
@@ -337,8 +349,24 @@ public class ImageGenerationService {
                 prompt = buildOpenAiPrompt(faction, stage, false, subject, FusionMode.SELF);
             }
         }
+        // 낙서: 투명 배경을 달라고 하지 않고 단색 배경으로 받아 그 색만 지운다 (몸 안에 투명이 생길 수 없다)
+        ChromaKey.Key key = !evolving && keyBackground ? ChromaKey.pick(imageBytes, colors) : null;
+        if (key != null) {
+            byte[] keyed = keyedEdit(imageBytes, mimeType, ChromaKey.prompt(prompt, key));
+            if (keyed != null) return new Generated(binarizeAlpha(keyed), subject == null ? null : subject.species(), true);
+            // 배경이 단색이 아니었거나, 배경색을 지웠더니 몸까지 지워졌다
+            log.warn("단색 배경({})으로 받지 못해 투명 배경으로 다시 그림", key);
+        }
         byte[] image = binarizeAlpha(callOpenAiEdit(imageBytes, mimeType, referenceBytes, referenceMime, prompt));
         return new Generated(image, evolving || subject == null ? null : subject.species());
+    }
+
+    /** 단색 배경으로 그리게 한 뒤 배경색을 지운 그림. 모델이 배경을 단색으로 칠하지 않았으면 null */
+    private byte[] keyedEdit(byte[] sketchBytes, String sketchMime, String prompt) {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        addImagePart(builder, "image", sketchBytes, sketchMime, sketchMime.contains("png") ? "sketch.png" : "sketch.jpg");
+        byte[] raw = postOpenAiEdit(builder, prompt, openAiImageModel, openAiImageQuality, "opaque");
+        return raw == null ? null : ChromaKey.cut(raw);
     }
 
     /** 저장된 그림 분석을 읽고, 없으면(저장 기능 이전에 만든 유저) 지금 한 번 분석해 저장한다 */
@@ -614,11 +642,15 @@ public class ImageGenerationService {
     }
 
     private byte[] postOpenAiEdit(MultipartBodyBuilder builder, String prompt, String model, String quality) {
+        return postOpenAiEdit(builder, prompt, model, quality, "transparent");
+    }
+
+    private byte[] postOpenAiEdit(MultipartBodyBuilder builder, String prompt, String model, String quality, String background) {
         builder.part("model", model);
         builder.part("prompt", prompt);
         builder.part("size", "1024x1024");
         builder.part("quality", quality);
-        builder.part("background", "transparent");
+        builder.part("background", background);
         builder.part("output_format", "png");
 
         String json = openAiClient.post()
