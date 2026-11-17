@@ -21,7 +21,7 @@ jobs:
       - name: Gradle 빌드
         run: |
           chmod +x gradlew
-          ./gradlew bootJar -x test
+          ./gradlew test bootJar
           mkdir -p deploy
           cp build/libs/*.jar deploy/app.jar
           cp Dockerfile docker-compose.prod.yml deploy/
