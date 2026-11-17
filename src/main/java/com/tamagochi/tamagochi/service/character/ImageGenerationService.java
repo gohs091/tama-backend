@@ -343,6 +343,15 @@ public class ImageGenerationService {
             if (subject != null && !subject.isAbstract()) {
                 saveOrigin(tossUserId, subject);
                 log.info("v3 낙서 - subject: {}, kind: {}, bodyPlan: {}, faction: {}", subject.subject(), subject.kind(), subject.bodyPlan(), faction);
+                if (LandCatalog.isV6(inkStyle) && ImagePromptV3.babyLookFits(subject)) {
+                    try {
+                        byte[] image = babyV6(imageBytes, mimeType, subject, colors);
+                        if (image != null && image.length > 0) return new Generated(image, subject.species());
+                    } catch (Exception e) {
+                        // 안전 필터 거절 등: 부화가 막히지 않게 예전 방식으로 한 번 그린다
+                        log.warn("v6 낙서 생성 실패, 예전 방식으로 다시 그림: {}", e.getMessage());
+                    }
+                }
                 prompt = v5 ? ImagePromptV3.babyV5(subject, colors) : ImagePromptV3.baby(subject, colors);
             } else {
                 // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다
@@ -446,19 +455,36 @@ public class ImageGenerationService {
         }
     }
 
-    private static final byte[][] SKETCH_STYLE = new byte[2][];
+    /**
+     * v6 낙서 (생물 낙서). 그림은 세 장을 넣는다: 화풍 참고 두 장(잘 다듬어진 낙서 단계 샘플), 유저가 그린 낙서.
+     * 스케치·완성작과 같은 모델(image.v5-model)로 그린다: mini는 색칠한 낙서의 붓 자국을 무늬로 베끼고 얼굴을 뭉갰다.
+     */
+    private byte[] babyV6(byte[] doodle, String doodleMime, DoodleSubject subject, String colors) {
+        log.info("v6 낙서 - subject: {}, 한 줄: {}", subject.subject(), subject.look());
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        addImagePart(builder, "image[]", styleRef("baby-style", 1), "image/png", "image1.png");
+        addImagePart(builder, "image[]", styleRef("baby-style", 2), "image/png", "image2.png");
+        addImagePart(builder, "image[]", doodle, doodleMime, doodleMime.contains("png") ? "doodle.png" : "doodle.jpg");
+        return binarizeAlpha(postOpenAiEdit(builder, ImagePromptV3.babyV6(subject, colors), v5Model, v5Quality));
+    }
+
+    private static final Map<String, byte[]> STYLE_REFS = new ConcurrentHashMap<>();
 
     /** v6 스케치의 화풍 참고 그림 (resources/sketch-style/ref1.png, ref2.png). 처음 쓸 때 한 번 읽는다 */
-    static synchronized byte[] sketchStyle(int n) {
-        if (SKETCH_STYLE[n - 1] == null) {
-            try (var in = ImageGenerationService.class.getResourceAsStream("/sketch-style/ref" + n + ".png")) {
-                if (in == null) throw new IllegalStateException("화풍 참고 그림이 없어요: ref" + n + ".png");
-                SKETCH_STYLE[n - 1] = in.readAllBytes();
+    static byte[] sketchStyle(int n) {
+        return styleRef("sketch-style", n);
+    }
+
+    /** 화풍 참고 그림 (resources/{dir}/ref{n}.png). 처음 쓸 때 한 번 읽는다 */
+    static byte[] styleRef(String dir, int n) {
+        return STYLE_REFS.computeIfAbsent(dir + "/ref" + n + ".png", path -> {
+            try (var in = ImageGenerationService.class.getResourceAsStream("/" + path)) {
+                if (in == null) throw new IllegalStateException("화풍 참고 그림이 없어요: " + path);
+                return in.readAllBytes();
             } catch (java.io.IOException e) {
                 throw new IllegalStateException("화풍 참고 그림을 읽지 못했어요: " + e.getMessage(), e);
             }
-        }
-        return SKETCH_STYLE[n - 1];
+        });
     }
 
     private DoodleSubject originFor(String tossUserId, byte[] imageBytes, String mimeType) {

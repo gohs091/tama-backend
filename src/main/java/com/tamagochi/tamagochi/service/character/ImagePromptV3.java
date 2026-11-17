@@ -83,6 +83,35 @@ final class ImagePromptV3 {
         return at < 0 ? base + " " + SIDE_BABY_V5 : base.substring(0, at) + SIDE_BABY_V5 + base.substring(at);
     }
 
+    // ================= 낙서 v6 (image.ink-style=v6, 생물 낙서만) =================
+    // 스케치 v6과 같은 뼈대: 잘 다듬어진 샘플 두 장은 화풍 참고, 유저 낙서는 "이 아이" 참고, 글 모델의 한 줄(look)이 무엇을 그렸는지 알려 준다.
+    // 예전 방식(mini + 부위 목록)은 색칠한 낙서의 붓 자국을 무늬로 베끼고 얼굴을 뭉갰다. 규칙을 덧붙이지 않고 목적("내가 그린 그 아이네!")을 적는다.
+    // 얼굴 문장: "두 눈이 다 보이게" 같은 말을 넣으면 옆모습 새 머리에 정면 얼굴(눈 둘+웃는 입)을 붙여 그린다. 그 생물의 얼굴 그대로 그리게 한다.
+
+    /** 새 방식으로 그릴 낙서인가: 한 줄 설명이 있는 생물. 도구·물체 낙서는 아직 예전 방식 그대로 (새 방식으로 뽑아 보지 않았다) */
+    static boolean babyLookFits(DoodleSubject o) {
+        return o != null && isLiving(o) && !blank(o.look());
+    }
+
+    /** colors: 진영 색. 유저가 칠하지 않은 부분에만 쓴다 (빈 낙서가 흰 캐릭터로 나오지 않게) */
+    static String babyV6(DoodleSubject o, String colors) {
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given three images. Images 1 and 2 are STYLE REFERENCES only: copy their pixel size, outline thickness, flat color shading " +
+                "and cute tamagotchi face and proportions, but do NOT copy their characters. " +
+                "Image 3 is a rough doodle a player drew of their pet. Bring THAT pet to life as a newborn: its owner must look at it and say \"that's the one I drew!\". " +
+                "It is the same creature with the same parts in the same places, in the colors the player chose, redrawn cleanly in the style of the references, not traced. " +
+                "Scribbled coloring in the doodle only tells you the color of that part. " +
+                (blank(colors) ? "" : "Parts the player colored keep the colors the player gave them. Parts the player left uncolored take their colors from its tribe (" +
+                        colors + "), never plain white. ") +
+                "What the player drew: " + o.look().trim() + " " +
+                "Render it as charming and lovely: clear colors with two-tone markings (such as a lighter belly or muzzle), with a cute, friendly expression. " +
+                "VIEW: a three-quarter side view. Its face and body are clearly turned toward the RIGHT side of the image, looking to the right, like the reference sprites. " +
+                "Do NOT draw a front view; the pose must not be left-right symmetrical. " +
+                "The face is this creature's own face as it really looks from that angle: its eyes, and its own mouth, beak, snout or muzzle, each where that creature has them. " +
+                "Never paste a separate front-facing face (two eyes and a smile) onto the side of the head. " +
+                "It stands calmly. Single character centered, full body, filling about 70% of the frame, transparent background, no ground, no shadow, no text, no other characters.";
+    }
+
     // ================= 스케치 v6 (image.ink-style=v6) =================
     // 아기 그림에 부위를 덧붙이지 않는다. 글 모델이 "무엇으로 자랐는지" 한 줄(후보 3개)을 쓰고, 그 한 줄을
     // 스파링 상대를 그리던 프롬프트 뼈대로 그린다: 잘 다듬어진 샘플 두 장은 화풍 참고, 아기 그림은 같은 아이 참고, 색(투톤·포인트)은 맡긴다.
