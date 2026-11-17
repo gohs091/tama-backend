@@ -34,6 +34,7 @@ public class TamagotchiService {
     private final PromotionService promotionService;
     private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
     private final com.tamagochi.tamagochi.service.farm.FarmService farmService; // 농장 오늘의 퀘스트에 먹이기·트레이닝을 센다
+    private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard; // 탑 원정 중에는 집에서 포만감을 채울 수 없다
 
     /**
      * 한 판만큼 회복: 고기·알약을 각각 최대 4개(+12)까지 한꺼번에 먹이고, 실제로 먹인 만큼만 잉크를 받는다(최대 40).
@@ -48,6 +49,7 @@ public class TamagotchiService {
         if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) throw new IllegalStateException("알 상태에서는 회복할 수 없어요.");
         Tamagotchi.Recovery plan = tamagotchi.planRecovery();
         if (plan.items() == 0) throw new IllegalStateException("포만감과 파워가 이미 가득 찼어요.");
+        if (plan.meats() > 0) expeditionGuard.requireHomeToFeed(user); // 고기가 들어가는 회복은 탑 원정 중에 할 수 없다 (잉크를 받기 전에 확인)
         pointService.usePoint(user, plan.items() * ITEM_COST, idempotencyKey);
         tamagotchi.recover(plan);
         farmService.progress(user, com.tamagochi.tamagochi.domain.farm.FarmCatalog.Quest.MEAT, plan.meats());
@@ -66,6 +68,7 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
         requireHome(tamagotchi);
+        expeditionGuard.requireHomeToFeed(user); // 탑 원정 중에는 싸 간 도시락만 먹는다 (잉크를 받기 전에 확인)
         if (tamagotchi.isFull()) {
             throw new IllegalStateException("배가 불러서 더 먹을 수 없어요.");
         }

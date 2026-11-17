@@ -4,15 +4,14 @@ import com.tamagochi.tamagochi.domain.lunch.LunchCatalog;
 import com.tamagochi.tamagochi.domain.lunch.LunchCatalog.Lunchbox;
 import com.tamagochi.tamagochi.domain.lunch.Pantry;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
-import com.tamagochi.tamagochi.domain.tower.TowerProgress;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.domain.yard.Yard;
 import com.tamagochi.tamagochi.exception.CodedException;
 import com.tamagochi.tamagochi.repository.lunch.PantryRepository;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
-import com.tamagochi.tamagochi.repository.tower.TowerProgressRepository;
 import com.tamagochi.tamagochi.repository.yard.YardRepository;
 import com.tamagochi.tamagochi.service.common.OptimisticRetry;
+import com.tamagochi.tamagochi.service.tower.ExpeditionGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +35,7 @@ public class LunchService {
     private final PantryRepository pantryRepository;
     private final YardRepository yardRepository;
     private final TamagotchiRepository tamagotchiRepository;
-    private final TowerProgressRepository towerProgressRepository;
+    private final ExpeditionGuard expeditionGuard;
     private final OptimisticRetry retry;
     private final Clock clock;
 
@@ -135,7 +134,7 @@ public class LunchService {
     }
 
     private boolean onExpedition(User user) {
-        return towerProgressRepository.findByUserId(user.getId()).map(TowerProgress::isOnExpedition).orElse(false);
+        return expeditionGuard.onExpedition(user);
     }
 
     private static Lunchbox lunchbox(String id) {
