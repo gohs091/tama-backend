@@ -405,6 +405,59 @@ public class Tamagotchi {
         };
     }
 
+    // 단계 그림이 바라보는 쪽: left | right | front (모르면 null). 그림을 만들 때 분석해 적어 둔다.
+    // 전에는 폰에만 있어서, 폰 저장소가 지워지거나 서버에서 그림을 되살리면 방향을 잃고 광장·배틀에서 뒤로 걸었다
+    @Column(name = "baby_facing", length = 5)
+    private String babyFacing;
+    @Column(name = "child_facing", length = 5)
+    private String childFacing;
+    @Column(name = "adult_facing", length = 5)
+    private String adultFacing;
+    // 아직 되지 않은 단계의 그림 방향 (진화 후보·부화 전 낙서). 그 단계가 되는 순간 현재 방향이 된다
+    @Column(name = "pending_facing", length = 5)
+    private String pendingFacing;
+    @Column(name = "pending_facing_stage", length = 10)
+    private String pendingFacingStage;
+
+    public static boolean isFacing(String facing) {
+        return "left".equals(facing) || "right".equals(facing) || "front".equals(facing);
+    }
+
+    /** 서버가 방금 만든 그림의 방향을 받아 둔다. 지금 단계면 바로, 아니면 맡아 두었다가 그 단계가 될 때 쓴다 (keepGeneratedImage와 같은 규칙) */
+    public void keepGeneratedFacing(String stage, String facing) {
+        if (!isFacing(facing)) facing = null; // 분석하지 못한 새 그림: 앞 그림의 방향을 남기지 않는다
+        if (stage.equals(stageName(this.evolutionStage))) {
+            saveStageFacing(stage, facing);
+            return;
+        }
+        this.pendingFacing = facing;
+        this.pendingFacingStage = stage;
+    }
+
+    public void saveStageFacing(String stage, String facing) {
+        switch (stage) {
+            case "baby"  -> this.babyFacing = facing;
+            case "child" -> this.childFacing = facing;
+            case "adult" -> this.adultFacing = facing;
+            default -> throw new IllegalArgumentException("알 수 없는 단계예요.");
+        }
+    }
+
+    /** 지금 단계 그림이 바라보는 쪽. 알이거나 모르면 null */
+    public String getCurrentFacing() {
+        return switch (this.evolutionStage) {
+            case EGG   -> null;
+            case BABY  -> babyFacing;
+            case CHILD -> childFacing;
+            case ADULT -> adultFacing;
+        };
+    }
+
+    /** 지금 단계 이름 (baby | child | adult). 알이면 null */
+    public String currentStageName() {
+        return stageName(this.evolutionStage);
+    }
+
     /**
      * 서버가 방금 만들어 S3에 올린 그림을 받아 둔다. 지금 단계의 그림이면 바로 현재 그림으로 삼고(다시 그린 그림 포함),
      * 아직 되지 않은 단계의 그림이면 맡아 두었다가 그 단계가 될 때 쓴다. 다시 그리면 나중 것이 남는다
@@ -424,6 +477,9 @@ public class Tamagotchi {
         if (this.pendingImageKey != null && now != null && now.equals(this.pendingImageStage)) saveStageImageKey(now, this.pendingImageKey);
         this.pendingImageKey = null;
         this.pendingImageStage = null;
+        if (now != null && now.equals(this.pendingFacingStage)) saveStageFacing(now, this.pendingFacing);
+        this.pendingFacing = null;
+        this.pendingFacingStage = null;
     }
 
     /** S3에 올린 그림의 키를 저장하고, 같은 단계의 base64 원본은 DB에서 지운다 */
@@ -965,5 +1021,10 @@ public class Tamagotchi {
         this.childImageKey = null;
         this.adultImageKey = null;
         this.sketchImageKey = null;
+        this.babyFacing = null;
+        this.childFacing = null;
+        this.adultFacing = null;
+        this.pendingFacing = null;
+        this.pendingFacingStage = null;
     }
 }
