@@ -17,7 +17,6 @@ public class RedrawService {
 
     private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
-    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
     private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard;
 
     public record Status(int left, int max) {}
@@ -36,28 +35,18 @@ public class RedrawService {
         return new Status(pet.redrawsLeft(today), Tamagotchi.REDRAWS_PER_DAY);
     }
 
-    /** 화가 회원은 진화 후보를 하루 5번 다시 그린다 */
-    public static final int PAINTER_CANDIDATE_REDRAWS_PER_DAY = 5;
-
-    private int candidatePerDay(User user) {
-        return membershipService.isPainter(user.getId()) ? PAINTER_CANDIDATE_REDRAWS_PER_DAY : Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
-    }
-
-    /** 진화 후보 다시 그리기 남은 횟수 */
-    @Transactional
+    /**
+     * 진화 후보 다시 그리기는 없앴다: 잘 그려진 진화 그림을 다시 그리면 그때마다 이미지 비용이 든다 (회원은 하루 5번까지 됐다).
+     * 그리기에 실패했을 때의 재시도 1번은 횟수를 쓰지 않고 ImageQuotaService의 단계별 하루 한도(EVOLVED_BASE_PER_STAGE) 안에서 된다.
+     * 예전 앱이 물어 오면 남은 횟수 0으로 답해서 "다시 그리기" 버튼이 눌리지 않게 한다.
+     */
     public Status candidateStatus(User user) {
-        int perDay = candidatePerDay(user);
-        return new Status(pet(user).candidateRedrawsLeft(LocalDate.now(clock), perDay), perDay);
+        return new Status(0, 0);
     }
 
-    /** 진화 후보 다시 그리기 한 번을 쓴다. 쓴 뒤 앱이 새 후보를 그린다 */
-    @Transactional
+    /** 예전 앱이 다시 그리기를 요청하면 거절한다 (횟수도 늘리지 않는다) */
     public Status candidateRedraw(User user) {
-        int perDay = candidatePerDay(user);
-        Tamagotchi pet = pet(user);
-        LocalDate today = LocalDate.now(clock);
-        pet.useCandidateRedraw(today, perDay);
-        return new Status(pet.candidateRedrawsLeft(today, perDay), perDay);
+        throw new IllegalStateException("진화한 모습은 다시 그릴 수 없어요.");
     }
 
     private Tamagotchi pet(User user) {

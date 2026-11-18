@@ -77,4 +77,14 @@ class ImageQuotaServiceTest {
         for (int i = 0; i < 100; i++) assertThat(service.tryAcquire("u1")).isTrue();
         verifyNoInteractions(redis);
     }
+
+    @Test
+    @DisplayName("진화 그림은 단계마다 하루 2번(처음 1번 + 실패했을 때 다시 1번)까지만 그린다")
+    void evolvedLimitIsFirstTryPlusOneRetry() {
+        assertThat(service.tryAcquireEvolved("u1", "child")).isTrue();   // 처음 그리기
+        assertThat(service.tryAcquireEvolved("u1", "child")).isTrue();   // 실패했을 때 다시 한 번
+        assertThat(service.tryAcquireEvolved("u1", "child")).isFalse();  // 그 뒤로는 거절 (다시 그리기 몫은 없다)
+        assertThat(service.tryAcquireEvolved("u1", "adult")).isTrue();   // 단계마다 따로 센다
+        assertThat(service.tryAcquireEvolved("u2", "child")).isTrue();   // 유저마다 따로 센다
+    }
 }
