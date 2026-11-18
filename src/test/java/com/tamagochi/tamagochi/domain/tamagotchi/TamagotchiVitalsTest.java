@@ -241,11 +241,11 @@ class TamagotchiVitalsTest {
     @Test
     @DisplayName("완성작은 포만감이 0인 채 사흘이 지나도 떠나지 않고, 배고픔 디버프만 받는다")
     void adult_starving_neverDies_onlyHungryDebuff() {
-        Tamagotchi p = adult(99, 100);
+        Tamagotchi p = adult(100, 100);                    // 완성작은 시간으로 배고파지지 않으니(여신의 가호) 처음부터 0으로 둔다
         p.applyTime(T0, RULE);
-        p.applyTime(after(6), RULE);                       // hunger 100 → 굶주림 시작
+        p.applyTime(after(6), RULE);
         assertThat(p.getHunger()).isEqualTo(100);
-        assertThat(p.getHungryStartedAt()).isEqualTo(after(6)); // 얼마나 굶었는지는 계속 기록한다
+        assertThat(p.getHungryStartedAt()).isEqualTo(T0);  // 얼마나 굶었는지는 계속 기록한다
         for (long h = 1; h <= 72; h++) p.applyTime(after(6 + h * 60), RULE); // 사흘 동안 굶는다
         assertThat(p.getHunger()).isEqualTo(100);          // 100에서 멈춘다
         assertThat(p.isDead()).isFalse();
@@ -458,6 +458,89 @@ class TamagotchiVitalsTest {
         assertThat(p.getStrength()).isZero();
         assertThat(p.getPoopCount()).isEqualTo(8);
         assertThat(p.debuffs()).containsExactly(DebuffRules.Debuff.HUNGRY, DebuffRules.Debuff.WEAK, DebuffRules.Debuff.DIRTY);
+    }
+
+    // ── 여신의 가호 (완성작은 포만감이 시간으로 줄지 않는다) ─────────────
+
+    @Test
+    @DisplayName("여신의 가호: 완성작은 포만감 80에서 여러 시간이 지나도 포만감이 그대로다 (파워·응가는 그대로 흐른다)")
+    void blessing_adultSatietyDoesNotDecayOverTime() {
+        Tamagotchi p = adult(20, 100);                     // 포만감 80
+        p.applyTime(T0, PROD);
+        for (long m = 1; m <= 5 * 60; m++) p.applyTime(after(m), PROD); // 스케줄러처럼 1분마다 5시간
+        assertThat(p.satiety()).isEqualTo(80);
+        assertThat(p.getHunger()).isEqualTo(20);
+        assertThat(p.getHungryStartedAt()).isNull();
+        assertThat(p.getStrength()).isEqualTo(100 - 18);   // 파워는 16분마다 1씩 그대로 준다 (300분 → 18)
+        assertThat(p.getPoopCount()).isEqualTo(5);         // 응가도 60분마다 그대로
+
+        p.applyTime(after(5 * 60 + 600), PROD);            // 틱이 한참 비었다가 와도 한꺼번에 깎이지 않는다
+        assertThat(p.getHunger()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("여신의 가호: 완성작 전(낙서·스케치)은 같은 시간이 지나면 포만감이 줄고, 0인 채 6시간이면 떠난다 (예전 그대로)")
+    void blessing_preAdultStillDecaysAndLeaves() {
+        for (Tamagotchi p : new Tamagotchi[]{baby(20, 100), child(20, 100)}) {
+            p.applyTime(T0, PROD);
+            p.applyTime(after(5 * 60), PROD);              // 300분 → 포만감 37 감소 (8분마다 1)
+            assertThat(p.getHunger()).isEqualTo(57);
+            assertThat(p.satiety()).isEqualTo(43);
+
+            p.cleanPoop();                                 // 응가로 떠나지 않게 치워 둔다 (굶주림만 본다)
+            p.applyTime(after(80 * 8), PROD);              // 640분: 포만감 0
+            assertThat(p.getHunger()).isEqualTo(100);
+            assertThat(p.getHungryStartedAt()).isEqualTo(after(640));
+            p.applyTime(after(640 + 359), PROD);
+            assertThat(p.getDeadAt()).isNull();
+            p.applyTime(after(640 + 360), PROD);
+            assertThat(p.isDead()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("여신의 가호: 완성작이 되는 순간부터 포만감이 멈추고, 그 전에 흐른 시간만 반영된다")
+    void blessing_startsWhenBecomingAdult() {
+        Tamagotchi p = child(20, 100);
+        p.applyTime(T0, PROD);
+        p.applyTime(after(80), PROD);                      // 스케치로 80분 → 포만감 10 감소
+        assertThat(p.getHunger()).isEqualTo(30);
+        assertThat(p.hasGoddessBlessing()).isFalse();
+
+        p.evolve(EvolutionStage.ADULT);
+        assertThat(p.hasGoddessBlessing()).isTrue();
+        int hunger = p.getHunger();
+        p.applyTime(after(80 + 600), PROD);
+        assertThat(p.getHunger()).isEqualTo(hunger);
+    }
+
+    @Test
+    @DisplayName("여신의 가호: 완성작이 된 뒤에도 탑의 맵 소모(spendSatiety)는 포만감을 쓴다")
+    void blessing_doesNotWaiveTowerSatietyCost() {
+        Tamagotchi p = adult(20, 100);
+        p.applyTime(T0, PROD);
+        assertThat(p.spendSatiety(35)).isEqualTo(35);
+        assertThat(p.satiety()).isEqualTo(45);
+        p.applyTime(after(600), PROD);
+        assertThat(p.satiety()).isEqualTo(45);             // 쓴 만큼만 줄고, 시간으로는 더 줄지 않는다
+        assertThat(p.spendSatiety(35)).isEqualTo(35);
+        assertThat(p.satiety()).isEqualTo(10);
+        assertThat(p.debuffs()).contains(DebuffRules.Debuff.HUNGRY); // 탑에서 다 쓰면 배고픔 디버프는 걸린다
+    }
+
+    @Test
+    @DisplayName("여신의 가호: 펫 응답에 완성작은 goddessBlessing=true·blessingName=\"여신의 가호\", 낙서·스케치·알은 false·null")
+    void blessing_inResponse() {
+        var adult = com.tamagochi.tamagochi.controller.dto.TamagotchiResponse.from(adult(20, 100));
+        assertThat(adult.isGoddessBlessing()).isTrue();
+        assertThat(adult.getBlessingName()).isEqualTo("여신의 가호");
+        assertThat(Tamagotchi.GODDESS_BLESSING_NAME).isEqualTo("여신의 가호");
+
+        for (EvolutionStage stage : new EvolutionStage[]{EvolutionStage.EGG, EvolutionStage.BABY, EvolutionStage.CHILD}) {
+            var r = com.tamagochi.tamagochi.controller.dto.TamagotchiResponse.from(pet(stage, 20, 100));
+            assertThat(r.isGoddessBlessing()).as(stage.name()).isFalse();
+            assertThat(r.getBlessingName()).as(stage.name()).isNull();
+        }
     }
 
     @Test

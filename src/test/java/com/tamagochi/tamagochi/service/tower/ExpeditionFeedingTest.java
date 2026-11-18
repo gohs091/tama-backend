@@ -60,17 +60,17 @@ class ExpeditionFeedingTest extends TowerLunchTestSupport {
     @Test
     @DisplayName("원정 중에도 싸 간 도시락은 먹을 수 있고, 알약(파워)도 먹일 수 있다")
     void lunchboxAndPillStillWorkOnExpedition() {
-        User user = newUser(2, 50);
-        lunchService.cook(user, "riceball", 1);
-        lunchService.pack(user, "riceball", 1);
+        User user = newUser(3, 50);
+        lunchService.cook(user, "lunchbox", 1);
+        lunchService.pack(user, "lunchbox", 1);
         int ink = ink(user);
         towerService.depart(user, null);
 
-        assertThat(lunchService.eat(user, "riceball").satiety()).isEqualTo(70);
+        assertThat(lunchService.eat(user, "lunchbox").satiety()).isEqualTo(85);
 
         tamagotchiService.eatPill(user, key());
         assertThat(pet(user).getStrength()).isEqualTo(83);
-        assertThat(pet(user).satiety()).isEqualTo(70);
+        assertThat(pet(user).satiety()).isEqualTo(85);
         assertThat(ink(user)).isEqualTo(ink - 5);
     }
 

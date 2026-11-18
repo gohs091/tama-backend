@@ -593,6 +593,14 @@ public class Tamagotchi {
         return gain;
     }
 
+    /** 완성작(ADULT)이 받는 가호의 이름 (앱에 그대로 보여 준다) */
+    public static final String GODDESS_BLESSING_NAME = "여신의 가호";
+
+    /** 여신의 가호: 완성작은 가만히 있어도 포만감이 시간으로 줄지 않는다 (2026-11-18). 탑에서 쓰는 포만감은 그대로 쓴다 */
+    public boolean hasGoddessBlessing() {
+        return this.evolutionStage == EvolutionStage.ADULT;
+    }
+
     /** 포만감을 쓴다 (탑 맵 통과). 0 아래로 내려가지 않는다. 실제로 쓴 양을 돌려준다 */
     public int spendSatiety(int amount) {
         int spent = Math.max(0, Math.min(amount, satiety()));
@@ -890,6 +898,7 @@ public class Tamagotchi {
      * 알은 대상이 아니고, 잉크통·모험 중에는 기준 시각만 앞으로 당긴다(소진 없음). 자는 동안에도 멈춘다.
      * 완성작 전(낙서·스케치)에는 포만감/파워가 0인 채 deathAfterEmpty가 지나거나 똥이 maxPoop 이상이면 떠난다.
      * 완성작(ADULT)은 떠나지 않고 디버프만 받는다 (DebuffRules). 디버프는 모든 단계에 걸린다.
+     * 완성작은 여신의 가호로 포만감이 시간으로 줄지 않는다 (파워 감소·응가는 그대로. 탑의 포만감 소모도 그대로).
      */
     public void applyTime(LocalDateTime now, VitalsRule rule) {
         if (isDead() || this.evolutionStage == EvolutionStage.EGG) return;
@@ -916,7 +925,12 @@ public class Tamagotchi {
             this.lastStrengthTickAt = now;
             this.lastPoopAt = now;
         } else {
-            decayHunger(now, rule.satietyMinutesPerPoint());
+            if (hasGoddessBlessing()) {
+                // 여신의 가호: 포만감이 시간으로 줄지 않는다. 기준 시각만 당겨 두어 나중에 한꺼번에 깎이지 않게 한다 (자는 동안과 같다)
+                this.lastHungerTickAt = now;
+            } else {
+                decayHunger(now, rule.satietyMinutesPerPoint());
+            }
             decayStrength(now, rule.strengthMinutesPerPoint());
             growPoop(now, rule);
         }

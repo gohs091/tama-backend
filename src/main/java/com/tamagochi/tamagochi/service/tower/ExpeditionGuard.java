@@ -7,8 +7,12 @@ import com.tamagochi.tamagochi.repository.tower.TowerProgressRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 /**
  * 지금 탑 원정 중인지 묻는 한 곳. 다른 서비스(집의 먹이기, 도시락 채비)가 원정 여부로 동작을 막을 때 여기만 쓴다.
+ * 원정 제한 시간(TowerRules.EXPEDITION_TIMEOUT_MINUTES)이 지났으면 묻는 그때 집으로 돌려보낸다 — 만료 뒤에 집 동작이 막히지 않게.
  * 리포지토리만 읽으므로 어느 서비스가 가져다 써도 순환 의존이 생기지 않는다.
  */
 @Component
@@ -16,9 +20,11 @@ import org.springframework.stereotype.Component;
 public class ExpeditionGuard {
 
     private final TowerProgressRepository progressRepository;
+    private final Clock clock;
 
+    /** 제한 시간이 지난 원정은 먼저 집으로 돌려보낸 뒤 답한다 (귀가 기록은 부르는 쪽의 트랜잭션에서 저장된다) */
     public boolean onExpedition(User user) {
-        return progressRepository.findByUserId(user.getId()).map(TowerProgress::isOnExpedition).orElse(false);
+        return progressRepository.findByUserId(user.getId()).map(this::stillOut).orElse(false);
     }
 
     /** 집에서 포만감을 채우는 먹이기: 탑에 가 있는 동안에는 가방에 챙긴 도시락만 먹을 수 있다 */
@@ -35,11 +41,16 @@ public class ExpeditionGuard {
      */
     public void requireHomeToRestart(User user, boolean petGone) {
         TowerProgress progress = progressRepository.findByUserId(user.getId()).orElse(null);
-        if (progress == null || !progress.isOnExpedition()) return;
+        if (progress == null || !stillOut(progress)) return;
         if (petGone) {
             progress.endExpedition();
             return;
         }
         throw new CodedException("ON_EXPEDITION", "탑에 가 있는 동안에는 할 수 없어요. 집에 돌아온 뒤에 해 주세요.");
+    }
+
+    private boolean stillOut(TowerProgress progress) {
+        progress.expireIfTimedOut(LocalDateTime.now(clock));
+        return progress.isOnExpedition();
     }
 }

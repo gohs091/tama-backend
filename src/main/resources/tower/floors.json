@@ -1,0 +1,8 @@
+{
+  "openFloorCap": 17,
+  "defaultMapsPerFloor": 5,
+  "floors": [
+    { "floor": 1, "mapsPerFloor": 5 },
+    { "floor": 2, "mapsPerFloor": 5 }
+  ]
+}

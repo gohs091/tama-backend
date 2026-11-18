@@ -7,6 +7,7 @@ import com.tamagochi.tamagochi.domain.yard.Yard;
 import com.tamagochi.tamagochi.exception.CodedException;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.repository.yard.YardRepository;
+import com.tamagochi.tamagochi.service.lunch.HamsterReward;
 import com.tamagochi.tamagochi.service.lunch.LunchService;
 import com.tamagochi.tamagochi.service.tower.TowerService;
 import com.tamagochi.tamagochi.service.user.UserService;
@@ -36,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /**
  * 도시락·탑 테스트가 함께 쓰는 바탕: 실제 앱(메모리 DB)을 띄우고 시간을 움직이는 시계를 넣는다.
@@ -69,6 +72,10 @@ public abstract class TowerLunchTestSupport {
     @SuppressWarnings("unused")
     protected StringRedisTemplate redisTemplate; // 테스트에서는 Redis를 쓰지 않는다
 
+    /** 햄스터 구출 훅. 기본은 프로덕션과 같이 "아직 구출 안 함"(false)이고, 테스트가 끝날 때마다 되돌아간다 */
+    @MockitoBean
+    protected HamsterReward hamsterReward;
+
     @Autowired protected MutableClock clock;
     @Autowired protected UserService userService;
     @Autowired protected TamagotchiRepository tamagotchiRepository;
@@ -85,6 +92,18 @@ public abstract class TowerLunchTestSupport {
         yard.addFruit(fruit);
         yardRepository.save(yard);
         return user;
+    }
+
+    /** 이 테스트 동안 모든 유저가 햄스터를 구한 것으로 한다 (한 번에 여러 개 만들기 + 가방 +1) */
+    protected void rescueHamster() {
+        when(hamsterReward.rescued(any())).thenReturn(true);
+    }
+
+    /** 도시락 n개를 하나씩 만든다 (햄스터를 구하기 전에는 한 번에 하나만 만들 수 있다) */
+    protected LunchService.View cookOneByOne(User user, int n) {
+        LunchService.View v = lunchService.get(user);
+        for (int i = 0; i < n; i++) v = lunchService.cook(user, "lunchbox", 1);
+        return v;
     }
 
     protected Tamagotchi pet(User user) {
