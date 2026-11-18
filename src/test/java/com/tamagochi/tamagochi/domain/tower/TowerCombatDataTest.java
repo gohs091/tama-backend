@@ -135,7 +135,7 @@ class TowerCombatDataTest {
     @Test
     @DisplayName("전투 데이터 어디에도 전투력 숫자 필드(recommendedBp·battlePower·bp)가 없다")
     void noBattlePowerFields() throws Exception {
-        for (String name : new String[]{"skills.json", "supports.json", "constellation.json", "drops.json", "monsters.json", "floors.json"}) {
+        for (String name : new String[]{"skills.json", "supports.json", "constellation.json", "drops.json", "monsters.json", "floors.json", "player.json"}) {
             List<String> fields = new ArrayList<>();
             collectFieldNames(read(name), fields);
             for (String field : fields) {

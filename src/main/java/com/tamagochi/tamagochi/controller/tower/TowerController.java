@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.controller.tower;
 
 import com.tamagochi.tamagochi.controller.dto.TowerRequest;
+import com.tamagochi.tamagochi.domain.tower.TowerCombatCatalog;
 import com.tamagochi.tamagochi.domain.tower.TowerMap;
 import com.tamagochi.tamagochi.domain.tower.TowerMapCatalog;
 import com.tamagochi.tamagochi.exception.CodedException;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** 탑 원정: 출발·맵 통과·귀환. 그 응답은 모두 탑 전체 상태(TowerService.View). 맵 데이터(M-1)는 읽기 전용 주소로 따로 준다 */
+/** 탑 원정: 출발·맵 통과·귀환. 그 응답은 모두 탑 전체 상태(TowerService.View). 맵 데이터(M-1)와 전투 데이터(H-2)는 읽기 전용 주소로 따로 준다 */
 @RestController
 @RequestMapping("/api/tower")
 @RequiredArgsConstructor
@@ -45,6 +46,15 @@ public class TowerController {
     public ResponseEntity<?> map(@PathVariable int floor, @PathVariable int map) {
         return ResponseEntity.ok(TowerMapCatalog.map(floor, map)
                 .orElseThrow(() -> new CodedException("NO_MAP_DATA", "아직 맵이 없는 층이에요.")));
+    }
+
+    /**
+     * 전투 데이터 묶음 (읽기 전용 카탈로그, H-2): 끄적이 기본 수치·층별 몬스터·스킬·보조. 전부 임시 값이다.
+     * 사람마다 다르지 않고 언제나 같은 답이다. 서버는 이 수치로 한 대 한 대를 검증하지 않는다
+     */
+    @GetMapping("/combat")
+    public ResponseEntity<?> combat() {
+        return ResponseEntity.ok(TowerCombatCatalog.combat());
     }
 
     @PostMapping("/depart")

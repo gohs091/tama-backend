@@ -1,0 +1,65 @@
+{
+  "provisional": true,
+  "note": "임시. 끄적이 기본 전투 수치. 레벨·장비(H-3) 전이라 시안 기본 캐릭터 '자이로'의 값(SPEC §2.1·§2.2)을 누구에게나 똑같이 쓴다. 서버는 이 수치로 한 대 한 대를 검증하지 않는다(퍼히트 검증은 범위 밖). 전투력 숫자와 달리기 기력은 싣지 않는다.",
+  "source": "prototype",
+  "hp": 480,
+  "mp": 440,
+  "mpScaleMax": 100,
+  "mpNote": "임시. hp·mp는 화면에 보이는 기본값이다. MP 소모·회복(mpCost, mpPerSecond, 스킬의 mpCost)은 0~mpScaleMax 눈금으로 계산한다. 화면 MP = mp × (눈금 값 ÷ mpScaleMax). 근거: HPMP T:197",
+  "melee": {
+    "note": "임시. 가까운 공격(베기). 쿨다운 1/1.37초. 근거: SPEC §2.2, CH T:186, T:401~403",
+    "damage": 25,
+    "cooldownSeconds": 0.73,
+    "rangePx": 70,
+    "arcRadians": 1.05,
+    "mpCost": 3,
+    "knockback": 330
+  },
+  "ranged": {
+    "note": "임시. 쏘기(직선탄). 쿨다운 1/2.47초, 사거리 = 탄속 430 × 0.9초. 근거: SPEC §2.2, T:420~424",
+    "damage": 11,
+    "cooldownSeconds": 0.4,
+    "rangePx": 387,
+    "projectileSpeed": 430,
+    "projectileLifeSeconds": 0.9,
+    "mpCost": 2,
+    "knockback": 190
+  },
+  "critical": {
+    "note": "임시. 근거: SPEC §2.1, T:218",
+    "chance": 0.15,
+    "damageMultiplier": 1.5,
+    "knockbackMultiplier": 1.3
+  },
+  "block": {
+    "note": "임시. 막는 동안 받는 피해에 곱한다. 근거: SPEC §2.1, T:208, T:211",
+    "seconds": 0.25,
+    "extraCooldownSeconds": 0.3,
+    "damageTakenMultiplier": 0.25
+  },
+  "movement": {
+    "note": "임시. 165px/초 × 1.06(자이로) = 174.9를 반올림. 공격 중에는 attackingSpeedMultiplier를 곱한다. 근거: SPEC §2.1, SPEED T:77, T:473",
+    "speedPxPerSecond": 175,
+    "attackingSpeedMultiplier": 0.35
+  },
+  "regen": {
+    "note": "임시. MP는 mpDelaySeconds 동안 안 쓴 뒤부터 찬다 (0~mpScaleMax 눈금). 근거: SPEC §2.1, T:489, T:217, T:488",
+    "hpPerSecond": 4,
+    "mpPerSecond": 14,
+    "mpDelaySeconds": 0.6
+  },
+  "hunger": {
+    "note": "포만감이 satietyBelow 미만이면 배고픔: 주는 피해와 이동 속도에 곱한다. 근거: SPEC §2.1, hungry T:378",
+    "satietyBelow": 30,
+    "damageMultiplier": 0.75,
+    "speedMultiplier": 0.8
+  },
+  "defeat": {
+    "note": "쓰러지면 그 맵 입구에서 HP·MP 가득으로 다시 시작한다. 잃는 것은 없다. 근거: SPEC §2.1, T:216",
+    "restartAt": "mapEntry",
+    "restoreHp": true,
+    "restoreMp": true,
+    "losesAnything": false
+  },
+  "damageFormula": "주는 피해 = 기본 피해 × (배고프면 hunger.damageMultiplier) × 별자리·보조 배수(H-3 전에는 1) × 방어·저항 배수(물리 1−방어, 속성 1−저항, 카오스 1) × (치명타면 critical.damageMultiplier). 받는 피해 = 몬스터 attack × (막는 중이면 block.damageTakenMultiplier). 근거: SPEC §2.2"
+}
