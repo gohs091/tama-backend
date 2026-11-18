@@ -5,6 +5,7 @@ import com.tamagochi.tamagochi.controller.dto.TamagotchiResponse;
 import com.tamagochi.tamagochi.domain.land.LandCatalog;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
+import com.tamagochi.tamagochi.service.gear.GearService;
 import com.tamagochi.tamagochi.service.land.AdventureService;
 import com.tamagochi.tamagochi.service.promotion.EvolutionPromotionService;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
@@ -31,12 +32,22 @@ public class DevController {
     private final EvolutionPromotionService evolutionPromotionService;
     private final com.tamagochi.tamagochi.service.yard.YardService yardService;
     private final com.tamagochi.tamagochi.service.lunch.LunchService lunchService;
+    private final GearService gearService;
 
     /** 도시락을 찬장에 준다 (기본 1개). 열매가 들지 않는다. id는 없어도 되고 예전 id여도 같은 도시락이다. 도시락·탑 화면 확인용 */
     @PostMapping("/lunch")
     public ResponseEntity<?> lunch(@RequestBody EvolveRequest request, @RequestParam(required = false) String id,
                                    @RequestParam(defaultValue = "1") int count) {
         return ResponseEntity.ok(lunchService.devGive(userIdentity.resolve(request.getTossUserId()), id, count));
+    }
+
+    /**
+     * 기본 무기를 열매 없이 준다 (기본 나무 붓). 이미 있으면 그대로다.
+     * 무기 칸이 비어 있으면 바로 낀다. 장비 화면 확인용
+     */
+    @PostMapping("/gear")
+    public ResponseEntity<?> gear(@RequestBody EvolveRequest request, @RequestParam(required = false) String id) {
+        return ResponseEntity.ok(gearService.devGive(userIdentity.resolve(request.getTossUserId()), id));
     }
 
     /** 게이지·컨디션과 무관하게 다음 단계로 올린다. */
