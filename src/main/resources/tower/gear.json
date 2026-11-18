@@ -1,0 +1,37 @@
+{
+  "provisional": true,
+  "note": "임시. 첫 배포는 가게 정가만(확률 드롭 없음). 기본 무기는 나무 붓(근접)·깃 펜촉(원거리), 열매 10. 공격력은 시안 자이로 T1 값(player.json melee 25·ranged 11)과 같다. 안 끼면 맨손(더 약함). 전투력 숫자는 싣지 않는다. 강화·T2/T3·부적·스킬·보조는 넣지 않는다. 딱따구리 구출 가드는 오쿠보 가게(N-5)에서 붙인다.",
+  "unarmed": {
+    "note": "임시. 무기를 안 낀 기본 공격. T1보다 약하게 두어 1층 첫 등반은 가능하고, 산 뒤에는 더 빨리 돈다. 맨손 근접 18 ≈ 나무 붓 25의 0.72, 맨손 원거리 8 ≈ 깃 펜촉 11의 0.73.",
+    "meleeDamage": 18,
+    "rangedDamage": 8
+  },
+  "weapons": [
+    {
+      "id": "wooden-brush",
+      "emoji": "🖌️",
+      "name": "나무 붓",
+      "slot": "WEAPON",
+      "style": "MELEE",
+      "tier": "T1",
+      "price": { "fruit": 10 },
+      "unlockFloor": 1,
+      "unlockNpc": "ns-woodpecker",
+      "meleeDamage": 25,
+      "note": "임시. 근접 기본 무기. 열매 10. 공격력은 player.json melee.damage와 같다. 원거리 피해는 바꾸지 않는다."
+    },
+    {
+      "id": "feather-nib",
+      "emoji": "🪶",
+      "name": "깃 펜촉",
+      "slot": "WEAPON",
+      "style": "RANGED",
+      "tier": "T1",
+      "price": { "fruit": 10 },
+      "unlockFloor": 1,
+      "unlockNpc": "ns-woodpecker",
+      "rangedDamage": 11,
+      "note": "임시. 원거리 기본 무기. 열매 10. 공격력은 player.json ranged.damage와 같다. 근접 피해는 바꾸지 않는다."
+    }
+  ]
+}
