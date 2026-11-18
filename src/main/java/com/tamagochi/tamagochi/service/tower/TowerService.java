@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,7 +29,7 @@ import java.util.UUID;
  * 가방에 도시락도 없으면 집으로 돌아올 뿐이다 (도시락이 남아 있으면 원정은 이어지고, 먹어야 다음 맵을 통과할 수 있다).
  * 한 번의 원정은 출발한 지 TowerRules.EXPEDITION_TIMEOUT_MINUTES분이 지나면 끝난다: 읽거나 동작하기 전에 확인해 집으로
  * 돌려보내고, 앱을 열지 않은 사람은 스케줄러(TowerExpeditionScheduler)가 돌려보낸다. 가방은 그대로다.
- * 층의 맵 수와 공개 층 상한은 TowerFloorCatalog(resources/tower/floors.json)의 데이터다.
+ * 층의 맵 수·공개 층 상한·진영·바퀴·구출 NPC id·맵별 몬스터 수는 TowerFloorCatalog(resources/tower/floors.json)의 데이터다.
  * 보상 지급·무작위는 없다. 포만감은 끄적이의 hunger를 그대로 쓴다 (포만감 = 100 − hunger).
  * 맵 통과 검증(H-1): 서버가 가진 지금 층·맵에서 한 칸만 전진하고, 원정 id(runId)·층·맵을 보내면 서버 값과 같아야 하며,
  * 맵에 들어온 뒤 최소 체류 시간(tower.clear-map.min-seconds)이 지나야 통과한다. 한 대 한 대의 전투는 검증하지 않는다.
@@ -86,11 +87,18 @@ public class TowerService {
      * mapsPerFloor는 지금 층(currentFloor)의 맵 수다 (층마다 다를 수 있다). openFloorCap은 열려 있는 가장 높은 층,
      * expeditionSecondsLeft는 원정 제한 시간까지 남은 초 (원정 중이 아니면 null).
      * runId는 지금 원정의 id (원정 중이 아니거나, 이 값이 생기기 전에 떠난 원정이면 null).
-     * secondsUntilClear는 지금 맵을 통과할 수 있을 때까지 남은 초 (원정 중이 아니면 null, 바로 통과할 수 있으면 0)
+     * secondsUntilClear는 지금 맵을 통과할 수 있을 때까지 남은 초 (원정 중이 아니면 null, 바로 통과할 수 있으면 0).
+     * 층 데이터(M-0, 지금 층 기준): faction은 진영 id, wheel은 바퀴(1 창고·2 공장·3 본사), rescueNpcIds는 그 층에서 구출하는
+     * NPC의 id (없으면 빈 목록 — 구출 로직은 아직 없다), currentMapMonsters는 지금 맵의 몬스터 수 (아직 적지 않은 층이면 null).
+     * 전투력 숫자는 싣지 않는다
      */
     public record View(int highestFloor, int maxDepartFloor, int currentFloor, int currentMap, int mapsPerFloor,
                        boolean onExpedition, int satiety, int spentToday, int mapSatietyCost, int bagCount, Result result,
-                       int openFloorCap, Long expeditionSecondsLeft, String runId, Long secondsUntilClear) {}
+                       int openFloorCap, Long expeditionSecondsLeft, String runId, Long secondsUntilClear,
+                       String faction, Integer wheel, List<String> rescueNpcIds, MapMonstersView currentMapMonsters) {}
+
+    /** 맵 한 장의 몬스터 수. provisional: 임시 값인가 */
+    public record MapMonstersView(int normal, int swarm, int boss, boolean provisional) {}
 
     /** 불러온 진행. timedOut: 이번에 불러오면서 제한 시간이 지나 원정을 접었다 */
     private record Loaded(TowerProgress progress, boolean timedOut) {}
@@ -163,7 +171,10 @@ public class TowerService {
      * 검증 (거절하면 아무것도 바뀌지 않고 포만감도 쓰지 않는다):
      * runId를 보냈으면 지금 원정의 것과 같아야 한다 (RUN_MISMATCH). floor·map을 보냈으면 서버의 지금 층·맵과 같아야 한다
      * (MAP_MISMATCH) — 어느 쪽이든 전진은 서버의 지금 맵에서 한 칸뿐이라 건너뛸 수 없다. 비우면(예전 앱) 서버 값만 따른다.
+     * 다만 floor·map을 둘 다 보냈고 그것이 이번 원정에서 방금 통과한 맵(지금 위치의 바로 이전 맵)이면 재전송으로 보고,
+     * 포만감도 맵도 건드리지 않은 채 지금 상태를 그대로 돌려준다 (멱등, result는 비어 있다). 더 옛 맵은 MAP_MISMATCH다.
      * 맵에 들어온 지 minMapSeconds초가 안 됐으면 거절한다 (MAP_TOO_SOON) — runId를 보내지 않아도 적용한다.
+     * 포만감 검사가 최소 시간보다 먼저라, 포만감이 모자라면 기다리지 않고 바로 NOT_ENOUGH_SATIETY 또는 귀가(SATIETY_EMPTY)다.
      * 맵에 들어온 시각이 없는 원정(그 기록이 생기기 전에 떠난 원정)은 이번 한 번은 시간 검사 없이 받고, 다음 맵부터 시계가 돈다.
      * 한 대 한 대의 전투(퍼히트)는 검증하지 않는다
      */
@@ -177,6 +188,10 @@ public class TowerService {
             if (runId != null && !runId.isBlank() && !runId.equals(progress.getRunId())) {
                 throw new CodedException("RUN_MISMATCH", "지금 원정과 맞지 않아요. 탑 화면을 다시 열어 주세요.");
             }
+            // 방금 통과한 맵을 다시 보낸 요청(응답을 못 받고 재전송)은 멱등: 아무것도 바꾸지 않고 지금 상태를 돌려준다
+            if (floor != null && map != null && progress.justCleared(floor, map)) {
+                return view(user, progress, Result.NONE);
+            }
             if ((floor != null && floor != progress.getCurrentFloor()) || (map != null && map != progress.getCurrentMap())) {
                 throw new CodedException("MAP_MISMATCH", "지금 있는 맵과 맞지 않아요. 탑 화면을 다시 열어 주세요.");
             }
@@ -186,10 +201,7 @@ public class TowerService {
                 progress.endExpedition();
                 return view(user, progress, Result.ended(PET_UNAVAILABLE));
             }
-            LocalDateTime now = LocalDateTime.now(clock);
-            if (progress.secondsUntilClear(now, minMapSeconds) > 0) {
-                throw new CodedException("MAP_TOO_SOON", "아직 이 맵을 다 돌지 못했어요.");
-            }
+            // 포만감 검사가 최소 시간보다 먼저다: 배고픈 사람을 기다리게 한 뒤에 돌려보내지 않는다
             if (pet.satiety() < TowerRules.MAP_SATIETY_COST) {
                 // 가방에 도시락이 있으면 원정을 끝내지 않고 거절한다 (앱이 먹기를 권한다)
                 if (bagCount(user) > 0) {
@@ -197,6 +209,10 @@ public class TowerService {
                 }
                 progress.endExpedition();
                 return view(user, progress, Result.ended(SATIETY_EMPTY));
+            }
+            LocalDateTime now = LocalDateTime.now(clock);
+            if (progress.secondsUntilClear(now, minMapSeconds) > 0) {
+                throw new CodedException("MAP_TOO_SOON", "아직 이 맵을 다 돌지 못했어요.");
             }
 
             // 탑은 포만감을 SATIETY_FLOOR 아래로 내리지 않는다 (포만감이 딱 맵 값이면 1을 남긴다): 굶주림 타이머를 탑이 켜지 않게
@@ -247,10 +263,15 @@ public class TowerService {
     private View view(User user, TowerProgress progress, Result result) {
         int satiety = tamagotchiRepository.findActiveByUserId(user.getId()).map(Tamagotchi::satiety).orElse(0);
         LocalDateTime now = LocalDateTime.now(clock);
+        TowerFloorCatalog.Floor floor = TowerFloorCatalog.floor(progress.getCurrentFloor()).orElse(null);
+        MapMonstersView monsters = floor == null ? null : floor.map(progress.getCurrentMap())
+                .map(m -> new MapMonstersView(m.normal(), m.swarm(), m.boss(), m.provisional())).orElse(null);
         return new View(progress.getHighestFloor(), progress.maxDepartFloor(), progress.getCurrentFloor(), progress.getCurrentMap(),
                 TowerFloorCatalog.mapsPerFloor(progress.getCurrentFloor()), progress.isOnExpedition(), satiety,
                 progress.spentToday(LocalDate.now(clock)), TowerRules.MAP_SATIETY_COST, bagCount(user), result,
                 TowerFloorCatalog.openFloorCap(), progress.secondsLeft(now),
-                progress.getRunId(), progress.secondsUntilClear(now, minMapSeconds));
+                progress.getRunId(), progress.secondsUntilClear(now, minMapSeconds),
+                floor == null ? null : floor.faction(), floor == null ? null : floor.wheel(),
+                floor == null ? List.of() : floor.rescueNpcIds(), monsters);
     }
 }
