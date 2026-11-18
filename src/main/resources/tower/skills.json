@@ -1,0 +1,140 @@
+{
+  "provisional": true,
+  "note": "시안 스킬 9종(SPEC §2.4, template.html SK T:309~310). 한 번에 하나만 가진다. 이름·설명은 시안 문구 그대로이고, 수치는 모두 시안 코드에서 옮긴 값이라 확정 전까지 임시다. 서버는 아직 이 수치로 피해를 계산하지 않는다(퍼히트 검증은 범위 밖).",
+  "source": "prototype",
+  "charged": {
+    "note": "임시. 모으는 스킬 4종(fire·water·wind·earth)의 공통 기본값. 스킬마다 modifiersPercent를 더한다. 근거: T:434~436, T:494, MAG T:195",
+    "source": "prototype",
+    "baseDamage": 45,
+    "baseKnockback": 420,
+    "mpCost": 20,
+    "chargeSeconds": 1.5,
+    "cooldownSeconds": 2.5,
+    "chargeDamageFactor": { "min": 0.4, "perFullCharge": 0.6 },
+    "formulas": {
+      "damage": "45 × (1 + 피해%) × (0.4 + 0.6 × 모은 정도)",
+      "knockback": "420 × (1 + 밀림%)",
+      "mp": "20 × (1 + MP%)",
+      "chargeSeconds": "1.5 × (1 + 시간%)"
+    }
+  },
+  "arrow": {
+    "note": "임시. 화살 스킬 4종(aPoison·aCurse·aIce·aRust)의 공통 값. 근거: arrow T:312~313",
+    "source": "prototype",
+    "damage": 28,
+    "mpCost": 8,
+    "cooldownSeconds": 0.5,
+    "projectileSpeed": 560
+  },
+  "summon": {
+    "note": "임시. 근거: PET T:327, T:328",
+    "source": "prototype",
+    "mpCost": 25,
+    "cooldownSeconds": 1.5,
+    "durationSeconds": 30,
+    "hitDamage": 22,
+    "hitIntervalSeconds": 0.75
+  },
+  "statusEffects": {
+    "note": "임시. 시안 코드의 상태 이상(T:366~374, T:275). 설명만 옮겼고 서버 필드로는 아직 쓰지 않는다.",
+    "source": "prototype",
+    "fire": "초당 5 화상, 4초",
+    "poison": "초당 max(3, 피해 × 0.3)",
+    "water": "30% 느려짐, 2초",
+    "ice": "25% 느려짐, 4번 맞으면 1.5초 얼음",
+    "curse": "20% 약하게 때림·저항 −0.25, 5초",
+    "rust": "한 겹에 방어 −0.12, 최대 5겹",
+    "earth": "0.35초 굳음 (보스 제외)"
+  },
+  "skills": [
+    {
+      "id": "fire",
+      "kind": "charged",
+      "name": "불길",
+      "description": "꾹 눌렀다 놓으면 불길이 뻗어",
+      "modifiersPercent": { "chargeTime": 9, "damage": 117, "knockback": 27, "mp": 0 },
+      "shape": "앞 부채꼴 ±0.6rad, 거리 150~240px",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "T:437"
+    },
+    {
+      "id": "water",
+      "kind": "charged",
+      "name": "파도",
+      "description": "꾹 눌렀다 놓으면 파도가 밀어내",
+      "modifiersPercent": { "chargeTime": -9, "damage": 18, "knockback": 27, "mp": 36 },
+      "shape": "지나가며 밀어냄, 피해 ×0.8, 반지름 70~110px",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "T:442"
+    },
+    {
+      "id": "wind",
+      "kind": "charged",
+      "name": "회오리",
+      "description": "꾹 눌렀다 놓으면 회오리가 날아가",
+      "modifiersPercent": { "chargeTime": -18, "damage": 36, "knockback": 27, "mp": 18 },
+      "shape": "2.2초 동안 끌어당김, 0.3초마다 피해 ×0.28",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "T:444"
+    },
+    {
+      "id": "earth",
+      "kind": "charged",
+      "name": "바위",
+      "description": "꾹 눌렀다 놓으면 둘레에 바위가 솟아",
+      "modifiersPercent": { "chargeTime": 0, "damage": 36, "knockback": 72, "mp": 54 },
+      "shape": "둘레 90~180px + 1.3초 남는 자리(피해 ×0.4)",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "T:447"
+    },
+    {
+      "id": "summon",
+      "kind": "summon",
+      "name": "소환",
+      "description": "끄적이 하나를 불러. 따라다니며 가까운 상대에게 덤벼",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "PET T:327, T:328"
+    },
+    {
+      "id": "aPoison",
+      "kind": "arrow",
+      "name": "독화살",
+      "description": "물리 피해 · 맞으면 중독돼",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "arrow T:312~313"
+    },
+    {
+      "id": "aCurse",
+      "kind": "arrow",
+      "name": "저주화살",
+      "description": "카오스 피해 · 맞으면 저주에 걸려 저항이 깎여",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "arrow T:312~313"
+    },
+    {
+      "id": "aIce",
+      "kind": "arrow",
+      "name": "얼음화살",
+      "description": "얼음 피해 · 느려지다가 얼어붙어",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "arrow T:312~313"
+    },
+    {
+      "id": "aRust",
+      "kind": "arrow",
+      "name": "산성 화살",
+      "description": "물리 피해 · 맞으면 부식돼 방어가 깎여",
+      "provisional": true,
+      "source": "prototype",
+      "sourceRef": "arrow T:312~313"
+    }
+  ]
+}

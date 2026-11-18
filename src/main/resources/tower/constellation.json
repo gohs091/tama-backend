@@ -1,0 +1,32 @@
+{
+  "provisional": true,
+  "status": "미정",
+  "note": "별자리 골격만 둔다. 포인트를 얻는 규칙이 문서와 시안에서 서로 달라 아직 정해지지 않았다(SPEC §2.6·§6-6·§7). 노드 트리는 H-3에서 채운다 — 여기 nodes는 일부러 비어 있다.",
+  "pointRules": {
+    "decided": null,
+    "document": {
+      "source": "WORLD_FUSION §8.3",
+      "pointsPerLevel": 1,
+      "bonusPercentPerNode": 3
+    },
+    "prototype": {
+      "source": "prototype",
+      "sourceRef": "assets/tree/tree.html 175·177·278줄, template.html T:226",
+      "startLevel": 40,
+      "startPoints": 39,
+      "pointsPerMapClear": 1,
+      "levelCap": 120
+    },
+    "conflict": "임시/미정. 문서는 '레벨당 1포인트, 노드당 +3%'이고 시안은 '레벨 40으로 시작, 맵 하나를 비우면 +1, 상한 120'이다. 경험치·레벨 규칙 자체가 미정이라 어느 쪽도 확정하지 않는다."
+  },
+  "nodeSchema": {
+    "note": "H-3에서 nodes를 채울 때 쓸 자리. 필드 이름도 그때 확정한다(임시).",
+    "id": "문자열, 노드 고유 id",
+    "name": "문자열, 화면에 보이는 이름",
+    "description": "문자열, 효과 설명",
+    "cost": "정수, 드는 포인트",
+    "requires": "문자열 목록, 먼저 찍어야 하는 노드 id",
+    "effects": "목록, { stat, percent } 꼴"
+  },
+  "nodes": []
+}

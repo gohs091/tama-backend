@@ -1,0 +1,201 @@
+{
+  "provisional": true,
+  "note": "시안 보조 18종(SPEC §2.4, template.html SUPS T:300~304). 슬롯 키워드·이름·설명은 시안 문구 그대로다. slotKeyword는 그 키워드가 달린 칸에만 끼울 수 있다는 뜻이고, 빈 문자열이면 아무 칸에나 끼운다. 세부 배율(prototypeValues)은 시안 코드에만 있고 문서에 없어 전부 임시다. null은 아직 옮기지 않은 값(미정)이다.",
+  "source": "prototype",
+  "slots": {
+    "note": "임시. 가까운 공격·쏘기·스킬에 2칸씩 끼운다 (SPEC §2.4)",
+    "source": "prototype",
+    "rows": [
+      {
+        "id": "m",
+        "name": "가까운 공격",
+        "slots": 2
+      },
+      {
+        "id": "r",
+        "name": "쏘기",
+        "slots": 2
+      },
+      {
+        "id": "u",
+        "name": "스킬",
+        "slots": 2
+      }
+    ]
+  },
+  "supports": [
+    {
+      "id": "split",
+      "slotKeyword": "탄",
+      "name": "두 갈래",
+      "description": "양옆으로 두 발이 더 나가",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": {
+        "extraShots": 2,
+        "extraShotDamageMultiplier": 0.6,
+        "spreadRadians": 0.24
+      }
+    },
+    {
+      "id": "pierce",
+      "slotKeyword": "탄",
+      "name": "뚫기",
+      "description": "상대를 뚫고 지나가",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "burst",
+      "slotKeyword": "탄",
+      "name": "퍼지기",
+      "description": "맞은 자리 둘레의 상대에게도 절반의 피해와 효과가 번져",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": {
+        "splashDamageMultiplier": 0.5,
+        "splashRadiusPx": 90
+      }
+    },
+    {
+      "id": "b5",
+      "slotKeyword": "탄",
+      "name": "유도",
+      "description": "상대 쪽으로 휘어",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "a5",
+      "slotKeyword": "탄",
+      "name": "멀리",
+      "description": "두 배 멀리 날아가",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": {
+        "rangeMultiplier": 2
+      }
+    },
+    {
+      "id": "shadow",
+      "slotKeyword": "근접",
+      "name": "그림자",
+      "description": "벤 뒤에 잉크 그림자가 한 번 더 베어",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "a2",
+      "slotKeyword": "근접",
+      "name": "넓게",
+      "description": "더 넓게 닿아",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "k2",
+      "slotKeyword": "근접",
+      "name": "검기",
+      "description": "체력이 가득이면 검기가 날아가",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "k4",
+      "slotKeyword": "근접",
+      "name": "끌어당김",
+      "description": "맞은 상대를 내 쪽으로 끌어당겨",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "over",
+      "slotKeyword": "범위",
+      "name": "과충전",
+      "description": "끝까지 모으면 한 번 더 나가",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "b6",
+      "slotKeyword": "범위",
+      "name": "포탑",
+      "description": "쓴 자리에 포탑이 남아 알아서 쏴",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "k0",
+      "slotKeyword": "스킬",
+      "name": "불길",
+      "description": "맞은 자리에 불길이 남아 계속 태워",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "b9",
+      "slotKeyword": "스킬",
+      "name": "끌어모으기",
+      "description": "맞은 상대를 내 쪽으로 끌어모아",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "tagP",
+      "slotKeyword": "",
+      "name": "독 바르기",
+      "description": "끼운 칸의 타격에 [독]이 붙어 · 방어와 저항을 무시하는 지속 피해를 입혀",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "tagR",
+      "slotKeyword": "",
+      "name": "부식 바르기",
+      "description": "끼운 칸의 타격에 [부식]이 붙어 · 겹칠수록 상대의 방어가 깎여",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "tagC",
+      "slotKeyword": "",
+      "name": "저주 걸기",
+      "description": "끼운 칸의 타격에 [저주]가 붙어 · 상대의 저항이 깎이고 약하게 때려",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "tagI",
+      "slotKeyword": "",
+      "name": "얼음으로 바꾸기",
+      "description": "끼운 칸의 피해가 [얼음] 피해가 돼 · 느려지다가 얼어붙어",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": null
+    },
+    {
+      "id": "convC",
+      "slotKeyword": "",
+      "name": "카오스로 바꾸기",
+      "description": "끼운 칸의 피해가 방어와 저항을 무시하는 [카오스] 피해가 되고 20% 약해져",
+      "provisional": true,
+      "source": "prototype",
+      "prototypeValues": {
+        "damageMultiplier": 0.8
+      }
+    }
+  ]
+}

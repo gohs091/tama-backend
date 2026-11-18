@@ -4,6 +4,7 @@ import com.tamagochi.tamagochi.domain.lunch.Pantry;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.tower.TowerFloorCatalog;
+import com.tamagochi.tamagochi.domain.tower.TowerMonsterCatalog;
 import com.tamagochi.tamagochi.domain.tower.TowerProgress;
 import com.tamagochi.tamagochi.domain.tower.TowerRules;
 import com.tamagochi.tamagochi.domain.user.User;
@@ -12,13 +13,14 @@ import com.tamagochi.tamagochi.repository.lunch.PantryRepository;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.repository.tower.TowerProgressRepository;
 import com.tamagochi.tamagochi.service.common.OptimisticRetry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 탑 원정의 서버 기록 (최소형): 출발 → 맵 통과 → 귀환. 포만감 소모와 맵·층 전진은 서버가 계산한다 (앱은 "통과했다"만 알린다).
@@ -28,9 +30,10 @@ import java.time.LocalDateTime;
  * 돌려보내고, 앱을 열지 않은 사람은 스케줄러(TowerExpeditionScheduler)가 돌려보낸다. 가방은 그대로다.
  * 층의 맵 수와 공개 층 상한은 TowerFloorCatalog(resources/tower/floors.json)의 데이터다.
  * 보상 지급·무작위는 없다. 포만감은 끄적이의 hunger를 그대로 쓴다 (포만감 = 100 − hunger).
+ * 맵 통과 검증(H-1): 서버가 가진 지금 층·맵에서 한 칸만 전진하고, 원정 id(runId)·층·맵을 보내면 서버 값과 같아야 하며,
+ * 맵에 들어온 뒤 최소 체류 시간(tower.clear-map.min-seconds)이 지나야 통과한다. 한 대 한 대의 전투는 검증하지 않는다.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TowerService {
 
@@ -43,6 +46,7 @@ public class TowerService {
 
     static {
         TowerFloorCatalog.floors(); // 층 데이터가 없거나 잘못됐으면 서버가 뜰 때 바로 실패한다
+        TowerMonsterCatalog.monsters(); // 몬스터 데이터도 마찬가지
     }
 
     private final TowerProgressRepository progressRepository;
@@ -50,6 +54,19 @@ public class TowerService {
     private final TamagotchiRepository tamagotchiRepository;
     private final OptimisticRetry retry;
     private final Clock clock;
+    /** 맵 하나에 머물러야 하는 최소 시간(초). 이보다 일찍 온 통과는 거절한다. 0 이하면 검사하지 않는다 */
+    private final int minMapSeconds;
+
+    public TowerService(TowerProgressRepository progressRepository, PantryRepository pantryRepository,
+                        TamagotchiRepository tamagotchiRepository, OptimisticRetry retry, Clock clock,
+                        @Value("${tower.clear-map.min-seconds:20}") int minMapSeconds) {
+        this.progressRepository = progressRepository;
+        this.pantryRepository = pantryRepository;
+        this.tamagotchiRepository = tamagotchiRepository;
+        this.retry = retry;
+        this.clock = clock;
+        this.minMapSeconds = minMapSeconds;
+    }
 
     /**
      * 이번 동작의 결과. mapCleared: 맵을 통과했는가, spentSatiety: 이번에 쓴 포만감, floorCleared: 층을 돌파했는가,
@@ -67,11 +84,13 @@ public class TowerService {
     /**
      * 탑 전체 상태. satiety는 남은 포만감, spentToday는 오늘(KST) 탑에서 쓴 포만감, bagCount는 가방에 든 도시락 수.
      * mapsPerFloor는 지금 층(currentFloor)의 맵 수다 (층마다 다를 수 있다). openFloorCap은 열려 있는 가장 높은 층,
-     * expeditionSecondsLeft는 원정 제한 시간까지 남은 초 (원정 중이 아니면 null)
+     * expeditionSecondsLeft는 원정 제한 시간까지 남은 초 (원정 중이 아니면 null).
+     * runId는 지금 원정의 id (원정 중이 아니거나, 이 값이 생기기 전에 떠난 원정이면 null).
+     * secondsUntilClear는 지금 맵을 통과할 수 있을 때까지 남은 초 (원정 중이 아니면 null, 바로 통과할 수 있으면 0)
      */
     public record View(int highestFloor, int maxDepartFloor, int currentFloor, int currentMap, int mapsPerFloor,
                        boolean onExpedition, int satiety, int spentToday, int mapSatietyCost, int bagCount, Result result,
-                       int openFloorCap, Long expeditionSecondsLeft) {}
+                       int openFloorCap, Long expeditionSecondsLeft, String runId, Long secondsUntilClear) {}
 
     /** 불러온 진행. timedOut: 이번에 불러오면서 제한 시간이 지나 원정을 접었다 */
     private record Loaded(TowerProgress progress, boolean timedOut) {}
@@ -105,7 +124,8 @@ public class TowerService {
     /**
      * 원정을 떠난다 (집에서만). floor를 비우면 돌파한 층 바로 위에서 시작한다. 갈 수 있는 층은 1 ~ 돌파한 층 + 1이고
      * 공개 층 상한(TowerFloorCatalog.openFloorCap)을 넘지 않는다. 제한 시간이 지난 원정은 먼저 접고 새로 떠난다.
-     * 포만감이 맵 1장 값보다 적어도 가방에 도시락이 있으면 떠날 수 있다 (도시락은 탑에서만 먹을 수 있다)
+     * 포만감이 맵 1장 값보다 적어도 가방에 도시락이 있으면 떠날 수 있다 (도시락은 탑에서만 먹을 수 있다).
+     * 떠날 때마다 새 원정 id(runId)를 주고, 첫 맵의 시계를 시작한다
      */
     public View depart(User user, Integer floor) {
         return retry.run(() -> {
@@ -127,7 +147,7 @@ public class TowerService {
             if (pet.satiety() < TowerRules.MAP_SATIETY_COST && bagCount(user) == 0) {
                 throw new CodedException("NOT_ENOUGH_SATIETY", "배가 고파서 탑에 갈 수 없어요.");
             }
-            progress.depart(target, LocalDateTime.now(clock));
+            progress.depart(target, LocalDateTime.now(clock), UUID.randomUUID().toString());
             return view(user, progress, Result.NONE);
         });
     }
@@ -140,20 +160,35 @@ public class TowerService {
      * 가방에 도시락이 있으면 원정은 그대로 두고 거절하고 (NOT_ENOUGH_SATIETY — 도시락을 먹고 다시 부른다),
      * 가방이 비었으면 원정을 끝낸다 (SATIETY_EMPTY).
      * 통과한 뒤 포만감이 맵 1장 값보다 적고 가방에 도시락도 없으면 더 갈 수 없으니 원정이 끝난다.
-     * TODO(H-1): 전투 검증 추가 — 지금은 앱이 통과했다고 알리면 그대로 믿는다
+     * 검증 (거절하면 아무것도 바뀌지 않고 포만감도 쓰지 않는다):
+     * runId를 보냈으면 지금 원정의 것과 같아야 한다 (RUN_MISMATCH). floor·map을 보냈으면 서버의 지금 층·맵과 같아야 한다
+     * (MAP_MISMATCH) — 어느 쪽이든 전진은 서버의 지금 맵에서 한 칸뿐이라 건너뛸 수 없다. 비우면(예전 앱) 서버 값만 따른다.
+     * 맵에 들어온 지 minMapSeconds초가 안 됐으면 거절한다 (MAP_TOO_SOON) — runId를 보내지 않아도 적용한다.
+     * 맵에 들어온 시각이 없는 원정(그 기록이 생기기 전에 떠난 원정)은 이번 한 번은 시간 검사 없이 받고, 다음 맵부터 시계가 돈다.
+     * 한 대 한 대의 전투(퍼히트)는 검증하지 않는다
      */
-    public View clearMap(User user) {
+    public View clearMap(User user, String runId, Integer floor, Integer map) {
         return retry.run(() -> {
             Loaded loaded = load(user);
             TowerProgress progress = loaded.progress();
             // 거절(예외)하면 귀가 기록까지 되돌려지므로, 만료는 예외가 아니라 결과로 알린다
             if (loaded.timedOut()) return view(user, progress, Result.ended(TIME_UP));
             if (!progress.isOnExpedition()) throw new CodedException("NOT_ON_EXPEDITION", "탑에 가 있지 않아요.");
+            if (runId != null && !runId.isBlank() && !runId.equals(progress.getRunId())) {
+                throw new CodedException("RUN_MISMATCH", "지금 원정과 맞지 않아요. 탑 화면을 다시 열어 주세요.");
+            }
+            if ((floor != null && floor != progress.getCurrentFloor()) || (map != null && map != progress.getCurrentMap())) {
+                throw new CodedException("MAP_MISMATCH", "지금 있는 맵과 맞지 않아요. 탑 화면을 다시 열어 주세요.");
+            }
 
             Tamagotchi pet = tamagotchiRepository.findActiveByUserId(user.getId()).filter(p -> !p.isDead()).orElse(null);
             if (pet == null) { // 원정 중에 끄적이가 없어졌다 (새로 시작 등): 원정만 접는다
                 progress.endExpedition();
                 return view(user, progress, Result.ended(PET_UNAVAILABLE));
+            }
+            LocalDateTime now = LocalDateTime.now(clock);
+            if (progress.secondsUntilClear(now, minMapSeconds) > 0) {
+                throw new CodedException("MAP_TOO_SOON", "아직 이 맵을 다 돌지 못했어요.");
             }
             if (pet.satiety() < TowerRules.MAP_SATIETY_COST) {
                 // 가방에 도시락이 있으면 원정을 끝내지 않고 거절한다 (앱이 먹기를 권한다)
@@ -167,7 +202,7 @@ public class TowerService {
             // 탑은 포만감을 SATIETY_FLOOR 아래로 내리지 않는다 (포만감이 딱 맵 값이면 1을 남긴다): 굶주림 타이머를 탑이 켜지 않게
             int spent = pet.spendSatiety(Math.min(TowerRules.MAP_SATIETY_COST, pet.satiety() - TowerRules.SATIETY_FLOOR));
             progress.addSpent(LocalDate.now(clock), spent);
-            TowerProgress.Advance advance = progress.advance();
+            TowerProgress.Advance advance = progress.advance(now);
 
             String endReason = null;
             if (advance.topCleared()) {
@@ -179,6 +214,11 @@ public class TowerService {
             return view(user, progress, new Result(true, spent, advance.floorCleared(), advance.firstClear(),
                     endReason != null, endReason));
         });
+    }
+
+    /** 원정 id·층·맵 없이 통과를 알린다 (예전 앱과 같은 요청). 순서·최소 시간·포만감·층 상한은 똑같이 적용된다 */
+    public View clearMap(User user) {
+        return clearMap(user, null, null, null);
     }
 
     /** 집으로 돌아온다. 가방에 남은 도시락은 가방에 그대로 있다. 이미 제한 시간이 지나 있었으면 TIME_UP으로 알린다 */
@@ -206,9 +246,11 @@ public class TowerService {
 
     private View view(User user, TowerProgress progress, Result result) {
         int satiety = tamagotchiRepository.findActiveByUserId(user.getId()).map(Tamagotchi::satiety).orElse(0);
+        LocalDateTime now = LocalDateTime.now(clock);
         return new View(progress.getHighestFloor(), progress.maxDepartFloor(), progress.getCurrentFloor(), progress.getCurrentMap(),
                 TowerFloorCatalog.mapsPerFloor(progress.getCurrentFloor()), progress.isOnExpedition(), satiety,
                 progress.spentToday(LocalDate.now(clock)), TowerRules.MAP_SATIETY_COST, bagCount(user), result,
-                TowerFloorCatalog.openFloorCap(), progress.secondsLeft(LocalDateTime.now(clock)));
+                TowerFloorCatalog.openFloorCap(), progress.secondsLeft(now),
+                progress.getRunId(), progress.secondsUntilClear(now, minMapSeconds));
     }
 }

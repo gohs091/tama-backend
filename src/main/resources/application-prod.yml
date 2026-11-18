@@ -77,3 +77,8 @@ storage:
     region: ${S3_REGION:ap-northeast-2}
     migrate: ${S3_MIGRATE_EXISTING:false}   # 켜면 서버가 뜰 때 DB에 남은 base64 그림을 S3로 옮기고 DB에서 지운다
   cdn-base: ${CDN_BASE_URL:https://d1k9cezbye963n.cloudfront.net}
+
+# 탑 맵 통과 검증: 맵 하나에 머물러야 하는 최소 시간(초). 이보다 일찍 온 clear-map은 MAP_TOO_SOON으로 거절한다. 0이면 검사하지 않는다
+tower:
+  clear-map:
+    min-seconds: ${TOWER_CLEAR_MAP_MIN_SECONDS:20}

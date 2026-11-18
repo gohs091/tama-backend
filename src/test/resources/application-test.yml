@@ -16,3 +16,6 @@ tamagotchi:
 tower:
   expedition:
     sweep-initial-delay-ms: 86400000
+  # 맵 최소 체류 시간(운영 기본 20초). 테스트 기본은 0(검사 안 함)이고, 최소 시간 테스트만 따로 20초로 켠다
+  clear-map:
+    min-seconds: 0
