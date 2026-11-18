@@ -12,3 +12,7 @@ spring:
 tamagotchi:
   auth:
     enabled: true
+# 테스트는 시계를 옮겨 가며 원정 만료를 직접 부른다. 뒤에서 도는 스케줄러가 먼저 접어 버리지 않게 첫 실행을 멀리 미룬다
+tower:
+  expedition:
+    sweep-initial-delay-ms: 86400000

@@ -1,5 +1,5 @@
-[
-  { "id": "riceball", "emoji": "🍙", "name": "주먹밥 도시락", "fruitCost": 2, "satiety": 20 },
-  { "id": "hearty", "emoji": "🍱", "name": "든든 도시락", "fruitCost": 5, "satiety": 45 },
-  { "id": "feast", "emoji": "🎃", "name": "잔치 도시락", "fruitCost": 12, "satiety": 100, "unlock": { "type": "NPC", "id": "hamster" } }
-]
+{
+  "lunchbox": { "id": "lunchbox", "emoji": "🍱", "name": "도시락", "fruitCost": 3, "satiety": 35 },
+  "bag": { "defaultSlots": 2, "maxSlots": 4 },
+  "legacySatiety": { "riceball": 20, "hearty": 45, "feast": 100 }
+}

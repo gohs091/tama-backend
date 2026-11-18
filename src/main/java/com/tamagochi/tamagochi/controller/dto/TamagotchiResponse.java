@@ -57,6 +57,8 @@ public class TamagotchiResponse {
     private com.tamagochi.tamagochi.domain.battle.BattleSkill skill; // 지금 단계 배틀 기술 (아직 없으면 null → 앱이 /skill로 정해 달라고 한다)
     private String sketchImageUrl;     // 유저가 그린 원본 그림 주소 (CDN). 폰 저장소가 지워졌을 때 되살린다
     private String facing;             // 지금 단계 그림이 바라보는 쪽: left | right | front (모르면 null)
+    private boolean goddessBlessing;   // 여신의 가호: 완성작이면 true (포만감이 시간으로 줄지 않는다)
+    private String blessingName;       // 가호 이름 ("여신의 가호"). 가호가 없으면 null
 
     public static TamagotchiResponse from(Tamagotchi tamagotchi) {
         return TamagotchiResponse.builder()
@@ -107,6 +109,8 @@ public class TamagotchiResponse {
                 .skill(com.tamagochi.tamagochi.service.battle.BattleSkillService.current(tamagotchi).orElse(null))
                 .sketchImageUrl(com.tamagochi.tamagochi.service.storage.PetImageUrls.of(tamagotchi.getSketchImageKey()))
                 .facing(tamagotchi.getCurrentFacing())
+                .goddessBlessing(tamagotchi.hasGoddessBlessing())
+                .blessingName(tamagotchi.hasGoddessBlessing() ? Tamagotchi.GODDESS_BLESSING_NAME : null)
                 .build();
     }
 }
