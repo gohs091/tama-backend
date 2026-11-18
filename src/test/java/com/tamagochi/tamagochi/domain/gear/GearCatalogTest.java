@@ -19,15 +19,15 @@ class GearCatalogTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
-    @DisplayName("gear.json: 기본 무기 두 종, 열매 10, 나무 붓 근접 25, 깃 펜촉 원거리 11, 맨손 18·8. 전투력 숫자는 없다")
+    @DisplayName("gear.json: 기본 무기 두 종, 열매 10, 나무 붓·깃 펜촉 열매 10, 맨손(시안 자이로) 근접 25·원거리 11. 기본 무기는 추가 피해가 없어 껴도 같다. 전투력 숫자는 없다")
     void loadsStarterWeapons() throws Exception {
         assertThat(GearCatalog.provisional()).isTrue();
         assertThat(GearCatalog.note()).isNotBlank();
         assertThat(GearCatalog.weapons()).hasSize(2);
 
         GearCatalog.Unarmed bare = GearCatalog.unarmed();
-        assertThat(bare.meleeDamage()).isEqualTo(18);
-        assertThat(bare.rangedDamage()).isEqualTo(8);
+        assertThat(bare.meleeDamage()).isEqualTo(25);
+        assertThat(bare.rangedDamage()).isEqualTo(11);
 
         GearCatalog.Weapon brush = GearCatalog.weapon("wooden-brush").orElseThrow();
         assertThat(brush.name()).isEqualTo("나무 붓");
@@ -37,21 +37,21 @@ class GearCatalogTest {
         assertThat(brush.price().fruit()).isEqualTo(10);
         assertThat(brush.unlockFloor()).isEqualTo(1);
         assertThat(brush.unlockNpc()).isEqualTo("ns-woodpecker");
-        assertThat(brush.meleeDamage()).isEqualTo(25);
+        assertThat(brush.meleeDamage()).isNull();
         assertThat(brush.rangedDamage()).isNull();
 
         GearCatalog.Weapon nib = GearCatalog.weapon("feather-nib").orElseThrow();
         assertThat(nib.name()).isEqualTo("깃 펜촉");
         assertThat(nib.style()).isEqualTo(GearCatalog.Style.RANGED);
         assertThat(nib.price().fruit()).isEqualTo(10);
-        assertThat(nib.rangedDamage()).isEqualTo(11);
+        assertThat(nib.rangedDamage()).isNull();
         assertThat(nib.meleeDamage()).isNull();
 
         assertThat(GearCatalog.weapon("no-such")).isEmpty();
-        assertThat(GearCatalog.attacks(null)).isEqualTo(new GearCatalog.Attacks(18, 8));
-        assertThat(GearCatalog.attacks("wooden-brush")).isEqualTo(new GearCatalog.Attacks(25, 8));
-        assertThat(GearCatalog.attacks("feather-nib")).isEqualTo(new GearCatalog.Attacks(18, 11));
-        assertThat(GearCatalog.attacks("no-such")).isEqualTo(new GearCatalog.Attacks(18, 8));
+        assertThat(GearCatalog.attacks(null)).isEqualTo(new GearCatalog.Attacks(25, 11));
+        assertThat(GearCatalog.attacks("wooden-brush")).isEqualTo(new GearCatalog.Attacks(25, 11));
+        assertThat(GearCatalog.attacks("feather-nib")).isEqualTo(new GearCatalog.Attacks(25, 11));
+        assertThat(GearCatalog.attacks("no-such")).isEqualTo(new GearCatalog.Attacks(25, 11));
 
         // 데이터에도 전투력 키는 없다
         try (InputStream in = GearCatalog.class.getResourceAsStream(GearCatalog.RESOURCE)) {

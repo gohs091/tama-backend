@@ -44,7 +44,7 @@ class GearApiTest extends TowerLunchTestSupport {
                 .andExpect(jsonPath("$.catalog[0].style").value("MELEE"))
                 .andExpect(jsonPath("$.catalog[0].tier").value("T1"))
                 .andExpect(jsonPath("$.catalog[0].fruitPrice").value(10))
-                .andExpect(jsonPath("$.catalog[0].meleeDamage").value(25))
+                .andExpect(jsonPath("$.catalog[0].meleeDamage").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.catalog[0].rangedDamage").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.catalog[0].owned").value(false))
                 .andExpect(jsonPath("$.catalog[0].equipped").value(false))
@@ -54,11 +54,11 @@ class GearApiTest extends TowerLunchTestSupport {
                 .andExpect(jsonPath("$.catalog[1].name").value("깃 펜촉"))
                 .andExpect(jsonPath("$.catalog[1].style").value("RANGED"))
                 .andExpect(jsonPath("$.catalog[1].fruitPrice").value(10))
-                .andExpect(jsonPath("$.catalog[1].rangedDamage").value(11))
+                .andExpect(jsonPath("$.catalog[1].rangedDamage").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.owned").isEmpty())
                 .andExpect(jsonPath("$.equippedWeaponId").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.attacks.meleeDamage").value(18))
-                .andExpect(jsonPath("$.attacks.rangedDamage").value(8))
+                .andExpect(jsonPath("$.attacks.meleeDamage").value(25))
+                .andExpect(jsonPath("$.attacks.rangedDamage").value(11))
                 .andExpect(jsonPath("$.fruit").value(10));
 
         String body = res.andReturn().getResponse().getContentAsString();
@@ -86,13 +86,13 @@ class GearApiTest extends TowerLunchTestSupport {
                 .andExpect(jsonPath("$.fruit").value(5))
                 .andExpect(jsonPath("$.owned[0]").value("wooden-brush"))
                 .andExpect(jsonPath("$.equippedWeaponId").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.attacks.meleeDamage").value(18));
+                .andExpect(jsonPath("$.attacks.meleeDamage").value(25));
 
         call(bearer, "/api/gear/equip", buyBrush).andExpect(status().isOk())
                 .andExpect(jsonPath("$.equippedWeaponId").value("wooden-brush"))
                 .andExpect(jsonPath("$.catalog[0].equipped").value(true))
                 .andExpect(jsonPath("$.attacks.meleeDamage").value(25))
-                .andExpect(jsonPath("$.attacks.rangedDamage").value(8))
+                .andExpect(jsonPath("$.attacks.rangedDamage").value(11))
                 .andExpect(jsonPath("$.fruit").value(5));
 
         call(bearer, "/api/gear/buy", buyNib).andExpect(status().isBadRequest())
@@ -101,8 +101,8 @@ class GearApiTest extends TowerLunchTestSupport {
 
         call(bearer, "/api/gear/equip", unequip).andExpect(status().isOk())
                 .andExpect(jsonPath("$.equippedWeaponId").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.attacks.meleeDamage").value(18))
-                .andExpect(jsonPath("$.attacks.rangedDamage").value(8))
+                .andExpect(jsonPath("$.attacks.meleeDamage").value(25))
+                .andExpect(jsonPath("$.attacks.rangedDamage").value(11))
                 .andExpect(jsonPath("$.owned[0]").value("wooden-brush"));
 
         call(bearer, "/api/gear/buy", buyBrush).andExpect(status().isBadRequest())

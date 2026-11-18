@@ -17,7 +17,7 @@ class GearServiceTest extends TowerLunchTestSupport {
     @Autowired GearService gearService;
 
     @Test
-    @DisplayName("처음에는 맨손(18·8)이고 가진 무기가 없다. 카탈로그는 두 종, 전투력 숫자는 없다")
+    @DisplayName("처음에는 맨손(시안 자이로 25·11)이고 가진 무기가 없다. 카탈로그는 두 종, 전투력 숫자는 없다")
     void startsUnarmed() {
         User user = newUser(10, 100);
         View v = gearService.get(user);
@@ -25,8 +25,8 @@ class GearServiceTest extends TowerLunchTestSupport {
         assertThat(v.catalog()).hasSize(2);
         assertThat(v.owned()).isEmpty();
         assertThat(v.equippedWeaponId()).isNull();
-        assertThat(v.attacks().meleeDamage()).isEqualTo(18);
-        assertThat(v.attacks().rangedDamage()).isEqualTo(8);
+        assertThat(v.attacks().meleeDamage()).isEqualTo(25);
+        assertThat(v.attacks().rangedDamage()).isEqualTo(11);
         assertThat(v.fruit()).isEqualTo(10);
         assertThat(v.catalog().get(0).id()).isEqualTo("wooden-brush");
         assertThat(v.catalog().get(0).fruitPrice()).isEqualTo(10);
@@ -37,7 +37,7 @@ class GearServiceTest extends TowerLunchTestSupport {
     }
 
     @Test
-    @DisplayName("나무 붓을 사면 열매 10이 빠지고, 끼면 근접 25·원거리 8(맨손)이 된다")
+    @DisplayName("나무 붓을 사면 열매 10이 빠지고, 껴도 피해는 시안 기본(25·11) 그대로다 (추가 피해 미정)")
     void buyAndEquipWoodenBrush() {
         User user = newUser(15, 100);
         View bought = gearService.buy(user, "wooden-brush");
@@ -45,7 +45,7 @@ class GearServiceTest extends TowerLunchTestSupport {
         assertThat(fruit(user)).isEqualTo(5);
         assertThat(bought.owned()).containsExactly("wooden-brush");
         assertThat(bought.equippedWeaponId()).isNull(); // 산 것만으로는 안 낀다
-        assertThat(bought.attacks().meleeDamage()).isEqualTo(18);
+        assertThat(bought.attacks().meleeDamage()).isEqualTo(25);
         assertThat(bought.catalog().get(0).owned()).isTrue();
         assertThat(bought.catalog().get(0).canBuy()).isFalse();
         assertThat(bought.catalog().get(0).equipped()).isFalse();
@@ -53,13 +53,13 @@ class GearServiceTest extends TowerLunchTestSupport {
         View equipped = gearService.equip(user, "wooden-brush");
         assertThat(equipped.equippedWeaponId()).isEqualTo("wooden-brush");
         assertThat(equipped.attacks().meleeDamage()).isEqualTo(25);
-        assertThat(equipped.attacks().rangedDamage()).isEqualTo(8);
+        assertThat(equipped.attacks().rangedDamage()).isEqualTo(11);
         assertThat(equipped.catalog().get(0).equipped()).isTrue();
         assertThat(equipped.fruit()).isEqualTo(5); // 끼기는 열매를 쓰지 않는다
     }
 
     @Test
-    @DisplayName("깃 펜촉을 끼면 근접은 맨손 18, 원거리는 11이다. 두 무기를 모두 사면 바꿔 낄 수 있다")
+    @DisplayName("두 무기를 모두 사면 바꿔 낄 수 있고, 피해는 시안 기본(25·11) 그대로다")
     void buyFeatherNibAndSwitch() {
         User user = newUser(25, 100);
         gearService.buy(user, "wooden-brush");
@@ -69,17 +69,17 @@ class GearServiceTest extends TowerLunchTestSupport {
 
         View nib = gearService.equip(user, "feather-nib");
         assertThat(nib.equippedWeaponId()).isEqualTo("feather-nib");
-        assertThat(nib.attacks().meleeDamage()).isEqualTo(18);
+        assertThat(nib.attacks().meleeDamage()).isEqualTo(25);
         assertThat(nib.attacks().rangedDamage()).isEqualTo(11);
 
         View brush = gearService.equip(user, "wooden-brush");
         assertThat(brush.attacks().meleeDamage()).isEqualTo(25);
-        assertThat(brush.attacks().rangedDamage()).isEqualTo(8);
+        assertThat(brush.attacks().rangedDamage()).isEqualTo(11);
 
         View bare = gearService.equip(user, null);
         assertThat(bare.equippedWeaponId()).isNull();
-        assertThat(bare.attacks().meleeDamage()).isEqualTo(18);
-        assertThat(bare.attacks().rangedDamage()).isEqualTo(8);
+        assertThat(bare.attacks().meleeDamage()).isEqualTo(25);
+        assertThat(bare.attacks().rangedDamage()).isEqualTo(11);
         assertThat(bare.owned()).hasSize(2); // 벗어도 가진 것은 그대로다
     }
 

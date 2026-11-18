@@ -34,8 +34,8 @@ public final class GearCatalog {
     public record Price(int fruit) {}
 
     /**
-     * 기본 무기. meleeDamage·rangedDamage 중 자신의 스타일 쪽만 채운다.
-     * 비운 쪽은 장착해도 그 공격 종류를 바꾸지 않는다 (맨손 값 유지).
+     * 기본 무기. meleeDamage·rangedDamage는 자신의 스타일 쪽만 채울 수 있고, 지금은 둘 다 비워 둔다 (추가 피해 미정).
+     * 비운 쪽은 장착해도 그 공격 종류를 바꾸지 않는다 (맨손 = 시안 자이로 25·11 유지).
      * unlockNpc는 가게 가드 훅(오쿠보 N-5). 이 카탈로그는 읽기만 하고, 구출 여부는 아직 검사하지 않는다.
      */
     public record Weapon(String id, String emoji, String name, Slot slot, Style style, Tier tier, Price price,
@@ -160,12 +160,12 @@ public final class GearCatalog {
         if (slot != Slot.WEAPON) {
             throw new IllegalStateException(where + " 는 지금 WEAPON 만 받을 수 있어요: " + slot);
         }
-        if (style == Style.MELEE) {
-            if (melee == null) throw new IllegalStateException(where + " 근접 무기는 meleeDamage 가 있어야 해요");
-            if (ranged != null) throw new IllegalStateException(where + " 근접 무기는 rangedDamage 를 비워야 해요 (원거리는 맨손 유지)");
-        } else {
-            if (ranged == null) throw new IllegalStateException(where + " 원거리 무기는 rangedDamage 가 있어야 해요");
-            if (melee != null) throw new IllegalStateException(where + " 원거리 무기는 meleeDamage 를 비워야 해요 (근접은 맨손 유지)");
+        // 추가 피해는 미정일 수 있다. 채울 때는 자기 스타일 쪽만 (근접 무기에 rangedDamage 금지, 그 반대도 금지)
+        if (style == Style.MELEE && ranged != null) {
+            throw new IllegalStateException(where + " 근접 무기는 rangedDamage 를 비워야 해요 (원거리는 맨손 유지)");
+        }
+        if (style == Style.RANGED && melee != null) {
+            throw new IllegalStateException(where + " 원거리 무기는 meleeDamage 를 비워야 해요 (근접은 맨손 유지)");
         }
         return new Weapon(id, emoji, name, slot, style, tier, price, unlockFloor, unlockNpc, melee, ranged, note);
     }
