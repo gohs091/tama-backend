@@ -1,13 +1,18 @@
 package com.tamagochi.tamagochi.controller.tower;
 
 import com.tamagochi.tamagochi.controller.dto.TowerRequest;
+import com.tamagochi.tamagochi.domain.tower.TowerMap;
+import com.tamagochi.tamagochi.domain.tower.TowerMapCatalog;
+import com.tamagochi.tamagochi.exception.CodedException;
 import com.tamagochi.tamagochi.service.auth.UserIdentity;
 import com.tamagochi.tamagochi.service.tower.TowerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** 탑 원정: 출발·맵 통과·귀환. 모든 응답은 탑 전체 상태(TowerService.View) */
+import java.util.List;
+
+/** 탑 원정: 출발·맵 통과·귀환. 그 응답은 모두 탑 전체 상태(TowerService.View). 맵 데이터(M-1)는 읽기 전용 주소로 따로 준다 */
 @RestController
 @RequestMapping("/api/tower")
 @RequiredArgsConstructor
@@ -19,6 +24,27 @@ public class TowerController {
     @GetMapping("/{tossUserId}")
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
         return ResponseEntity.ok(towerService.get(userIdentity.resolve(tossUserId)));
+    }
+
+    /** 한 층의 맵 묶음 (M-1). maps는 맵 번호 순서 */
+    public record FloorMaps(int floor, String faction, int mapsPerFloor, List<TowerMap> maps) {}
+
+    /**
+     * 그 층의 맵 전부 (읽기 전용 카탈로그, M-1). 사람마다 다르지 않고, 같은 층이면 언제나 같은 답이다.
+     * 아직 맵이 없는 층(지금은 3층부터)은 400 NO_MAP_DATA
+     */
+    @GetMapping("/maps/{floor:\\d{1,4}}")
+    public ResponseEntity<?> floorMaps(@PathVariable int floor) {
+        List<TowerMap> maps = TowerMapCatalog.floorMaps(floor);
+        if (maps.isEmpty()) throw new CodedException("NO_MAP_DATA", "아직 맵이 없는 층이에요.");
+        return ResponseEntity.ok(new FloorMaps(floor, maps.get(0).faction(), maps.size(), maps));
+    }
+
+    /** 맵 한 장 (M-1): 칸 배치·충돌·포탈·스폰·보스 경기장·구출 자리. 없는 층·맵은 400 NO_MAP_DATA */
+    @GetMapping("/maps/{floor:\\d{1,4}}/{map:\\d{1,4}}")
+    public ResponseEntity<?> map(@PathVariable int floor, @PathVariable int map) {
+        return ResponseEntity.ok(TowerMapCatalog.map(floor, map)
+                .orElseThrow(() -> new CodedException("NO_MAP_DATA", "아직 맵이 없는 층이에요.")));
     }
 
     @PostMapping("/depart")

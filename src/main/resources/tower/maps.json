@@ -1,0 +1,57 @@
+{
+  "provisional": true,
+  "note": "M-1 맵 데이터. 여기에는 층·맵마다의 고정 시드와 크기, 테마(칸 이름·자리표시 색)만 적는다. 칸 배치는 TowerMapAssembler가 시드로 조립한다 (같은 시드면 언제나 같은 맵). 몬스터 수와 구출 NPC id는 여기 적지 않고 floors.json의 값을 그대로 쓴다. 지금은 1~2층만 있다. 시드나 크기를 바꾸면 그 맵의 배치가 바뀐다. 그림은 아직 없다: color는 코드로 칠하는 자리표시 색이고, 임시로 기존 진영 배경(theme의 faction id)과 스파링 스프라이트(spar/enemies.json의 id)를 써도 된다 — 다만 그 그림 한 장을 돌리거나 뒤집어 맵을 채우지는 않는다. 전투력 숫자는 싣지 않는다.",
+  "tileSize": 32,
+  "themes": [
+    {
+      "id": "spirit-forest", "name": "정령의 숲", "faction": "nature-spirits", "background": "#1f4d3a",
+      "tiles": {
+        "floor": { "name": "풀밭", "color": "#7fb069" },
+        "floor_alt": { "name": "꽃밭", "color": "#a7c957" },
+        "wall": { "name": "나무", "color": "#2d6a4f" },
+        "obstacle": { "name": "이끼 바위", "color": "#6b705c" },
+        "hazard": { "name": "연못", "color": "#4f8a8b" },
+        "entry": { "name": "들어온 포탈", "color": "#f2e8cf" },
+        "exit": { "name": "나가는 포탈", "color": "#ffd166" },
+        "arena": { "name": "보스 빈터", "color": "#b5c99a" },
+        "rescue": { "name": "구출 자리", "color": "#f4a261" }
+      }
+    },
+    {
+      "id": "deep-sea", "name": "깊은 바다", "faction": "deep-savers", "background": "#0b2545",
+      "tiles": {
+        "floor": { "name": "모래 바닥", "color": "#5fa8d3" },
+        "floor_alt": { "name": "해초밭", "color": "#62b6cb" },
+        "wall": { "name": "암초", "color": "#1b4965" },
+        "obstacle": { "name": "산호", "color": "#4a6fa5" },
+        "hazard": { "name": "해구", "color": "#0b132b" },
+        "entry": { "name": "들어온 포탈", "color": "#cae9ff" },
+        "exit": { "name": "나가는 포탈", "color": "#ffd166" },
+        "arena": { "name": "보스 동굴", "color": "#89c2d9" },
+        "rescue": { "name": "구출 자리", "color": "#f4a261" }
+      }
+    }
+  ],
+  "floors": [
+    {
+      "floor": 1, "theme": "spirit-forest",
+      "maps": [
+        { "map": 1, "seed": 110101, "width": 40, "height": 24 },
+        { "map": 2, "seed": 110102, "width": 44, "height": 26 },
+        { "map": 3, "seed": 110103, "width": 48, "height": 28 },
+        { "map": 4, "seed": 110104, "width": 42, "height": 30 },
+        { "map": 5, "seed": 110105, "width": 52, "height": 26, "note": "보스 맵" }
+      ]
+    },
+    {
+      "floor": 2, "theme": "deep-sea",
+      "maps": [
+        { "map": 1, "seed": 220201, "width": 46, "height": 24 },
+        { "map": 2, "seed": 220202, "width": 40, "height": 28 },
+        { "map": 3, "seed": 220203, "width": 50, "height": 30 },
+        { "map": 4, "seed": 220204, "width": 44, "height": 22 },
+        { "map": 5, "seed": 220205, "width": 54, "height": 28, "note": "보스 맵" }
+      ]
+    }
+  ]
+}
