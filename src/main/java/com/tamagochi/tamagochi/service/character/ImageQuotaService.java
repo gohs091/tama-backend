@@ -50,18 +50,18 @@ public class ImageQuotaService {
         return true;
     }
 
-    /** 진화 그림(child·adult)은 단계마다 하루 이만큼 + 그날 쓴 "다시 그리기" 횟수까지만 그린다 (실패 재시도 1번 여유 포함) */
+    /** 진화 그림(child·adult)은 단계마다 하루 이만큼만 그린다: 처음 1번 + 그리기에 실패했을 때 다시 1번. 성공한 그림을 다시 그리는 몫은 없다 */
     public static final int EVOLVED_BASE_PER_STAGE = 2;
 
     /**
-     * 진화 그림 1회를 소모한다. 단계별 하루 한도(기본 + 다시 그리기 쓴 만큼) 안이면 true.
+     * 진화 그림 1회를 소모한다. 단계별 하루 한도 안이면 true.
      * 잉크를 갈아 끼우는 식으로 앱이 후보를 계속 다시 그리게 만들어도 여기서 막힌다.
      */
-    public boolean tryAcquireEvolved(String tossUserId, String stage, int redrawsUsedToday) {
+    public boolean tryAcquireEvolved(String tossUserId, String stage) {
         if (!enabled) return true;
         String day = LocalDate.now().toString();
         long count = increment("imagegen:evolved:" + tossUserId + ":" + stage + ":" + day);
-        int limit = EVOLVED_BASE_PER_STAGE + Math.max(0, redrawsUsedToday);
+        int limit = EVOLVED_BASE_PER_STAGE;
         if (count > limit) {
             log.warn("진화 그림 단계 한도 초과 - user: {}, stage: {}, count: {}, limit: {}", tossUserId, stage, count, limit);
             return false;

@@ -80,10 +80,10 @@ public class CharacterController {
     public ResponseEntity<GenerateImageResponse> generateEvolved(@RequestBody EvolveImageRequest request) {
         ResponseEntity<GenerateImageResponse> rejected = checkQuota(request.getTossUserId());
         if (rejected != null) return rejected;
-        // 진화 후보(child·adult)는 단계마다 하루 몇 번만 (다시 그리기를 쓴 만큼 더)
+        // 진화 후보(child·adult)는 단계마다 하루 EVOLVED_BASE_PER_STAGE번만: 처음 1번 + 실패했을 때 다시 1번. 성공한 그림을 다시 그리는 몫은 없다
         String stage = request.getStage() == null ? "" : request.getStage().toLowerCase();
         if ((stage.equals("child") || stage.equals("adult"))
-                && !imageQuotaService.tryAcquireEvolved(request.getTossUserId(), stage, redrawsUsedToday(request.getTossUserId()))) {
+                && !imageQuotaService.tryAcquireEvolved(request.getTossUserId(), stage)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
         String jobId = UUID.randomUUID().toString();
@@ -192,18 +192,6 @@ public class CharacterController {
             return inkLoadoutService.promptFor(userIdentity.resolve(tossUserId), stage);
         } catch (IllegalStateException e) {
             return null;
-        }
-    }
-
-    /** 오늘 쓴 진화 후보 다시 그리기 횟수 (유저나 끄적이를 못 찾으면 0) */
-    private int redrawsUsedToday(String tossUserId) {
-        try {
-            var user = userIdentity.resolve(tossUserId);
-            int per = com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi.CANDIDATE_REDRAWS_PER_DAY;
-            return tamagotchiRepository.findActiveByUserId(user.getId())
-                    .map(t -> per - t.candidateRedrawsLeft(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")), per)).orElse(0);
-        } catch (RuntimeException e) {
-            return 0;
         }
     }
 
