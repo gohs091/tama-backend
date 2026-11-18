@@ -52,6 +52,14 @@ class ClearMapValidationTest extends TowerLunchTestSupport {
         progressRepository.save(progress);
     }
 
+    /** 포만감을 정한 값으로 맞춘다 (테스트 준비용) */
+    private void setSatiety(User user, int satiety) {
+        var pet = pet(user);
+        ReflectionTestUtils.setField(pet, "hunger", 100 - satiety);
+        tamagotchiRepository.save(pet);
+        assertThat(pet(user).satiety()).isEqualTo(satiety);
+    }
+
     /** 최소 시간을 기다리고 포만감을 채워 가며 맵을 n장 통과한다 (예전 앱처럼 runId 없이) */
     private TowerService.View clearMaps(User user, int n) {
         TowerService.View v = null;
@@ -182,10 +190,126 @@ class ClearMapValidationTest extends TowerLunchTestSupport {
         assertThat(v.currentFloor()).isEqualTo(1);
         assertThat(v.currentMap()).isEqualTo(2);
 
-        // 방금 통과한 맵을 다시 보내면(중복 요청) 거절한다 — 시간이 지난 뒤에도
         pass(MIN);
-        assertCode(() -> towerService.clearMap(user, runId, 1, 1), "MAP_MISMATCH");
         assertThat(towerService.clearMap(user, null, null, 2).currentMap()).isEqualTo(3); // 맵만 보내도 된다
+    }
+
+    @Test
+    @DisplayName("방금 통과한 맵을 다시 보내면 멱등: 포만감도 맵도 그대로인 지금 상태를 돌려준다. 더 옛 맵·건너뛴 맵은 MAP_MISMATCH")
+    void resendOfJustClearedMapIsIdempotent() {
+        User user = newUser(0, 100);
+        String runId = towerService.depart(user, 1).runId();
+        // 막 출발했을 때는 통과한 맵이 없다
+        assertCode(() -> towerService.clearMap(user, runId, 1, 0), "MAP_MISMATCH");
+
+        pass(MIN);
+        towerService.clearMap(user, runId, 1, 1); // 65, 지금 1층 맵 2
+        // 바로(최소 시간 전에) 다시 보내도, 시간이 지난 뒤에 다시 보내도 같다
+        for (int i = 0; i < 2; i++) {
+            TowerService.View again = towerService.clearMap(user, runId, 1, 1);
+            assertThat(again.result().mapCleared()).isFalse();
+            assertThat(again.result().spentSatiety()).isZero();
+            assertThat(again.result().expeditionEnded()).isFalse();
+            assertThat(again.currentFloor()).isEqualTo(1);
+            assertThat(again.currentMap()).isEqualTo(2);
+            assertThat(again.satiety()).isEqualTo(65);
+            assertThat(again.spentToday()).isEqualTo(35);
+            assertThat(again.onExpedition()).isTrue();
+            assertThat(again.runId()).isEqualTo(runId);
+            pass(MIN);
+        }
+        assertThat(towerService.clearMap(user, null, 1, 1).currentMap()).isEqualTo(2); // runId 없이 층·맵만 보내도 멱등
+        assertCode(() -> towerService.clearMap(user, "wrong", 1, 1), "RUN_MISMATCH"); // runId를 보냈으면 맞아야 한다
+        // 층이나 맵 하나만 보낸 요청은 멱등 대상이 아니다
+        assertCode(() -> towerService.clearMap(user, runId, null, 1), "MAP_MISMATCH");
+
+        fillSatiety(user);
+        towerService.clearMap(user, runId, 1, 2); // 지금 1층 맵 3
+        assertThat(towerService.clearMap(user, runId, 1, 2).currentMap()).isEqualTo(3); // 바로 이전 맵: 멱등
+        assertCode(() -> towerService.clearMap(user, runId, 1, 1), "MAP_MISMATCH");     // 더 옛 맵
+        assertCode(() -> towerService.clearMap(user, runId, 1, 4), "MAP_MISMATCH");     // 건너뛴 맵
+        assertCode(() -> towerService.clearMap(user, runId, 2, 2), "MAP_MISMATCH");
+        TowerService.View v = towerService.get(user);
+        assertThat(v.currentMap()).isEqualTo(3);
+        assertThat(v.spentToday()).isEqualTo(70);
+
+        // 층의 마지막 맵을 통과해 다음 층 맵 1에 있으면, 아래층의 마지막 맵 재전송이 멱등이다
+        clearMaps(user, 3);
+        int last = TowerFloorCatalog.mapsPerFloor(1);
+        v = towerService.get(user);
+        assertThat(v.currentFloor()).isEqualTo(2);
+        assertThat(v.currentMap()).isEqualTo(1);
+        int satiety = v.satiety();
+        TowerService.View again = towerService.clearMap(user, runId, 1, last);
+        assertThat(again.currentFloor()).isEqualTo(2);
+        assertThat(again.currentMap()).isEqualTo(1);
+        assertThat(again.highestFloor()).isEqualTo(1);
+        assertThat(again.satiety()).isEqualTo(satiety);
+        assertThat(again.result().mapCleared()).isFalse();
+        assertThat(again.result().floorCleared()).isFalse();
+        assertCode(() -> towerService.clearMap(user, runId, 1, last - 1), "MAP_MISMATCH");
+        assertCode(() -> towerService.clearMap(user, runId, 1, last + 1), "MAP_MISMATCH");
+        assertThat(towerService.get(user).spentToday()).isEqualTo(35 * last);
+    }
+
+    @Test
+    @DisplayName("멱등은 원정 중일 때만: 2층에서 막 출발했으면 1층 마지막 맵은 MAP_MISMATCH, 원정이 끝난 뒤의 재전송은 NOT_ON_EXPEDITION")
+    void idempotencyOnlyWithinRun() {
+        User user = newUser(0, 100);
+        towerService.get(user);
+        patchProgress(user, "highestFloor", 1);
+        String runId = towerService.depart(user, 2).runId();
+        int last = TowerFloorCatalog.mapsPerFloor(1);
+        assertCode(() -> towerService.clearMap(user, runId, 1, last), "MAP_MISMATCH"); // 이번 원정에서 통과한 맵이 아니다
+        pass(MIN);
+        assertCode(() -> towerService.clearMap(user, runId, 1, last), "MAP_MISMATCH");
+
+        towerService.clearMap(user, runId, 2, 1); // 65
+        pass(MIN);
+        TowerService.View v = towerService.clearMap(user, runId, 2, 2); // 30, 가방 빔: 통과하고 귀가
+        assertThat(v.result().endReason()).isEqualTo(TowerService.SATIETY_EMPTY);
+        assertCode(() -> towerService.clearMap(user, runId, 2, 2), "NOT_ON_EXPEDITION");
+
+        // 다시 떠난 원정에서 지난 원정의 맵은 멱등이 아니다
+        fillSatiety(user);
+        String next = towerService.depart(user, 2).runId();
+        assertCode(() -> towerService.clearMap(user, next, 1, last), "MAP_MISMATCH");
+    }
+
+    @Test
+    @DisplayName("포만감 검사가 최소 시간보다 먼저: 19초여도 가방이 비었으면 바로 귀가(SATIETY_EMPTY), 도시락이 있으면 바로 NOT_ENOUGH_SATIETY. 포만감이 충분하면 19초는 MAP_TOO_SOON")
+    void satietyCheckedBeforeMinimumTime() {
+        // 가방 빔: 포만감 30으로 맵에 들어온 지 19초
+        User empty = newUser(0, 100);
+        towerService.depart(empty, null);
+        setSatiety(empty, 30);
+        pass(19);
+        TowerService.View v = towerService.clearMap(empty);
+        assertThat(v.result().mapCleared()).isFalse();
+        assertThat(v.result().expeditionEnded()).isTrue();
+        assertThat(v.result().endReason()).isEqualTo(TowerService.SATIETY_EMPTY);
+        assertThat(v.onExpedition()).isFalse();
+        assertThat(v.currentMap()).isEqualTo(1);
+        assertThat(v.satiety()).isEqualTo(30);
+        assertThat(v.spentToday()).isZero();
+
+        // 가방에 도시락: 19초여도 기다리라고 하지 않고 먹기를 권한다. 원정은 이어진다
+        User withLunch = newUser(3, 100);
+        lunchService.cook(withLunch, "lunchbox", 1);
+        lunchService.pack(withLunch, "lunchbox", 1);
+        String runId = towerService.depart(withLunch, null).runId();
+        setSatiety(withLunch, 30);
+        assertCode(() -> towerService.clearMap(withLunch), "NOT_ENOUGH_SATIETY"); // 들어오자마자
+        pass(19);
+        assertCode(() -> towerService.clearMap(withLunch, runId, 1, 1), "NOT_ENOUGH_SATIETY");
+        assertThat(towerService.get(withLunch).onExpedition()).isTrue();
+        assertThat(towerService.get(withLunch).currentMap()).isEqualTo(1);
+
+        // 포만감이 충분하면 19초는 여전히 MAP_TOO_SOON, 20초에 통과
+        fillSatiety(withLunch);
+        assertCode(() -> towerService.clearMap(withLunch, runId, 1, 1), "MAP_TOO_SOON");
+        pass(1);
+        assertThat(towerService.clearMap(withLunch, runId, 1, 1).result().mapCleared()).isTrue();
     }
 
     @Test
@@ -251,7 +375,7 @@ class ClearMapValidationTest extends TowerLunchTestSupport {
         towerService.clearMap(withLunch); // 65
         pass(MIN);
         towerService.clearMap(withLunch); // 30, 가방에 도시락
-        assertCode(() -> towerService.clearMap(withLunch), "MAP_TOO_SOON"); // 너무 이르면 시간 거절이 먼저다
+        assertCode(() -> towerService.clearMap(withLunch), "NOT_ENOUGH_SATIETY"); // 포만감 검사가 먼저라 기다리지 않는다
         pass(MIN);
         assertCode(() -> towerService.clearMap(withLunch), "NOT_ENOUGH_SATIETY");
         assertThat(towerService.get(withLunch).onExpedition()).isTrue();
@@ -339,6 +463,15 @@ class ClearMapValidationTest extends TowerLunchTestSupport {
                 .andExpect(jsonPath("$.secondsUntilClear").value(MIN))
                 .andExpect(jsonPath("$.mapsPerFloor").value(5))          // 예전 필드는 그대로
                 .andExpect(jsonPath("$.expeditionSecondsLeft").value(3600))
+                .andExpect(jsonPath("$.openFloorCap").value(17))
+                .andExpect(jsonPath("$.faction").value("nature-spirits")) // 층 데이터(M-0)는 필드만 더한다
+                .andExpect(jsonPath("$.wheel").value(1))
+                .andExpect(jsonPath("$.rescueNpcIds[0]").value("ns-hamster"))
+                .andExpect(jsonPath("$.rescueNpcIds[1]").value("ns-woodpecker"))
+                .andExpect(jsonPath("$.currentMapMonsters.normal").value(9))
+                .andExpect(jsonPath("$.currentMapMonsters.swarm").value(0))
+                .andExpect(jsonPath("$.currentMapMonsters.boss").value(0))
+                .andExpect(jsonPath("$.currentMapMonsters.provisional").value(true))
                 .andExpect(jsonPath("$.recommendedBp").doesNotExist())   // 전투력 숫자는 싣지 않는다
                 .andExpect(jsonPath("$.battlePower").doesNotExist())
                 .andExpect(jsonPath("$.bp").doesNotExist())

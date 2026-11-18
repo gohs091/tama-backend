@@ -144,6 +144,18 @@ public class TowerProgress {
         this.spentDate = today;
     }
 
+    /**
+     * (floor, map)이 이번 원정에서 방금 통과한 맵인가: 그 맵을 통과하면 지금 층·맵이 되는 바로 이전 맵.
+     * 이전 맵은 지금 위치와 층의 맵 수로 계산한다 (맵 1에 있으면 아래층의 마지막 맵). 원정 중이고, 이번 원정에서
+     * 맵을 하나라도 통과했을 때만 참이다 (맵에 들어온 시각이 출발 시각보다 뒤) — 막 출발한 층의 아래층 마지막 맵은 아니다
+     */
+    public boolean justCleared(int floor, int map) {
+        if (!onExpedition || departedAt == null || mapEnteredAt == null || !mapEnteredAt.isAfter(departedAt)) return false;
+        if (currentMap > 1) return floor == currentFloor && map == currentMap - 1;
+        return currentFloor > TowerRules.FIRST_FLOOR && floor == currentFloor - 1
+                && map == TowerFloorCatalog.mapsPerFloor(floor);
+    }
+
     /** 맵 통과 결과: 층을 돌파했는지, 그 층을 처음 돌파했는지, 맨 위 공개 층을 돌파해 원정이 끝났는지 */
     public record Advance(boolean floorCleared, boolean firstClear, boolean topCleared) {}
 

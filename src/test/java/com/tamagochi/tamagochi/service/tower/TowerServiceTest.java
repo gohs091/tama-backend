@@ -50,6 +50,44 @@ class TowerServiceTest extends TowerLunchTestSupport {
     }
 
     @Test
+    @DisplayName("층 데이터(M-0)가 상태에 실린다: 지금 층의 진영·바퀴·구출 NPC id, 지금 맵의 몬스터 수. 내용이 없는 층은 골격만")
+    void viewCarriesFloorData() {
+        User user = newUser(0, 100);
+        TowerService.View v = towerService.get(user); // 집에 있어도 지금(마지막) 층 기준으로 실린다
+        assertThat(v.faction()).isEqualTo("nature-spirits");
+        assertThat(v.wheel()).isEqualTo(1);
+        assertThat(v.rescueNpcIds()).containsExactly("ns-hamster", "ns-woodpecker");
+        assertThat(v.currentMapMonsters()).isEqualTo(new TowerService.MapMonstersView(9, 0, 0, true));
+
+        towerService.depart(user, 1);
+        int[] normal = {9, 12, 15, 12, 8};
+        for (int map = 1; map <= 5; map++) {
+            v = towerService.get(user);
+            assertThat(v.currentMap()).isEqualTo(map);
+            assertThat(v.currentMapMonsters())
+                    .isEqualTo(new TowerService.MapMonstersView(normal[map - 1], 0, map == 5 ? 1 : 0, true));
+            fillSatiety(user);
+            v = towerService.clearMap(user);
+        }
+        assertThat(v.currentFloor()).isEqualTo(2);
+        assertThat(v.faction()).isEqualTo("deep-savers");
+        assertThat(v.wheel()).isEqualTo(1);
+        assertThat(v.rescueNpcIds()).containsExactly("ds-sea-otter");
+        assertThat(v.currentMapMonsters()).isEqualTo(new TowerService.MapMonstersView(9, 0, 0, true));
+        towerService.returnHome(user);
+
+        // 3층: 골격만 (구출 NPC 없음, 맵 구성 없음)
+        patchProgress(user, "highestFloor", 2);
+        fillSatiety(user);
+        v = towerService.depart(user, 3);
+        assertThat(v.faction()).isEqualTo("jungle-troopers");
+        assertThat(v.wheel()).isEqualTo(1);
+        assertThat(v.rescueNpcIds()).isEmpty();
+        assertThat(v.currentMapMonsters()).isNull();
+        assertThat(v.mapsPerFloor()).isEqualTo(5);
+    }
+
+    @Test
     @DisplayName("1층은 맵 5장: 4번 통과해도 1층이고, 5번째에 층을 처음 돌파해 2층 첫 맵으로 간다")
     void fiveMapsClearFirstFloor() {
         User user = newUser(0, 100);
