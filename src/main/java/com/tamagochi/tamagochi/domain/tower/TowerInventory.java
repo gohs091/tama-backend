@@ -27,7 +27,7 @@ public class TowerInventory {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    /** { "bag": [...], "equip": { "weapon": …, "head": …, "body": …, "charm1": …, "charm2": … } } */
+    /** { "bag": [...], "equip": { "weapon": …, "head": …, "body": …, "charm1": …, "charm2": … }, "doodles": { "own": [...], "a": {id, color}, "b": {id, color} } } */
     @Column(name = "data", nullable = false, columnDefinition = "TEXT")
     private String data = "{}";
 
