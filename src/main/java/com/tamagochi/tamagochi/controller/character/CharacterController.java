@@ -46,6 +46,7 @@ public class CharacterController {
     private final InkLoadoutService inkLoadoutService;
     private final SleepImageService sleepImageService;
     private final com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository tamagotchiRepository;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
 
     @PostMapping("/analyze")
     public ResponseEntity<CharacterFeaturesResponse> analyze(@RequestBody AnalyzeSketchRequest request) {
@@ -185,7 +186,6 @@ public class CharacterController {
         }
     }
 
-    /** 유저 식별자가 없으면 400, 일일 생성 한도를 넘으면 429. 통과하면 null. */
     /** 끄적랜드에서 고른 대표 잉크 문장. 고른 게 없거나 유저를 못 찾으면 null (잉크 없이 진화) */
     private String absorbedInk(String tossUserId, String stage) {
         try {
@@ -195,11 +195,21 @@ public class CharacterController {
         }
     }
 
+    /** 화가 회원인지. 유저를 못 찾으면 회원이 아닌 것으로 본다 */
+    private boolean isPainter(String tossUserId) {
+        try {
+            return membershipService.isPainter(userIdentity.resolve(tossUserId).getId());
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** 유저 식별자가 없으면 400, 일일 생성 한도를 넘으면 429 (화가 회원은 유저 한도에 걸리지 않는다). 통과하면 null. */
     private ResponseEntity<GenerateImageResponse> checkQuota(String tossUserId) {
         if (tossUserId == null || tossUserId.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        if (!imageQuotaService.tryAcquire(tossUserId)) {
+        if (!imageQuotaService.tryAcquire(tossUserId, () -> isPainter(tossUserId))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
         return null;

@@ -44,6 +44,24 @@ class ImageQuotaServiceTest {
     }
 
     @Test
+    @DisplayName("화가 회원은 유저 한도를 넘어도 허용한다 (회원 여부는 한도를 넘었을 때만 확인)")
+    void painterPassesPerUserLimit() {
+        java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.function.BooleanSupplier painter = () -> { asked.incrementAndGet(); return true; };
+        for (int i = 0; i < 3; i++) assertThat(service.tryAcquire("p1", painter)).isTrue();
+        assertThat(asked.get()).isZero();
+        assertThat(service.tryAcquire("p1", painter)).isTrue();   // 4번째: 유저 한도(3)를 넘었지만 통과
+        assertThat(asked.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("화가 회원도 전체 일일 한도는 넘지 못한다")
+    void painterStillBoundByGlobalLimit() {
+        for (int i = 0; i < 5; i++) assertThat(service.tryAcquire("p1", () -> true)).isTrue();
+        assertThat(service.tryAcquire("p1", () -> true)).isFalse();  // 전체 6번째 → 거부
+    }
+
+    @Test
     @DisplayName("한도는 유저마다 따로 센다")
     void limitsAreIndependentPerUser() {
         for (int i = 0; i < 3; i++) service.tryAcquire("u1");

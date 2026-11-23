@@ -34,10 +34,10 @@ class CharacterControllerJobTest {
     void setUp() {
         imageService = mock(ImageGenerationService.class);
         quota = mock(ImageQuotaService.class);
-        when(quota.tryAcquire(anyString())).thenReturn(true);
+        when(quota.tryAcquire(anyString(), any())).thenReturn(true);
         when(quota.tryAcquireEvolved(anyString(), anyString())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class), mock(com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository.class));
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class), mock(com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class));
     }
 
     private GenerateImageRequest generateRequest() {
@@ -93,7 +93,7 @@ class CharacterControllerJobTest {
     @Test
     @DisplayName("한도 초과면 429이고 작업을 만들지 않는다")
     void quotaExceeded_noJobCreated() {
-        when(quota.tryAcquire("u1")).thenReturn(false);
+        when(quota.tryAcquire(eq("u1"), any())).thenReturn(false);
 
         ResponseEntity<GenerateImageResponse> res = controller.generate(generateRequest());
 

@@ -8,10 +8,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.function.BooleanSupplier;
 
 /**
  * 이미지 생성(유료 API) 호출 횟수 제한 — 유저별 하루 한도 + 서비스 전체 하루 한도.
  * 한도를 넘으면 생성 요청을 거부해 비용 폭주를 막는다.
+ * 화가 회원은 유저별 하루 한도에 걸리지 않는다 (서비스 전체 한도와 진화 그림 단계별 한도는 똑같이 적용).
  */
 @Service
 @RequiredArgsConstructor
@@ -32,14 +34,25 @@ public class ImageQuotaService {
 
     /** 호출 1회를 소모한다. 한도 이내면 true, 초과면 false. */
     public boolean tryAcquire(String tossUserId) {
+        return tryAcquire(tossUserId, () -> false);
+    }
+
+    /**
+     * 호출 1회를 소모한다. 한도 이내면 true, 초과면 false.
+     * painter: 화가 회원인지. 유저 한도를 넘었을 때만 물어본다 (회원이면 유저 한도를 넘어도 통과, 전체 한도는 그대로).
+     */
+    public boolean tryAcquire(String tossUserId, BooleanSupplier painter) {
         if (!enabled) return true;
 
         String day = LocalDate.now().toString();
 
         long userCount = increment("imagegen:user:" + tossUserId + ":" + day);
         if (userCount > perUserLimit) {
-            log.warn("이미지 생성 유저 한도 초과 - user: {}, count: {}", tossUserId, userCount);
-            return false;
+            if (!painter.getAsBoolean()) {
+                log.warn("이미지 생성 유저 한도 초과 - user: {}, count: {}", tossUserId, userCount);
+                return false;
+            }
+            log.info("이미지 생성 유저 한도 넘김(화가 회원) - user: {}, count: {}", tossUserId, userCount);
         }
 
         long globalCount = increment("imagegen:global:" + day);
