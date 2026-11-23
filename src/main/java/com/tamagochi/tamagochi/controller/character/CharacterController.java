@@ -46,6 +46,7 @@ public class CharacterController {
     private final InkLoadoutService inkLoadoutService;
     private final SleepImageService sleepImageService;
     private final com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository tamagotchiRepository;
+    private final com.tamagochi.tamagochi.service.membership.PainterMembershipService membershipService;
 
     @PostMapping("/analyze")
     public ResponseEntity<CharacterFeaturesResponse> analyze(@RequestBody AnalyzeSketchRequest request) {
@@ -66,10 +67,8 @@ public class CharacterController {
     public ResponseEntity<GenerateImageResponse> generate(@RequestBody GenerateImageRequest request) {
         ResponseEntity<GenerateImageResponse> rejected = checkQuota(request.getTossUserId());
         if (rejected != null) return rejected;
-        String jobId = UUID.randomUUID().toString();
-        imageGenerationService.storeJob(jobId, ImageJobResult.pending()); // 큐에서 대기 중인 작업이 "없는 작업"으로 보이지 않게 먼저 저장
-        imageGenerationService.generateAsync(jobId, request.getImageBase64(), request.getFaction(), request.getVariationSeed(), request.getTossUserId());
-        return ResponseEntity.ok(new GenerateImageResponse(jobId));
+        String jobId = newJob(request.getTossUserId());
+        return launch(jobId, () -> imageGenerationService.generateAsync(jobId, request.getImageBase64(), request.getFaction(), request.getVariationSeed(), request.getTossUserId()));
     }
 
     /**
@@ -84,24 +83,22 @@ public class CharacterController {
         String stage = request.getStage() == null ? "" : request.getStage().toLowerCase();
         if ((stage.equals("child") || stage.equals("adult"))
                 && !imageQuotaService.tryAcquireEvolved(request.getTossUserId(), stage)) {
+            imageQuotaService.release(request.getTossUserId()); // 단계 한도에 걸려 그리지 않는다: 잡아 둔 한 칸을 돌려준다
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
-        String jobId = UUID.randomUUID().toString();
-        imageGenerationService.storeJob(jobId, ImageJobResult.pending());
+        String jobId = newJob(request.getTossUserId());
         if ("adult".equals(request.getStage()) && imageGenerationService.finalDesignEnabled()) {
             // v5 완성작: 고른 디자인 후보를 글로만 그린다 (스케치 그림은 후보가 없을 때 디자인을 만드는 데만 쓴다)
-            imageGenerationService.generateFinalAsync(jobId, request.getTossUserId(), request.getImageBase64(),
-                    request.getReferenceImageBase64(), request.getDesignIndex());
-            return ResponseEntity.ok(new GenerateImageResponse(jobId));
+            return launch(jobId, () -> imageGenerationService.generateFinalAsync(jobId, request.getTossUserId(), request.getImageBase64(),
+                    request.getReferenceImageBase64(), request.getDesignIndex()));
         }
         if ("child".equals(request.getStage()) && imageGenerationService.sketchDesignEnabled()
                 && request.getImageBase64() != null && request.getReferenceImageBase64() != null) {
             // v6 스케치: 고른 후보(없으면 서버가 고른다)의 한 줄 설명으로 새로 그린다
-            imageGenerationService.generateSketchAsync(jobId, request.getTossUserId(), request.getImageBase64(),
-                    request.getReferenceImageBase64(), request.getFaction(), request.getDesignIndex());
-            return ResponseEntity.ok(new GenerateImageResponse(jobId));
+            return launch(jobId, () -> imageGenerationService.generateSketchAsync(jobId, request.getTossUserId(), request.getImageBase64(),
+                    request.getReferenceImageBase64(), request.getFaction(), request.getDesignIndex()));
         }
-        imageGenerationService.generateEvolvedAsync(
+        return launch(jobId, () -> imageGenerationService.generateEvolvedAsync(
                 jobId,
                 request.getImageUrl(),
                 request.getImageBase64(),
@@ -110,8 +107,7 @@ public class CharacterController {
                 request.getReferenceImageBase64(),
                 absorbedInk(request.getTossUserId(), request.getStage()),
                 request.getTossUserId()
-        );
-        return ResponseEntity.ok(new GenerateImageResponse(jobId));
+        ));
     }
 
     /** v5 완성작 디자인 후보에 대한 응답. enabled=false면 예전 방식(바로 그리기)이다 */
@@ -160,13 +156,18 @@ public class CharacterController {
     public ResponseEntity<GenerateImageResponse> generateSleep(@RequestBody SleepImageRequest request) {
         ResponseEntity<GenerateImageResponse> rejected = checkQuota(request.getTossUserId());
         if (rejected != null) return rejected;
-        User user = userIdentity.resolve(request.getTossUserId());
-        SleepImageService.Start start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey(), request.isRedo());
-        String jobId = UUID.randomUUID().toString();
-        imageGenerationService.storeJob(jobId, ImageJobResult.pending());
-        imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(), start.stage(),
-                () -> sleepImageService.abort(user, start, request.getIdempotencyKey()));
-        return ResponseEntity.ok(new GenerateImageResponse(jobId));
+        User user;
+        SleepImageService.Start start;
+        try {
+            user = userIdentity.resolve(request.getTossUserId());
+            start = sleepImageService.begin(user, request.getStage(), request.getIdempotencyKey(), request.isRedo());
+        } catch (RuntimeException e) {
+            imageQuotaService.release(request.getTossUserId()); // 만들 수 없는 요청이다: 잡아 둔 한 칸을 돌려준다
+            throw e;
+        }
+        String jobId = newJob(request.getTossUserId());
+        return launch(jobId, () -> imageGenerationService.generateSleepAsync(jobId, request.getImageBase64(), request.getFaction(), request.getTossUserId(), start.stage(),
+                () -> sleepImageService.abort(user, start, request.getIdempotencyKey())));
     }
 
     /**
@@ -185,7 +186,6 @@ public class CharacterController {
         }
     }
 
-    /** 유저 식별자가 없으면 400, 일일 생성 한도를 넘으면 429. 통과하면 null. */
     /** 끄적랜드에서 고른 대표 잉크 문장. 고른 게 없거나 유저를 못 찾으면 null (잉크 없이 진화) */
     private String absorbedInk(String tossUserId, String stage) {
         try {
@@ -195,11 +195,40 @@ public class CharacterController {
         }
     }
 
+    /** 새 작업을 PENDING으로 남기고(큐에서 대기 중인 작업이 "없는 작업"으로 보이지 않게), 실패로 끝나면 잡아 둔 한도를 돌려주게 해 둔다 */
+    private String newJob(String tossUserId) {
+        String jobId = UUID.randomUUID().toString();
+        imageGenerationService.storeJob(jobId, ImageJobResult.pending());
+        imageGenerationService.onFailure(jobId, () -> imageQuotaService.release(tossUserId));
+        return jobId;
+    }
+
+    /** 그리기 작업을 넘긴다. 넘기지도 못했으면(대기 줄이 꽉 참 등) 실패로 남겨 한도를 돌려주고 오류를 그대로 올린다 */
+    private ResponseEntity<GenerateImageResponse> launch(String jobId, Runnable start) {
+        try {
+            start.run();
+        } catch (RuntimeException e) {
+            imageGenerationService.failJob(jobId, e.getMessage());
+            throw e;
+        }
+        return ResponseEntity.ok(new GenerateImageResponse(jobId));
+    }
+
+    /** 화가 회원인지. 유저를 못 찾으면 회원이 아닌 것으로 본다 */
+    private boolean isPainter(String tossUserId) {
+        try {
+            return membershipService.isPainter(userIdentity.resolve(tossUserId).getId());
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** 유저 식별자가 없으면 400, 생성 한도(유저 한 달·전체 하루)를 넘으면 429 (화가 회원은 유저 한도에 걸리지 않는다). 통과하면 null. */
     private ResponseEntity<GenerateImageResponse> checkQuota(String tossUserId) {
         if (tossUserId == null || tossUserId.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        if (!imageQuotaService.tryAcquire(tossUserId)) {
+        if (!imageQuotaService.tryAcquire(tossUserId, () -> isPainter(tossUserId))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
         return null;

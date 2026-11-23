@@ -28,9 +28,10 @@ class ImageQuotaServiceTest {
         ValueOperations<String, String> ops = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(ops);
         when(ops.increment(anyString())).thenAnswer(inv -> counters.merge(inv.getArgument(0), 1L, Long::sum));
+        when(ops.decrement(anyString())).thenAnswer(inv -> counters.merge(inv.getArgument(0), -1L, Long::sum));
 
         service = new ImageQuotaService(redis);
-        ReflectionTestUtils.setField(service, "perUserLimit", 3);
+        ReflectionTestUtils.setField(service, "perUserMonthlyLimit", 3);
         ReflectionTestUtils.setField(service, "globalLimit", 5);
     }
 
@@ -41,6 +42,54 @@ class ImageQuotaServiceTest {
         assertThat(service.tryAcquire("u1")).isTrue();
         assertThat(service.tryAcquire("u1")).isTrue();
         assertThat(service.tryAcquire("u1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("화가 회원은 유저 한도를 넘어도 허용한다 (회원 여부는 한도를 넘었을 때만 확인)")
+    void painterPassesPerUserLimit() {
+        java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.function.BooleanSupplier painter = () -> { asked.incrementAndGet(); return true; };
+        for (int i = 0; i < 3; i++) assertThat(service.tryAcquire("p1", painter)).isTrue();
+        assertThat(asked.get()).isZero();
+        assertThat(service.tryAcquire("p1", painter)).isTrue();   // 4번째: 유저 한도(3)를 넘었지만 통과
+        assertThat(asked.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("화가 회원도 전체 일일 한도는 넘지 못한다")
+    void painterStillBoundByGlobalLimit() {
+        for (int i = 0; i < 5; i++) assertThat(service.tryAcquire("p1", () -> true)).isTrue();
+        assertThat(service.tryAcquire("p1", () -> true)).isFalse();  // 전체 6번째 → 거부
+    }
+
+    @Test
+    @DisplayName("거절된 요청은 세지 않는다: 한도를 넘겨 여러 번 요청해도 횟수가 한도에서 멈춘다")
+    void rejectedRequestsAreNotCounted() {
+        for (int i = 0; i < 3; i++) service.tryAcquire("u1");
+        for (int i = 0; i < 10; i++) assertThat(service.tryAcquire("u1")).isFalse();
+        assertThat(userCount("u1")).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("그리기에 실패해 돌려주면 그 시도는 세지 않는다 (만들어진 그림만 센다)")
+    void releaseGivesBackFailedAttempt() {
+        for (int i = 0; i < 3; i++) service.tryAcquire("u1");
+        assertThat(service.tryAcquire("u1")).isFalse();
+        service.release("u1");                              // 세 번 중 한 번이 실패로 끝났다
+        assertThat(userCount("u1")).isEqualTo(2L);
+        assertThat(service.tryAcquire("u1")).isTrue();     // 한 번 더 그릴 수 있다
+        assertThat(service.tryAcquire("u1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("유저 한도는 달마다 센다 (키에 연-월이 들어간다)")
+    void userLimitIsPerMonth() {
+        service.tryAcquire("u1");
+        assertThat(counters).containsKey("imagegen:user:u1:" + java.time.YearMonth.now());
+    }
+
+    private long userCount(String user) {
+        return counters.getOrDefault("imagegen:user:" + user + ":" + java.time.YearMonth.now(), 0L);
     }
 
     @Test
@@ -67,7 +116,7 @@ class ImageQuotaServiceTest {
     void expireSetOnFirstIncrementOnly() {
         service.tryAcquire("u1");
         service.tryAcquire("u1");
-        verify(redis, times(1)).expire(contains("imagegen:user:u1:"), eq(Duration.ofHours(48)));
+        verify(redis, times(1)).expire(contains("imagegen:user:u1:"), eq(Duration.ofDays(40)));
     }
 
     @Test

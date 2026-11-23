@@ -34,10 +34,10 @@ class CharacterControllerJobTest {
     void setUp() {
         imageService = mock(ImageGenerationService.class);
         quota = mock(ImageQuotaService.class);
-        when(quota.tryAcquire(anyString())).thenReturn(true);
+        when(quota.tryAcquire(anyString(), any())).thenReturn(true);
         when(quota.tryAcquireEvolved(anyString(), anyString())).thenReturn(true);
         controller = new CharacterController(mock(CharacterService.class), imageService,
-                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class), mock(com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository.class));
+                mock(LocalImageCompositeService.class), quota, mock(UserIdentity.class), mock(InkLoadoutService.class), mock(com.tamagochi.tamagochi.service.character.SleepImageService.class), mock(com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class));
     }
 
     private GenerateImageRequest generateRequest() {
@@ -93,13 +93,39 @@ class CharacterControllerJobTest {
     @Test
     @DisplayName("한도 초과면 429이고 작업을 만들지 않는다")
     void quotaExceeded_noJobCreated() {
-        when(quota.tryAcquire("u1")).thenReturn(false);
+        when(quota.tryAcquire(eq("u1"), any())).thenReturn(false);
 
         ResponseEntity<GenerateImageResponse> res = controller.generate(generateRequest());
 
         assertThat(res.getStatusCode().value()).isEqualTo(429);
         verify(imageService, never()).storeJob(anyString(), any());
         verify(imageService, never()).generateAsync(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("낙서 생성: 실패로 끝나면 잡아 둔 한도를 돌려주게 해 둔다")
+    void generate_registersQuotaReleaseOnFailure() {
+        controller.generate(generateRequest());
+
+        ArgumentCaptor<Runnable> hook = ArgumentCaptor.forClass(Runnable.class);
+        verify(imageService).onFailure(anyString(), hook.capture());
+        verify(quota, never()).release(anyString());
+        hook.getValue().run();
+        verify(quota).release("u1");
+    }
+
+    @Test
+    @DisplayName("진화 생성: 단계 한도에 걸려 그리지 않으면 잡아 둔 한도를 바로 돌려준다")
+    void generateEvolved_releasesQuotaWhenStageCapReached() {
+        when(quota.tryAcquireEvolved(anyString(), anyString())).thenReturn(false);
+        EvolveImageRequest r = new EvolveImageRequest();
+        ReflectionTestUtils.setField(r, "tossUserId", "u1");
+        ReflectionTestUtils.setField(r, "imageBase64", "AAAA");
+        ReflectionTestUtils.setField(r, "stage", "child");
+
+        controller.generateEvolved(r);
+
+        verify(quota).release("u1");
     }
 
     @Test
