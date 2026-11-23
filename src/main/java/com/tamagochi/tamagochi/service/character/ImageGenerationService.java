@@ -98,6 +98,10 @@ public class ImageGenerationService {
     @Value("${image.v5-quality:low}")
     private String v5Quality = "low";
 
+    // 자는 모습을 PixelLab으로 만든다 (키가 없으면 쓰지 않는다)
+    @Autowired(required = false)
+    private PixelLabSleepService pixelLabSleepService;
+
     @Autowired(required = false)
     private FinalDesignService finalDesignService;
 
@@ -642,9 +646,15 @@ public class ImageGenerationService {
             // 진영 색은 넣지 않는다: 자는 모습은 지금 모습의 색 그대로여야 한다
             // 완성작은 앉아서 조는 자세로: 엎드리면 얼굴이 작아지고 사람형은 형태가 뭉개진다
             String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject, reborn);
-            Generated drawn = drawSleep(spriteBytes, mimeType, prompt, model, quality);
+            // 낙서·스케치는 PixelLab이 넣은 그림을 그대로 움직여 만든다: 색·무늬·팔다리가 남는다 (그림 모델은 색이 틀어지고 무늬가 빠졌다).
+            // 완성작은 앉아서 조는 자세로 정했고 PixelLab으로는 아직 뽑아 보지 않아, 지금처럼 그림 모델로 그린다.
+            // 처음 낙서가 동물·생물일 때만 쓴다 (물체·사람은 liesDownWell 참고).
+            // 만들지 못했으면(키 없음·실패·제때 오지 않음) 아래에서 그림 모델로 그린다.
+            byte[] moved = !reborn && pixelLabSleepService != null && pixelLabSleepService.enabled() && liesDownWell(tossUserId)
+                    ? pixelLabSleepService.sleep(spriteBytes) : null;
+            Generated drawn = moved != null ? new Generated(moved, null, true) : drawSleep(spriteBytes, mimeType, prompt, model, quality);
             byte[] image = drawn.bytes();
-            if (image != null && image.length > 0 && SpriteOutline.lost(spriteBytes, image)) {
+            if (moved == null && image != null && image.length > 0 && SpriteOutline.lost(spriteBytes, image)) {
                 // 그래도 테두리가 빠졌으면 한 번만 다시 그린다 (자는 모습은 단계마다 한 번만 만들 수 있어 그대로 내보내면 고칠 길이 없다)
                 log.warn("Sleep image lost its outline, drawing once more - job: {}", jobId);
                 Generated again = drawSleep(spriteBytes, mimeType, prompt, model, quality);
@@ -665,6 +675,21 @@ public class ImageGenerationService {
             finish(jobId, ImageJobResult.failed(e.getMessage()));
             if (onFail != null) onFail.run();
         }
+    }
+
+    /**
+     * PixelLab으로 눕혀도 되는 끄적이인가: 처음 낙서가 동물·생물일 때만.
+     * 물체(기차)는 "엎드려 잠든다"를 시키면 몸이 사라지고 바퀴만 남았고, 사람 낙서는 도중에 다른 모습(고양이 귀)으로 바뀌었다 (2026-11-23, 각 한 번).
+     * 처음 낙서가 무엇인지 모르면(분석 기록 없음) 쓰지 않는다.
+     */
+    private boolean liesDownWell(String tossUserId) {
+        if (doodleOriginService == null) return false;
+        DoodleSubject origin = doodleOriginService.find(tossUserId).orElse(null);
+        return origin != null && animalLike(origin.kind());
+    }
+
+    static boolean animalLike(String kind) {
+        return "animal".equalsIgnoreCase(kind) || "creature".equalsIgnoreCase(kind);
     }
 
     /**

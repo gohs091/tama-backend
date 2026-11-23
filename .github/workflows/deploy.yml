@@ -49,6 +49,8 @@ jobs:
             DB_ROOT_PASSWORD=${{ secrets.DB_ROOT_PASSWORD }}
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            PIXELLAB_API_KEY=${{ secrets.PIXELLAB_API_KEY }}
+            IMAGE_SLEEP_PROVIDER=${{ vars.IMAGE_SLEEP_PROVIDER }}
             STABILITY_API_KEY=${{ secrets.STABILITY_API_KEY }}
             CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
             IAP_KEYSTORE_PASSWORD=${{ secrets.IAP_KEYSTORE_PASSWORD }}
