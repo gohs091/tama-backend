@@ -39,6 +39,16 @@ class SpriteBackdropTest {
     }
 
     @Test
+    @DisplayName("배경색을 정해 주면 그 색을 깐다 (자는 모습을 단색 배경으로 받을 때 같은 색을 깔아 보낸다)")
+    void flattensOntoGivenColor() throws Exception {
+        byte[] flat = SpriteBackdrop.flatten(sprite(OUTLINE, PURPLE, true), 0x00FF00);
+
+        BufferedImage out = ImageIO.read(new ByteArrayInputStream(flat));
+        assertThat(out.getRGB(0, 0) & 0xFFFFFF).isEqualTo(0x00FF00);
+        assertThat(out.getRGB(20, 20) & 0xFFFFFF).isEqualTo(PURPLE & 0xFFFFFF);
+    }
+
+    @Test
     @DisplayName("몸이 회색이면 몸과 헷갈리지 않는 다른 배경색을 고른다")
     void avoidsBackdropCloseToBody() throws Exception {
         byte[] flat = SpriteBackdrop.flatten(sprite(OUTLINE, 0xFFDCDCDC, true));
@@ -53,5 +63,6 @@ class SpriteBackdropTest {
     void leavesOpaqueImagesAlone() throws Exception {
         assertThat(SpriteBackdrop.flatten(sprite(OUTLINE, PURPLE, false))).isNull();
         assertThat(SpriteBackdrop.flatten(new byte[]{1, 2, 3})).isNull();
+        assertThat(SpriteBackdrop.flatten(new byte[]{1, 2, 3}, 0xFF00FF)).isNull();
     }
 }

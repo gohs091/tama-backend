@@ -212,9 +212,12 @@ class ImagePromptV3Test {
     void sleep_posePerStage() {
         String lying = ImagePromptV3.sleep(PERSON), dozing = ImagePromptV3.sleep(null, true);
 
-        assertThat(lying).contains("lying down on its belly").doesNotContain("dozing off");
+        assertThat(lying).contains("lying down with its body low and flat on the ground").doesNotContain("dozing off");
+        // 발 없는 끄적이에게 다리가 생기지 않게, 걸친 것이 빠지지 않게
+        assertThat(lying).contains("on its front limbs only if it has them").contains("none are added, none are removed")
+                .contains("anything it wears");
         assertThat(dozing).contains("dozing off in a cozy, compact pose").contains("Its head and face stay as large as in the image");
-        assertThat(dozing).doesNotContain("lying down on its belly").doesNotContain("It was generated from these keywords");
+        assertThat(dozing).doesNotContain("lying down with its body low").doesNotContain("It was generated from these keywords");
         assertThat(dozing).contains("Use EXACTLY the colors that are in the image").contains("keep its bold dark outline");
         assertThat(ImagePromptV3.sleep(PERSON, false)).isEqualTo(lying);
     }

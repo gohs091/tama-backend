@@ -47,9 +47,12 @@ class ImageGenerationServiceOpenAiTest {
         var CHILD = com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.CHILD;
         ReflectionTestUtils.setField(service, "inkStyle", com.tamagochi.tamagochi.domain.land.LandCatalog.INK_STYLE_V5);
         assertThat(service.rebornFinal(ADULT)).isTrue();
-        assertThat(service.rebornFinal(CHILD)).isFalse();      // 스케치는 낙서의 몸 구조를 잇는다
+        assertThat(service.rebornFinal(CHILD)).isFalse();      // 스케치는 앉아서 조는 자세가 아니라 엎드린 자세다
+        assertThat(service.redrawnSketch(CHILD)).isTrue();     // 그래도 낙서 키워드는 빼고 스케치 모델로 그린다 (호랑이가 분홍 토끼로 나온 문제)
+        assertThat(service.redrawnSketch(ADULT)).isFalse();
         ReflectionTestUtils.setField(service, "inkStyle", com.tamagochi.tamagochi.domain.land.LandCatalog.INK_STYLE_V0);
         assertThat(service.rebornFinal(ADULT)).isFalse();      // 예전 방식 완성작은 같은 생물이 자란 모습이다
+        assertThat(service.redrawnSketch(CHILD)).isFalse();    // 예전 방식 스케치는 낙서 키워드와 함께 그린다
     }
 
     @Test
