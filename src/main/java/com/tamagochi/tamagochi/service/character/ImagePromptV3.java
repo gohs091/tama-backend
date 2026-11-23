@@ -127,8 +127,10 @@ final class ImagePromptV3 {
 
     /**
      * 물체 낙서(전투기·자동차·식물 등): 뼈대는 생물과 같고 세 가지만 다르다.
-     * 무엇인가(그 물건 자체가 펫), 얼굴(몸에 작은 얼굴 하나. 팔다리·동물 몸은 없다), 방향(그린 각도 그대로 앞만 오른쪽).
+     * 무엇인가(그 물건 자체가 펫), 얼굴(앞쪽 끝에 작은 얼굴 하나. 팔다리·동물 몸은 없다), 방향(그린 각도 그대로 앞만 오른쪽).
      * 위에서 본 전투기를 옆모습으로 돌리게 하면 모델이 없는 부분을 지어내 다리처럼 보이는 것이 생겼다.
+     * 얼굴은 몸과 같은 쪽을 본다: "몸통에 얼굴 하나"라고만 쓰면 자동차 옆면에 화면 밖을 보는 정면 얼굴이 붙는다
+     * (정면 그림은 만들지 않기로 했다. 방향이 없어 걷거나 마주 볼 때 어색하다).
      */
     static String babyV6Thing(DoodleSubject o, String colors) {
         return ImageGenerationService.PIXEL_STYLE +
@@ -140,7 +142,10 @@ final class ImagePromptV3 {
                 (blank(colors) ? "" : "Parts the player colored keep the colors the player gave them. Parts the player left uncolored take their colors from its tribe (" +
                         colors + "), never plain white. ") +
                 "What the player drew: " + o.look().trim() + " " +
-                "Render it as charming and lovely, with clear colors. It comes alive only through one small simple face (two eyes and a little smile) on its main body, like the train in the references. " +
+                "Render it as charming and lovely, with clear colors. It comes alive through a small simple face at its FRONT end, where the thing is heading: " +
+                "the face is turned toward the RIGHT like the rest of it and is seen from the same angle as the rest of it " +
+                "(seen from the side it is a profile, with one eye and the mouth at the very front). " +
+                "Never a face that looks straight out at the viewer, and never a face pasted on its side or its top. " +
                 "It stays a thing: no arms, no legs, no animal body, and no part the player did not draw. " +
                 "VIEW: its front points toward the RIGHT side of the image. Keep the angle the player drew it from (from the side, or from above) and only point its front to the right; " +
                 "do not redraw it from a different angle. " +

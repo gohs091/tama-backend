@@ -76,14 +76,17 @@ class InkStyleV6Test {
             "A jet fighter seen from above with a blue cockpit and red wing tips.");
 
     @Test
-    @DisplayName("물체 낙서 문장: 그 물건 자체가 펫이고, 얼굴 하나만 붙고 팔다리는 없으며, 그린 각도 그대로 앞만 오른쪽을 본다")
+    @DisplayName("물체 낙서 문장: 그 물건 자체가 펫이고, 앞쪽 끝의 얼굴이 몸과 같이 오른쪽을 보며(정면 얼굴 금지), 팔다리는 없고, 그린 각도 그대로다")
     void thingPromptAddsOnlyAFace() {
         String p = ImagePromptV3.babyV6(LOOK_JET, "green");
 
         assertThat(p).startsWith("Create a 16-bit PIXEL ART sprite");
         assertThat(p).contains("Image 3 is a rough doodle a player drew: a jet fighter. That thing itself is their pet.")
                 .contains("What the player drew: " + LOOK_JET.look() + " Render it");
-        assertThat(p).contains("one small simple face").contains("no arms, no legs, no animal body, and no part the player did not draw");
+        assertThat(p).contains("a small simple face at its FRONT end").contains("turned toward the RIGHT like the rest of it")
+                .contains("Never a face that looks straight out at the viewer").contains("never a face pasted on its side or its top");
+        assertThat(p).contains("no arms, no legs, no animal body, and no part the player did not draw");
+        assertThat(p).doesNotContain("two eyes and a little smile").doesNotContain("like the train in the references");
         assertThat(p).contains("its front points toward the RIGHT side of the image").contains("Keep the angle the player drew it from");
         assertThat(p).doesNotContain("three-quarter side view").doesNotContain("stubby arms and legs").doesNotContain("this creature's own face");
         assertThat(p).contains("take their colors from its tribe (green), never plain white.");
