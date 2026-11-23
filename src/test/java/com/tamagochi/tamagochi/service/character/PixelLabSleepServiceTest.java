@@ -100,14 +100,46 @@ class PixelLabSleepServiceTest {
     }
 
     @Test
-    @DisplayName("PixelLab으로 눕히는 것은 처음 낙서가 동물·생물일 때만: 물체·사람·도구·모르는 그림은 그림 모델로 그린다")
-    void onlyAnimalsLieDownWell() {
-        assertThat(ImageGenerationService.animalLike("animal")).isTrue();
-        assertThat(ImageGenerationService.animalLike("Creature")).isTrue();
-        assertThat(ImageGenerationService.animalLike("object")).isFalse();   // 기차는 몸이 사라지고 바퀴만 남았다
-        assertThat(ImageGenerationService.animalLike("person")).isFalse();   // 도중에 다른 모습으로 바뀌었다
-        assertThat(ImageGenerationService.animalLike("tool")).isFalse();
-        assertThat(ImageGenerationService.animalLike(null)).isFalse();
+    @DisplayName("동작 문장: 엎드리라고 하지 않고 자는 자리를 잡고 잠들게 한다 (엎드리라고 하면 기차는 몸이 사라졌다)")
+    void actionSettlesInsteadOfLyingDown() {
+        assertThat(PixelLabSleepService.ACTION).contains("finds its sleeping spot and settles in").contains("staying whole");
+        assertThat(PixelLabSleepService.ACTION).doesNotContain("lies down");
+    }
+
+    /** 몸(초록 사각형)과 떨어진 조각들을 놓은 캔버스 */
+    private static BufferedImage withBody() {
+        BufferedImage img = new BufferedImage(CANVAS, CANVAS, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 60; y < 90; y++) for (int x = 30; x < 80; x++) img.setRGB(x, y, GREEN);   // 몸 1500칸
+        return img;
+    }
+
+    @Test
+    @DisplayName("받은 그림: 원래 그림에 없던 색의 작은 조각은 지운다 (용 꼬리 옆의 흰 점)")
+    void dropsSmallPiecesInForeignColors() throws Exception {
+        BufferedImage frame = withBody();
+        for (int y = 40; y < 42; y++) for (int x = 95; x < 98; x++) frame.setRGB(x, y, 0xFFFDFFEA);   // 흰 점 6칸
+
+        BufferedImage out = read(PixelLabSleepService.dropStrayPieces(png(frame), png(withBody())));
+
+        assertThat(out.getRGB(96, 40) >>> 24).isZero();
+        assertThat(out.getRGB(50, 70)).isEqualTo(GREEN);
+    }
+
+    @Test
+    @DisplayName("받은 그림: 원래 그림에 있던 색의 조각(움직임 선·장식)과 큰 조각, 몸에 붙은 것은 남긴다")
+    void keepsPiecesTheDoodleHadAndBigOnes() throws Exception {
+        BufferedImage original = withBody();
+        original.setRGB(20, 80, INK);                                                               // 원래 그림의 움직임 선 색
+        BufferedImage frame = withBody();
+        for (int x = 18; x < 21; x++) frame.setRGB(x, 85, INK);                                      // 같은 색 조각 3칸: 남긴다
+        for (int y = 20; y < 30; y++) for (int x = 90; x < 100; x++) frame.setRGB(x, y, 0xFFFFFFFF); // 흰 덩어리 100칸: 커서 남긴다
+        for (int y = 55; y < 60; y++) for (int x = 40; x < 44; x++) frame.setRGB(x, y, 0xFFFFFFFF);  // 몸에 붙은 흰 증기: 몸의 일부
+
+        BufferedImage out = read(PixelLabSleepService.dropStrayPieces(png(frame), png(original)));
+
+        assertThat(out.getRGB(19, 85)).isEqualTo(INK);
+        assertThat(out.getRGB(95, 25)).isEqualTo(0xFFFFFFFF);
+        assertThat(out.getRGB(41, 57)).isEqualTo(0xFFFFFFFF);
     }
 
     @Test
