@@ -103,6 +103,32 @@ class CharacterControllerJobTest {
     }
 
     @Test
+    @DisplayName("낙서 생성: 실패로 끝나면 잡아 둔 한도를 돌려주게 해 둔다")
+    void generate_registersQuotaReleaseOnFailure() {
+        controller.generate(generateRequest());
+
+        ArgumentCaptor<Runnable> hook = ArgumentCaptor.forClass(Runnable.class);
+        verify(imageService).onFailure(anyString(), hook.capture());
+        verify(quota, never()).release(anyString());
+        hook.getValue().run();
+        verify(quota).release("u1");
+    }
+
+    @Test
+    @DisplayName("진화 생성: 단계 한도에 걸려 그리지 않으면 잡아 둔 한도를 바로 돌려준다")
+    void generateEvolved_releasesQuotaWhenStageCapReached() {
+        when(quota.tryAcquireEvolved(anyString(), anyString())).thenReturn(false);
+        EvolveImageRequest r = new EvolveImageRequest();
+        ReflectionTestUtils.setField(r, "tossUserId", "u1");
+        ReflectionTestUtils.setField(r, "imageBase64", "AAAA");
+        ReflectionTestUtils.setField(r, "stage", "child");
+
+        controller.generateEvolved(r);
+
+        verify(quota).release("u1");
+    }
+
+    @Test
     @DisplayName("유저 식별자가 없으면 400")
     void missingUser_badRequest() {
         GenerateImageRequest r = generateRequest();

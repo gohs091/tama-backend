@@ -148,6 +148,31 @@ public class ImageGenerationService {
         jobStore.put(jobId, result);
     }
 
+    // 작업이 실패로 끝났을 때 한 번 할 일 (잡아 둔 생성 한도를 돌려준다). 성공하면 하지 않고 지운다
+    private final ConcurrentHashMap<String, Runnable> failureHooks = new ConcurrentHashMap<>();
+
+    /** 이 작업이 실패로 끝나면 hook을 한 번 부른다. 성공하면 부르지 않는다 */
+    public void onFailure(String jobId, Runnable hook) {
+        if (jobId != null && hook != null) failureHooks.put(jobId, hook);
+    }
+
+    /** 작업 결과(성공·실패)를 남긴다. 실패면 onFailure로 등록해 둔 일을 한다 */
+    private void finish(String jobId, ImageJobResult result) {
+        jobStore.put(jobId, result);
+        Runnable hook = failureHooks.remove(jobId);
+        if (hook == null || !"FAILED".equals(result.getStatus())) return;
+        try {
+            hook.run();
+        } catch (RuntimeException e) {
+            log.warn("실패한 작업의 뒤처리 실패 - job: {}, {}", jobId, e.getMessage());
+        }
+    }
+
+    /** 작업을 넘기지도 못했을 때(대기 줄이 꽉 참 등): 실패로 남기고 등록해 둔 일을 한다 */
+    public void failJob(String jobId, String error) {
+        finish(jobId, ImageJobResult.failed(error));
+    }
+
     public ImageJobResult getJob(String jobId) {
         return jobStore.getOrDefault(jobId, ImageJobResult.failed("Job not found"));
     }
@@ -176,16 +201,16 @@ public class ImageGenerationService {
             byte[] responseBytes = solidBytes(generated);
 
             if (responseBytes == null || responseBytes.length == 0) {
-                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                finish(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
             String facing = keepImage(tossUserId, "baby", responseBytes);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), facing, generated.solid()));
+            finish(jobId, ImageJobResult.done(toDataUrl(responseBytes), generated.species(), facing, generated.solid()));
             log.info("Baby image generation done for job: {}", jobId);
 
         } catch (Exception e) {
             log.error("Image generation failed for job: {}", jobId, e);
-            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            finish(jobId, ImageJobResult.failed(e.getMessage()));
         }
     }
 
@@ -224,7 +249,7 @@ public class ImageGenerationService {
             } else if (imageBase64 != null && !imageBase64.isBlank()) {
                 imageBytes = decodeBase64Image(imageBase64);
             } else {
-                jobStore.put(jobId, ImageJobResult.failed("imageUrl 또는 imageBase64 중 하나는 필수입니다."));
+                finish(jobId, ImageJobResult.failed("imageUrl 또는 imageBase64 중 하나는 필수입니다."));
                 return;
             }
 
@@ -244,16 +269,16 @@ public class ImageGenerationService {
             byte[] responseBytes = solidBytes(generated);
 
             if (responseBytes == null || responseBytes.length == 0) {
-                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                finish(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
             String facing = keepImage(tossUserId, stage, responseBytes);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, facing, generated.solid()));
+            finish(jobId, ImageJobResult.done(toDataUrl(responseBytes), null, facing, generated.solid()));
             log.info("Evolved ({}) image generation done for job: {}", stage, jobId);
 
         } catch (Exception e) {
             log.error("Evolved image generation failed for job: {}", jobId, e);
-            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            finish(jobId, ImageJobResult.failed(e.getMessage()));
         }
     }
 
@@ -443,15 +468,15 @@ public class ImageGenerationService {
             DoodleSubject subject = originFor(tossUserId, doodle, doodleMime);
             byte[] image = sketchV6(sketchSource(doodle, doodleMime, decodeBase64Image(babyBase64), faction, subject, tossUserId), tossUserId, designIndex);
             if (image == null || image.length == 0) {
-                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                finish(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
             String facing = keepImage(tossUserId, "child", image);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
+            finish(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
             log.info("Sketch (v6) image generation done for job: {}", jobId);
         } catch (Exception e) {
             log.error("Sketch image generation failed for job: {}", jobId, e);
-            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            finish(jobId, ImageJobResult.failed(e.getMessage()));
         }
     }
 
@@ -548,7 +573,7 @@ public class ImageGenerationService {
             if (design == null) {
                 // 앱이 후보를 먼저 받지 않았으면 지금 만든다 (예전 앱, 구간 끝 자동 진화 등)
                 if (finalChoices(tossUserId, doodleBase64, sketchBase64, false).isEmpty()) {
-                    jobStore.put(jobId, ImageJobResult.failed("완성작 디자인 실패"));
+                    finish(jobId, ImageJobResult.failed("완성작 디자인 실패"));
                     return;
                 }
                 design = finalDesignService.pick(designOwner(tossUserId), designIndex).orElseThrow();
@@ -556,14 +581,14 @@ public class ImageGenerationService {
             log.info("v5 완성작 - user: {}, 후보: {} ({})", tossUserId, design.path("nameKo").asText(), design.path("body").asText());
             byte[] image = binarizeAlpha(callOpenAiGenerate(ImagePromptV3.finalFromDesignV5(design), v5Model, v5Quality));
             if (image == null || image.length == 0) {
-                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                finish(jobId, ImageJobResult.failed("Empty image response"));
                 return;
             }
             String facing = keepImage(tossUserId, "adult", image);
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
+            finish(jobId, ImageJobResult.done(toDataUrl(image), null, facing, true));
         } catch (Exception e) {
             log.error("Final image generation failed for job: {}", jobId, e);
-            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            finish(jobId, ImageJobResult.failed(e.getMessage()));
         }
     }
 
@@ -620,15 +645,15 @@ public class ImageGenerationService {
                 if (again != null && again.length > 0 && !SpriteOutline.lost(spriteBytes, again)) image = again;
             }
             if (image == null || image.length == 0) {
-                jobStore.put(jobId, ImageJobResult.failed("Empty image response"));
+                finish(jobId, ImageJobResult.failed("Empty image response"));
                 if (onFail != null) onFail.run();
                 return;
             }
-            jobStore.put(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image)));
+            finish(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image)));
             log.info("Sleep image generation done for job: {}", jobId);
         } catch (Exception e) {
             log.error("Sleep image generation failed for job: {}", jobId, e);
-            jobStore.put(jobId, ImageJobResult.failed(e.getMessage()));
+            finish(jobId, ImageJobResult.failed(e.getMessage()));
             if (onFail != null) onFail.run();
         }
     }
