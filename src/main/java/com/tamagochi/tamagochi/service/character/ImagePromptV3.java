@@ -83,18 +83,30 @@ final class ImagePromptV3 {
         return at < 0 ? base + " " + SIDE_BABY_V5 : base.substring(0, at) + SIDE_BABY_V5 + base.substring(at);
     }
 
-    // ================= 낙서 v6 (image.ink-style=v6, 생물 낙서만) =================
+    // ================= 낙서 v6 (image.ink-style=v6, 생물·물체 낙서) =================
     // 스케치 v6과 같은 뼈대: 잘 다듬어진 샘플 두 장은 화풍 참고, 유저 낙서는 "이 아이" 참고, 글 모델의 한 줄(look)이 무엇을 그렸는지 알려 준다.
     // 예전 방식(mini + 부위 목록)은 색칠한 낙서의 붓 자국을 무늬로 베끼고 얼굴을 뭉갰다. 규칙을 덧붙이지 않고 목적("내가 그린 그 아이네!")을 적는다.
     // 얼굴 문장: "두 눈이 다 보이게" 같은 말을 넣으면 옆모습 새 머리에 정면 얼굴(눈 둘+웃는 입)을 붙여 그린다. 그 생물의 얼굴 그대로 그리게 한다.
 
-    /** 새 방식으로 그릴 낙서인가: 한 줄 설명이 있는 생물. 도구·물체 낙서는 아직 예전 방식 그대로 (새 방식으로 뽑아 보지 않았다) */
+    /**
+     * 새 방식으로 그릴 낙서인가: 한 줄 설명이 있는 생물과 물체(전투기·자동차·식물 등).
+     * 물체를 예전 방식으로 그리면 "작은 팔다리를 붙인다"는 문장 때문에 전투기에 다리가 생겼다 (2026-11-23).
+     * 칼·방패 같은 도구는 생물의 몸 한 부분이 되는 예전 방식 그대로다.
+     */
     static boolean babyLookFits(DoodleSubject o) {
-        return o != null && isLiving(o) && !blank(o.look());
+        return o != null && !o.isTool() && !o.isAbstract() && !blank(o.look());
     }
+
+    /**
+     * 옆으로 돌려 그리면서 몸이 바뀌지 않게 한다. 두 발로 선 토끼가 팔다리 없이 앉은 토끼로 나왔다 (2026-11-23).
+     * 몸 구조마다 문장을 따로 두지 않는다: 그린 것은 다 보이고, 안 그린 것은 생기지 않는다.
+     */
+    static final String KEEP_BODY = "Turning it to the side must not change its body: it holds itself the way the doodle shows, " +
+            "every arm, leg, wing and tail the player drew stays clearly visible, and it gains no arm, leg, wing or tail the player did not draw. It rests calmly. ";
 
     /** colors: 진영 색. 유저가 칠하지 않은 부분에만 쓴다 (빈 낙서가 흰 캐릭터로 나오지 않게) */
     static String babyV6(DoodleSubject o, String colors) {
+        if (!isLiving(o)) return babyV6Thing(o, colors);
         return ImageGenerationService.PIXEL_STYLE +
                 "You are given three images. Images 1 and 2 are STYLE REFERENCES only: copy their pixel size, outline thickness, flat color shading " +
                 "and cute tamagotchi face and proportions, but do NOT copy their characters. " +
@@ -109,7 +121,30 @@ final class ImagePromptV3 {
                 "Do NOT draw a front view; the pose must not be left-right symmetrical. " +
                 "The face is this creature's own face as it really looks from that angle: its eyes, and its own mouth, beak, snout or muzzle, each where that creature has them. " +
                 "Never paste a separate front-facing face (two eyes and a smile) onto the side of the head. " +
-                "It stands calmly. Single character centered, full body, filling about 70% of the frame, transparent background, no ground, no shadow, no text, no other characters.";
+                KEEP_BODY +
+                "Single character centered, full body, filling about 70% of the frame, transparent background, no ground, no shadow, no text, no other characters.";
+    }
+
+    /**
+     * 물체 낙서(전투기·자동차·식물 등): 뼈대는 생물과 같고 세 가지만 다르다.
+     * 무엇인가(그 물건 자체가 펫), 얼굴(몸에 작은 얼굴 하나. 팔다리·동물 몸은 없다), 방향(그린 각도 그대로 앞만 오른쪽).
+     * 위에서 본 전투기를 옆모습으로 돌리게 하면 모델이 없는 부분을 지어내 다리처럼 보이는 것이 생겼다.
+     */
+    static String babyV6Thing(DoodleSubject o, String colors) {
+        return ImageGenerationService.PIXEL_STYLE +
+                "You are given three images. Images 1 and 2 are STYLE REFERENCES only: copy their pixel size, outline thickness, flat color shading " +
+                "and cute tamagotchi face and proportions, but do NOT copy their characters. " +
+                "Image 3 is a rough doodle a player drew: " + o.subject() + ". That thing itself is their pet. Bring it to life as a newborn: its owner must look at it and say \"that's the one I drew!\". " +
+                "It is the same thing with the same parts in the same places, in the colors the player chose, redrawn cleanly in the style of the references, not traced. " +
+                "Scribbled coloring in the doodle only tells you the color of that part. " +
+                (blank(colors) ? "" : "Parts the player colored keep the colors the player gave them. Parts the player left uncolored take their colors from its tribe (" +
+                        colors + "), never plain white. ") +
+                "What the player drew: " + o.look().trim() + " " +
+                "Render it as charming and lovely, with clear colors. It comes alive only through one small simple face (two eyes and a little smile) on its main body, like the train in the references. " +
+                "It stays a thing: no arms, no legs, no animal body, and no part the player did not draw. " +
+                "VIEW: its front points toward the RIGHT side of the image. Keep the angle the player drew it from (from the side, or from above) and only point its front to the right; " +
+                "do not redraw it from a different angle. " +
+                "Single character centered, the whole thing visible, filling about 70% of the frame, transparent background, no ground, no shadow, no text, no other characters.";
     }
 
     // ================= 스케치 v6 (image.ink-style=v6) =================

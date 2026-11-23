@@ -62,12 +62,41 @@ class InkStyleV6Test {
     }
 
     @Test
-    @DisplayName("새 낙서 방식은 한 줄 설명이 있는 생물 낙서만: 도구·물체, 한 줄이 없는 분석은 예전 방식으로 그린다")
+    @DisplayName("낙서 문장: 옆으로 돌려도 그린 팔·다리·날개·꼬리는 다 보이고, 안 그린 것은 생기지 않는다")
+    void babyPromptKeepsTheBodyTheDoodleShows() {
+        String p = ImagePromptV3.babyV6(LOOK_CAT, "green");
+
+        assertThat(p).contains("Turning it to the side must not change its body")
+                .contains("every arm, leg, wing and tail the player drew stays clearly visible")
+                .contains("gains no arm, leg, wing or tail the player did not draw");
+        assertThat(p).doesNotContain("It stands calmly");
+    }
+
+    private static final DoodleSubject LOOK_JET = new DoodleSubject("a jet fighter", "object", "wings, cockpit", "전투기", null, "vehicle", null,
+            "A jet fighter seen from above with a blue cockpit and red wing tips.");
+
+    @Test
+    @DisplayName("물체 낙서 문장: 그 물건 자체가 펫이고, 얼굴 하나만 붙고 팔다리는 없으며, 그린 각도 그대로 앞만 오른쪽을 본다")
+    void thingPromptAddsOnlyAFace() {
+        String p = ImagePromptV3.babyV6(LOOK_JET, "green");
+
+        assertThat(p).startsWith("Create a 16-bit PIXEL ART sprite");
+        assertThat(p).contains("Image 3 is a rough doodle a player drew: a jet fighter. That thing itself is their pet.")
+                .contains("What the player drew: " + LOOK_JET.look() + " Render it");
+        assertThat(p).contains("one small simple face").contains("no arms, no legs, no animal body, and no part the player did not draw");
+        assertThat(p).contains("its front points toward the RIGHT side of the image").contains("Keep the angle the player drew it from");
+        assertThat(p).doesNotContain("three-quarter side view").doesNotContain("stubby arms and legs").doesNotContain("this creature's own face");
+        assertThat(p).contains("take their colors from its tribe (green), never plain white.");
+    }
+
+    @Test
+    @DisplayName("새 낙서 방식은 한 줄 설명이 있는 생물·물체 낙서: 도구, 알아보지 못한 그림, 한 줄이 없는 분석은 예전 방식으로 그린다")
     void babyLookOnlyForLivingDoodles() {
         assertThat(ImagePromptV3.babyLookFits(LOOK_CAT)).isTrue();
         assertThat(ImagePromptV3.babyLookFits(CAT)).isFalse();   // 한 줄 설명 없음
         assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("a sword", "tool", "a blade", "칼", null, "other", "ears", "A sword."))).isFalse();
-        assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("a train", "object", "wheels", "기차", null, "vehicle", null, "A train."))).isFalse();
+        assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("a train", "object", "wheels", "기차", null, "vehicle", null, "A train."))).isTrue();   // 물체도 새 방식
+        assertThat(ImagePromptV3.babyLookFits(new DoodleSubject("an abstract shape", "abstract", null, null, null, "other", null, "A scribble."))).isFalse();
         assertThat(ImagePromptV3.babyLookFits(null)).isFalse();
     }
 

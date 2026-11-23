@@ -627,9 +627,12 @@ public class ImageGenerationService {
             // v5 완성작은 처음 낙서와 다른 존재로 다시 태어난 모습이다. 낙서의 키워드(부위·특징)를 함께 주면 모델이 그림보다 키워드를 따라
             // 낙서 모습으로 되돌려 그린다 (2026-11-12 확인: 완성작 3마리 모두 그랬고, 키워드를 빼자 3마리 모두 완성작 그대로 그렸다).
             // 그릴 모델도 완성작을 그린 모델로 맞춘다: 도트 굵기와 세부(갈기·관·무늬)가 깨어 있는 모습과 같아진다.
+            // 스케치도 같다 (2026-11-23): 후보를 골라 새로 그린 스케치(분홍 토끼 → 호랑이)의 자는 모습이 낙서 키워드를 따라 분홍 토끼로 나왔다.
+            // 스케치는 자세만 낙서 단계처럼 엎드린 자세 그대로 둔다.
             boolean reborn = rebornFinal(stage);
-            DoodleSubject subject = reborn ? null : originFor(tossUserId, spriteBytes, mimeType);
-            String model = reborn ? v5Model : openAiImageModel, quality = reborn ? v5Quality : openAiImageQuality;
+            boolean redrawn = reborn || redrawnSketch(stage);
+            DoodleSubject subject = redrawn ? null : originFor(tossUserId, spriteBytes, mimeType);
+            String model = redrawn ? v5Model : openAiImageModel, quality = redrawn ? v5Quality : openAiImageQuality;
             // 진영 색은 넣지 않는다: 자는 모습은 지금 모습의 색 그대로여야 한다
             // 완성작은 앉아서 조는 자세로: 엎드리면 얼굴이 작아지고 사람형은 형태가 뭉개진다
             String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject, reborn);
@@ -656,6 +659,11 @@ public class ImageGenerationService {
             finish(jobId, ImageJobResult.failed(e.getMessage()));
             if (onFail != null) onFail.run();
         }
+    }
+
+    /** v5 모델로 그린 스케치인가 (v5·v6 방식). 자는 모습을 그릴 때 낙서 키워드를 빼고 스케치를 그린 모델을 쓴다. 자세는 엎드린 자세 그대로 */
+    boolean redrawnSketch(com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage stage) {
+        return stage == com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage.CHILD && LandCatalog.isV5(inkStyle);
     }
 
     /** 낙서와 다른 존재로 다시 태어난 완성작인가 (v5 방식의 완성작). 자는 모습을 그릴 때 낙서 키워드를 빼고 완성작을 그린 모델을 쓴다 */
