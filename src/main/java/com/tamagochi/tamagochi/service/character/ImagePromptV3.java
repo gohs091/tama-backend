@@ -379,8 +379,9 @@ final class ImagePromptV3 {
     }
 
     /** 엎드려 자는 자세 (낙서·스케치) */
-    private static final String SLEEP_LYING = "Now draw THIS SAME character fast asleep, lying down on its belly with its body low and flat on the ground " +
-            "and its head resting down on its front limbs, face lowered, eyes closed (if it has a face). ";
+    private static final String SLEEP_LYING = "Now draw THIS SAME character fast asleep, lying down with its body low and flat on the ground " +
+            "and its head resting down (on its front limbs only if it has them), face lowered, eyes closed (if it has a face). " +
+            "It has exactly the arms and legs it has in the image: none are added, none are removed. ";
 
     /**
      * 앉아서 조는 자세 (v5 완성작). 완성작은 몸이 크고 장식이 많아, 납작하게 엎드리면 얼굴이 작아지고 로브 입은 사람형은 형태가 뭉개진다.
@@ -402,7 +403,7 @@ final class ImagePromptV3 {
                 based + parts + traits + plan +
                 "Use EXACTLY the colors that are in the image (same body color, same markings, same light belly or face patches) — do not recolor anything. " +
                 (dozing ? SLEEP_DOZING : SLEEP_LYING) +
-                "Keep every listed part, feature, marking and color clearly visible in the new pose, in the same colors as the image. " +
+                "Keep every part, feature and marking of the image, and anything it wears, clearly visible in the new pose, in the same colors as the image. " +
                 "Do NOT add new parts such as wings, horns or accessories, and do not change the species, colors or color pattern. " +
                 "Keep the exact same 16-bit pixel art style, pixel size and flat color palette as the image, and keep its bold dark outline: " +
                 "the same outline color and thickness around the whole silhouette and between its parts, drawn as solid opaque pixels (never transparent, never left out). " +

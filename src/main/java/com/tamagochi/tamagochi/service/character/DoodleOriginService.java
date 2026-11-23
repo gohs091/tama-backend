@@ -29,6 +29,17 @@ public class DoodleOriginService {
         }
     }
 
+    /** 저장된 분석을 지운다: 새 낙서를 알아보지 못했을 때, 이전 끄적이의 정체가 새 끄적이에게 이어지지 않게 */
+    @Transactional
+    public void forget(String tossUserId) {
+        if (tossUserId == null || tossUserId.isBlank()) return;
+        try {
+            repository.findByTossUserId(tossUserId).ifPresent(repository::delete);
+        } catch (Exception e) {
+            log.warn("그림 정체 지우기 실패 - {}", e.getMessage());
+        }
+    }
+
     @Transactional
     public void save(String tossUserId, DoodleSubject s) {
         if (tossUserId == null || tossUserId.isBlank() || s == null) return;

@@ -28,6 +28,11 @@ final class SpriteBackdrop {
 
     /** 배경을 깐 PNG. 투명한 곳이 없거나(이미 배경이 있는 그림) 읽을 수 없으면 null (호출한 쪽이 원본을 쓴다) */
     static byte[] flatten(byte[] image) {
+        return flatten(image, null);
+    }
+
+    /** rgb: 깔 배경색. null이면 끄적이 색과 덜 헷갈리는 옅은 색을 고른다 */
+    static byte[] flatten(byte[] image, Integer rgb) {
         try {
             BufferedImage src = ImageIO.read(new ByteArrayInputStream(image));
             if (src == null || !src.getColorModel().hasAlpha()) return null;
@@ -36,7 +41,7 @@ final class SpriteBackdrop {
             boolean anyClear = false;
             for (int p : px) if ((p >>> 24) < VISIBLE) { anyClear = true; break; }
             if (!anyClear) return null;
-            int backdrop = 0xFF000000 | pick(px);
+            int backdrop = 0xFF000000 | (rgb != null ? rgb : pick(px));
             // 반투명 가장자리가 배경색과 섞여 얼룩지지 않게, 보이는 픽셀만 남기고 나머지는 배경색으로 채운다
             for (int i = 0; i < px.length; i++) px[i] = (px[i] >>> 24) >= VISIBLE ? 0xFF000000 | px[i] : backdrop;
             BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);

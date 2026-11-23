@@ -379,7 +379,9 @@ public class ImageGenerationService {
                 }
                 prompt = v5 ? ImagePromptV3.babyV5(subject, colors) : ImagePromptV3.baby(subject, colors);
             } else {
-                // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다
+                // 무엇인지 모르는 그림은 이전과 같은 일반 프롬프트로 만든다.
+                // 이전 끄적이의 정체가 남아 있으면 지운다 (유저마다 한 줄이라, 남겨 두면 새 끄적이의 진화가 이전 끄적이의 정체로 그려진다)
+                if (doodleOriginService != null) doodleOriginService.forget(tossUserId);
                 prompt = buildOpenAiPrompt(faction, stage, false, subject, FusionMode.SELF);
             }
         }
@@ -543,13 +545,17 @@ public class ImageGenerationService {
                 subject == null ? null : subject.subject(), inkTheme(tossUserId), refresh);
     }
 
-    /** 후보 저장 키: 유저 + 지금 끄적이. 끄적이를 새로 키우면 이전 끄적이의 후보가 다시 나오지 않는다 */
+    /**
+     * 후보 저장 키: 유저 + 지금 끄적이의 공개 ID. 끄적이를 새로 키우면 이전 끄적이의 후보가 다시 나오지 않는다.
+     * 행 번호(id)로 묶으면 안 된다: 다시 그리거나 죽은 뒤 새 알로 시작해도 같은 행을 다시 쓰기 때문에,
+     * 호랑이였던 이전 끄적이의 후보 세 개가 새로 그린 토끼에게 그대로 나왔다 (2026-11-23). 공개 ID는 그때마다 새로 받는다.
+     */
     private String designOwner(String tossUserId) {
         if (userRepository == null || tamagotchiRepository == null || tossUserId == null) return tossUserId;
         try {
             return userRepository.findByTossUserId(tossUserId)
                     .flatMap(u -> tamagotchiRepository.findActiveByUserId(u.getId()))
-                    .map(p -> tossUserId + ":" + p.getId())
+                    .map(p -> tossUserId + ":" + (p.getPublicId() != null ? p.getPublicId() : String.valueOf(p.getId())))
                     .orElse(tossUserId);
         } catch (Exception e) {
             return tossUserId;
@@ -636,29 +642,60 @@ public class ImageGenerationService {
             // 진영 색은 넣지 않는다: 자는 모습은 지금 모습의 색 그대로여야 한다
             // 완성작은 앉아서 조는 자세로: 엎드리면 얼굴이 작아지고 사람형은 형태가 뭉개진다
             String prompt = ImagePromptV3.sleep(subject == null || subject.isAbstract() ? null : subject, reborn);
-            // 투명 배경 그대로 보내면 모델이 어두운 테두리를 배경으로 여겨 지운다 → 옅은 단색 배경을 깔아 보낸다
-            byte[] flat = SpriteBackdrop.flatten(spriteBytes);
-            byte[] input = flat != null ? flat : spriteBytes;
-            String inputMime = flat != null ? "image/png" : mimeType;
-            byte[] image = binarizeAlpha(callOpenAiEdit(input, inputMime, null, null, prompt, model, quality));
+            Generated drawn = drawSleep(spriteBytes, mimeType, prompt, model, quality);
+            byte[] image = drawn.bytes();
             if (image != null && image.length > 0 && SpriteOutline.lost(spriteBytes, image)) {
                 // 그래도 테두리가 빠졌으면 한 번만 다시 그린다 (자는 모습은 단계마다 한 번만 만들 수 있어 그대로 내보내면 고칠 길이 없다)
                 log.warn("Sleep image lost its outline, drawing once more - job: {}", jobId);
-                byte[] again = binarizeAlpha(callOpenAiEdit(input, inputMime, null, null, prompt, model, quality));
-                if (again != null && again.length > 0 && !SpriteOutline.lost(spriteBytes, again)) image = again;
+                Generated again = drawSleep(spriteBytes, mimeType, prompt, model, quality);
+                if (again.bytes() != null && again.bytes().length > 0 && !SpriteOutline.lost(spriteBytes, again.bytes())) {
+                    drawn = again;
+                    image = again.bytes();
+                }
             }
             if (image == null || image.length == 0) {
                 finish(jobId, ImageJobResult.failed("Empty image response"));
                 if (onFail != null) onFail.run();
                 return;
             }
-            finish(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image)));
+            finish(jobId, ImageJobResult.done(toDataUrl(image), null, detectFacing(image), drawn.solid()));
             log.info("Sleep image generation done for job: {}", jobId);
         } catch (Exception e) {
             log.error("Sleep image generation failed for job: {}", jobId, e);
             finish(jobId, ImageJobResult.failed(e.getMessage()));
             if (onFail != null) onFail.run();
         }
+    }
+
+    /**
+     * 자는 모습 한 장. 낙서 단계 그림처럼 단색 배경으로 받아 그 색만 지운다:
+     * 투명 배경을 직접 달라고 하면 어디를 비울지를 모델이 정해서, 어두운 테두리와 밝은 얼굴을 배경처럼 비워 버리는 일이 있었다
+     * (2026-11-23 진한 회색 몸에 밝은 얼굴인 토끼: 얼굴 쪽 테두리가 사라졌는데, 몸이 어두워 테두리 검사도 통과했다).
+     * 단색 배경으로 받지 못했으면(모델이 지시를 어김, 배경색과 몸 색이 겹쳐 몸까지 지워짐) 예전처럼 투명 배경으로 받는다.
+     * solid: 단색 배경으로 받은 그림은 몸 안 틈이 진짜 배경이다 (앱이 흰색으로 메우지 않는다)
+     */
+    private Generated drawSleep(byte[] sprite, String mimeType, String prompt, String model, String quality) {
+        if (keyBackground) {
+            try {
+                ChromaKey.Key key = ChromaKey.pick(sprite);
+                byte[] onKey = SpriteBackdrop.flatten(sprite, key.rgb);
+                if (onKey != null) {
+                    MultipartBodyBuilder builder = new MultipartBodyBuilder();
+                    addImagePart(builder, "image", onKey, "image/png", "sprite.png");
+                    byte[] raw = postOpenAiEdit(builder, ChromaKey.prompt(prompt, key), model, quality, "opaque");
+                    byte[] cut = raw == null ? null : ChromaKey.cut(raw);
+                    if (cut != null) return new Generated(binarizeAlpha(cut), null, true);
+                    log.warn("자는 모습을 단색 배경({})으로 받지 못해 투명 배경으로 다시 그림", key);
+                }
+            } catch (Exception e) {
+                log.warn("자는 모습 단색 배경 그리기 실패, 투명 배경으로 다시 그림: {}", e.getMessage());
+            }
+        }
+        // 투명 배경 그대로 보내면 모델이 어두운 테두리를 배경으로 여겨 지운다 → 옅은 단색 배경을 깔아 보낸다
+        byte[] flat = SpriteBackdrop.flatten(sprite);
+        byte[] input = flat != null ? flat : sprite;
+        String inputMime = flat != null ? "image/png" : mimeType;
+        return new Generated(binarizeAlpha(callOpenAiEdit(input, inputMime, null, null, prompt, model, quality)), null);
     }
 
     /** v5 모델로 그린 스케치인가 (v5·v6 방식). 자는 모습을 그릴 때 낙서 키워드를 빼고 스케치를 그린 모델을 쓴다. 자세는 엎드린 자세 그대로 */
