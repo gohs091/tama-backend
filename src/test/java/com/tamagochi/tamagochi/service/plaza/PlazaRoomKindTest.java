@@ -172,4 +172,21 @@ class PlazaRoomKindTest {
         FakePeer old = enter(null, false);
         assertThat(old.last("room").path("ghosts").get(0).has("u")).isFalse();
     }
+
+    @Test
+    void 삼디에서_나간_끄적이는_이디_방에는_예전_그림으로_간다() {
+        FakePeer gone = connectWith(extras(DOT64, "ABCD2345"));
+        hello(gone, true);
+        plaza.onMessage(gone, "{\"t\":\"leave\"}");
+
+        FakePeer two = enter(null, false);
+        var ghost = two.last("room").path("ghosts").get(0);
+        assertThat(ghost.path("image").asText()).startsWith("https://cdn.example/pet");
+        assertThat(ghost.has("u")).isFalse();
+
+        FakePeer three = enter(null, true);
+        var ghost3 = three.last("room").path("ghosts").get(0);
+        assertThat(ghost3.path("image").asText()).isEqualTo(DOT64);
+        assertThat(ghost3.path("u").asText()).isEqualTo("ABCD2345");
+    }
 }

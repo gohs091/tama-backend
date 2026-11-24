@@ -98,6 +98,7 @@ public class PlazaService {
         Room room;
         String inviteKey;   // 연결 때 받은 초대 열쇠 (3D 로 옮길 때 다시 쓴다)
         Extras extras = Extras.NONE;
+        String image64;     // 3D 방에서 보이는 64×64 그림 (3D 앱만). 없으면 3D 방에서도 image 를 쓴다
         boolean v3;         // hello 에 v:3 을 보낸 3D 앱
         String image;     // 서버가 줄인 그림(data URL), 앱이 보낸 작은 그림(data URL), 또는 원본 CDN 주소
         String spareImage;   // 원본 CDN 주소. 위 둘이 다 없을 때만 쓴다
@@ -230,17 +231,16 @@ public class PlazaService {
             m.room = null;
             if (seats(held) == 0) rooms.remove(held.key);
             m.room = pickRoom(m.inviteKey, "3d");
-            // 3D 는 그림 한 칸이 화면 도트 한 칸이라 64×64 그림이 먼저다. 없으면 아래에서 앱이 보낸 그림 → 서버가 줄인 그림 → 원본 주소 순
-            m.image = m.extras.image64();
         }
         String sent = msg.path("image").asText("");
         // 그림 고르는 순서: 서버가 줄인 그림 → 앱이 보낸 작은 그림(주인이 홈에서 보는 그 그림) → 원본 주소
-        String from = m.v3 ? "64칸" : "서버";
+        String from = "서버";
         boolean sentOk = sent.startsWith("data:image/") && sent.length() <= MAX_IMAGE_CHARS;
         // 아이폰 앱이 가끔 투명한 빈 그림을 만들어 보낸다. 그대로 쓰면 모두의 화면에 이름표만 떠다닌다
         boolean sentBlank = sentOk && com.tamagochi.tamagochi.service.storage.PetThumbs.blank(sent);
+        // 3D 방에 보이는 그림: 64×64 그림 → 앱이 보낸 그림. 둘 다 없으면 2D 와 같이 고른 m.image 를 쓴다 (m.image 는 2D 규칙 그대로라 다녀간 끄적이로 2D 방에 가도 달라지지 않는다)
+        if (m.v3) m.image64 = m.extras.image64() != null ? m.extras.image64() : (sentOk && !sentBlank ? sent : null);
         if (m.image == null && sentOk && !sentBlank) { m.image = sent; from = "앱"; }
-        if (m.image == null && m.v3) { m.image = m.profile.imageUrl(); from = "서버"; }
         if (m.image == null && m.spareImage != null) { m.image = m.spareImage; from = "원본 주소"; }
         // 이름표만 떠다니는 끄적이가 생기면 이 기록으로 어떤 그림이 나갔는지 찾는다
         log.info("광장 입장 - user={}, pet={}, 그림={}({}자), 앱이 보낸 그림={}자", m.profile.userId(), m.profile.publicId(), m.image == null ? "없음" : from,
@@ -545,7 +545,7 @@ public class PlazaService {
 
     private void remember(Member m) {
         recent.removeIf(g -> g.userId().equals(m.profile.userId()));
-        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.extras.image64()));
+        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.image64));
         while (recent.size() > RECENT_MAX) recent.removeLast();
     }
 
@@ -568,7 +568,7 @@ public class PlazaService {
         ObjectNode n = om.createObjectNode();
         n.put("id", m.id).put("nickname", m.profile.nickname()).put("petName", m.profile.petName())
                 .put("level", m.profile.level()).put("stage", m.profile.stage())
-                .put("image", m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
+                .put("image", m.v3 && m.image64 != null ? m.image64 : m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
         if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
         if (m.sleeping) n.put("sleep", true);
         if (m.v3 && m.extras.userCode() != null) n.put("u", m.extras.userCode());
