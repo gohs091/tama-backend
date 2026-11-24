@@ -66,10 +66,11 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         // 이름표만 먼저 뜨고 그림은 한참 뒤에 뜨거나 안 뜬다.
         // 줄이지 못했으면(원본을 못 받았거나 빈 그림이면) 앱이 보내는 작은 그림을 쓰고, 그것도 없을 때만 원본 주소를 쓴다
         String imageKey = pet.getCurrentImageKey();
-        String image = petThumbs.of(imageKey).orElse(null);
+        PetThumbs.Both pics = petThumbs.both(imageKey);   // 원본은 한 번만 받는다
+        String image = pics.thumb();
 
         // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드. 사냥 · 차단 · 채팅 금지는 뒤 작업에서 채운다
-        PlazaService.Extras extras = new PlazaService.Extras(petThumbs.dot64(imageKey), user.getUserCode(), false, null, java.util.Set.of(), 0);
+        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), false, null, java.util.Set.of(), 0);
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),

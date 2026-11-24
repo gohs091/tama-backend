@@ -89,4 +89,25 @@ class PetThumbsDot64Test {
         assertThat(new PetThumbs(url -> null).dot64(null)).isNull();
         assertThat(new PetThumbs(url -> null).dot64("pets/abc.png")).isNull();
     }
+
+    @Test
+    void both는_원본을_한_번만_받아_두_그림을_주고_다음엔_받지_않는다() throws Exception {
+        BufferedImage big = new BufferedImage(512, 512, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 100; y < 400; y++) for (int x = 100; x < 400; x++) big.setRGB(x, y, 0xFF2266AA);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(big, "png", bos);
+        java.util.List<String> asked = new java.util.ArrayList<>();
+        PetThumbs thumbs = new PetThumbs(url -> { asked.add(url); return bos.toByteArray(); });
+
+        PetThumbs.Both first = thumbs.both("pets/abc.png");
+        PetThumbs.Both again = thumbs.both("pets/abc.png");
+
+        assertThat(first.thumb()).startsWith("data:image/png;base64,");
+        assertThat(first.dot64()).startsWith("data:image/png;base64,");
+        assertThat(again).isEqualTo(first);
+        assertThat(asked).hasSize(1);
+        assertThat(thumbs.of("pets/abc.png")).contains(first.thumb());
+        assertThat(thumbs.dot64("pets/abc.png")).isEqualTo(first.dot64());
+        assertThat(asked).hasSize(1);
+    }
 }

@@ -42,6 +42,13 @@ public class PetThumbs {
             return size() > CACHE_MAX;
         }
     });
+    /** 64×64 그림. 키가 곧 내용이라 바뀌지 않아 같은 방식으로 기억한다 */
+    private final Map<String, String> dotCache = Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > CACHE_MAX;
+        }
+    });
 
     @Autowired
     public PetThumbs() {
@@ -52,34 +59,50 @@ public class PetThumbs {
         this.fetch = fetch;
     }
 
+    /** 한 번 받은 원본에서 만든 두 그림. 못 만든 쪽은 null */
+    public record Both(String thumb, String dot64) {}
+
     /** 이 키의 작은 그림(data URL). 키가 없거나, 원본을 받지 못했거나, 줄이지 못했으면 빈 값 (실패는 기억하지 않아 다음에 다시 해 본다) */
     public Optional<String> of(String imageKey) {
+        return Optional.ofNullable(both(imageKey).thumb());
+    }
+
+    /** 이 키의 64×64 그림(PNG data URL). 못 만들면 null */
+    public String dot64(String imageKey) {
+        return both(imageKey).dot64();
+    }
+
+    /**
+     * 원본을 한 번만 받아 작은 그림(128)과 64×64 그림을 같이 만든다. 둘 다 이미 기억해 둔 것이면 받지 않는다.
+     * 만든 것은 기억하고, 못 만든 쪽은 기억하지 않아 다음에 다시 해 본다
+     */
+    public Both both(String imageKey) {
         String url = PetImageUrls.of(imageKey);
-        if (url == null) return Optional.empty();
-        String known = cache.get(imageKey);
-        if (known != null) return Optional.of(known);
+        if (url == null) return new Both(null, null);
+        String thumb = cache.get(imageKey), dot = dotCache.get(imageKey);
+        if (thumb != null && dot != null) return new Both(thumb, dot);
         byte[] original = fetch.apply(url);
-        String thumb = SpriteThumb.dataUrl(original);
-        if (thumb == null || thumb.length() > MAX_CHARS) {
-            log.warn("작은 그림을 만들지 못함 - key={}, 원본={}바이트, 결과={}자", imageKey, original == null ? 0 : original.length, thumb == null ? 0 : thumb.length());
-            return Optional.empty();
+        if (thumb == null) {
+            thumb = SpriteThumb.dataUrl(original);
+            if (thumb == null || thumb.length() > MAX_CHARS) {
+                log.warn("작은 그림을 만들지 못함 - key={}, 원본={}바이트, 결과={}자", imageKey, original == null ? 0 : original.length, thumb == null ? 0 : thumb.length());
+                thumb = null;
+            } else {
+                cache.put(imageKey, thumb);
+            }
         }
-        cache.put(imageKey, thumb);
-        return Optional.of(thumb);
+        if (dot == null) {
+            dot = makeDot64(imageKey, original);
+            if (dot != null) dotCache.put(imageKey, dot);
+        }
+        return new Both(thumb, dot);
     }
 
     /** 3D 광장용 64×64 그림 한 변의 칸 수 (그림 한 칸 = 화면 도트 한 칸) */
     static final int DOT = 64;
 
-    /**
-     * 이 키의 64×64 그림(PNG data URL). 키가 없거나, 원본을 받지 못했거나, 읽지 못했으면 null.
-     * 기억해 두지 않고 부를 때마다 원본을 받아 만든다 (입장할 때 한 번만 부른다)
-     */
-    public String dot64(String imageKey) {
-        String url = PetImageUrls.of(imageKey);
-        if (url == null) return null;
+    private static String makeDot64(String imageKey, byte[] original) {
         try {
-            byte[] original = fetch.apply(url);
             if (original == null || original.length == 0) return null;
             BufferedImage src = ImageIO.read(new ByteArrayInputStream(original));
             if (src == null) return null;
