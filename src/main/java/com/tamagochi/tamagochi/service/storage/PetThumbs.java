@@ -4,13 +4,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -60,6 +66,61 @@ public class PetThumbs {
         }
         cache.put(imageKey, thumb);
         return Optional.of(thumb);
+    }
+
+    /** 3D 광장용 64×64 그림 한 변의 칸 수 (그림 한 칸 = 화면 도트 한 칸) */
+    static final int DOT = 64;
+
+    /**
+     * 이 키의 64×64 그림(PNG data URL). 키가 없거나, 원본을 받지 못했거나, 읽지 못했으면 null.
+     * 기억해 두지 않고 부를 때마다 원본을 받아 만든다 (입장할 때 한 번만 부른다)
+     */
+    public String dot64(String imageKey) {
+        String url = PetImageUrls.of(imageKey);
+        if (url == null) return null;
+        try {
+            byte[] original = fetch.apply(url);
+            if (original == null || original.length == 0) return null;
+            BufferedImage src = ImageIO.read(new ByteArrayInputStream(original));
+            if (src == null) return null;
+            ByteArrayOutputStream png = new ByteArrayOutputStream();
+            if (!ImageIO.write(snap64(src), "png", png)) return null;
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(png.toByteArray());
+        } catch (Exception e) {
+            log.warn("64칸 그림을 만들지 못함 - key={}", imageKey, e);
+            return null;
+        }
+    }
+
+    /**
+     * 그림을 64×64 칸으로 나눠 칸마다 가장 많은 색 하나로 칠한다 (투명이 절반 넘으면 투명).
+     * PixelSnap 은 같은 크기로 다시 찍고 색 수도 줄이는 다른 일이라, 칸마다 색 하나를 뽑는 이 계산만 따로 둔다.
+     * 이미 64칸을 키운 도트 그림은 원래 칸 그대로 돌아온다.
+     */
+    static BufferedImage snap64(BufferedImage src) {
+        int w = src.getWidth(), h = src.getHeight();
+        BufferedImage out = new BufferedImage(DOT, DOT, BufferedImage.TYPE_INT_ARGB);
+        for (int gy = 0; gy < DOT; gy++) {
+            int y0 = gy * h / DOT, y1 = Math.max(y0 + 1, (gy + 1) * h / DOT);
+            for (int gx = 0; gx < DOT; gx++) {
+                int x0 = gx * w / DOT, x1 = Math.max(x0 + 1, (gx + 1) * w / DOT);
+                Map<Integer, Integer> counts = new HashMap<>();
+                int total = 0, opaque = 0, best = 0, bestCount = 0;
+                for (int y = y0; y < Math.min(y1, h); y++) {
+                    for (int x = x0; x < Math.min(x1, w); x++) {
+                        total++;
+                        int p = src.getRGB(x, y);
+                        if ((p >>> 24) < 128) continue;
+                        opaque++;
+                        int rgb = p | 0xFF000000;
+                        int n = counts.merge(rgb, 1, Integer::sum);
+                        if (n > bestCount) { bestCount = n; best = rgb; }
+                    }
+                }
+                if (total > 0 && opaque * 2 >= total) out.setRGB(gx, gy, best);
+            }
+        }
+        return out;
     }
 
     /** 앱이 보낸 작은 그림(data URL)이 그려진 것 없는 빈 그림인지. 읽지 못한 그림은 빈 그림으로 치지 않는다 */

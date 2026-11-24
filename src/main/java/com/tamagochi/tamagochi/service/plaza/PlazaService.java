@@ -83,12 +83,21 @@ public class PlazaService {
     public record Profile(Long userId, String nickname, String petName, int level, String stage, String imageUrl, String publicId,
                           com.tamagochi.tamagochi.domain.battle.BattleSkill skill) {}
 
+    /**
+     * 3D 앱에만 쓰는 값 (서버가 DB 에서 읽어 넘긴다). image64: 64×64 그림, userCode: 신고 · 차단에 쓰는 고정 유저 코드.
+     * huntOk · huntWhy · blocked · mutedUntil 은 사냥 · 채팅 작업에서 채운다
+     */
+    public record Extras(String image64, String userCode, boolean huntOk, String huntWhy, Set<String> blocked, long mutedUntil) {
+        public static final Extras NONE = new Extras(null, null, false, null, Set.of(), 0);
+    }
+
     static final class Member {
         final Peer peer;
         final Profile profile;
         final String id;
         Room room;
         String inviteKey;   // 연결 때 받은 초대 열쇠 (3D 로 옮길 때 다시 쓴다)
+        Extras extras = Extras.NONE;
         boolean v3;         // hello 에 v:3 을 보낸 3D 앱
         String image;     // 서버가 줄인 그림(data URL), 앱이 보낸 작은 그림(data URL), 또는 원본 CDN 주소
         String spareImage;   // 원본 CDN 주소. 위 둘이 다 없을 때만 쓴다
@@ -134,7 +143,7 @@ public class PlazaService {
 
     /** 다녀간 끄적이 한 마리 */
     record Ghost(Long userId, String id, String nickname, String petName, int level, String stage, String image, String facing,
-                 com.tamagochi.tamagochi.domain.battle.BattleSkill skill) {}
+                 com.tamagochi.tamagochi.domain.battle.BattleSkill skill, String userCode, String image64) {}
 
     private final ObjectMapper om = new ObjectMapper();
     private final SecureRandom random = new SecureRandom();
@@ -163,11 +172,15 @@ public class PlazaService {
         connect(peer, profile, inviteKey, null);
     }
 
+    public synchronized void connect(Peer peer, Profile profile, String inviteKey, String spareImage) {
+        connect(peer, profile, inviteKey, spareImage, Extras.NONE);
+    }
+
     /**
      * spareImage: 서버가 보여 줄 그림(profile.imageUrl)을 마련하지 못했고 앱도 그림을 보내지 않았을 때만 쓰는 원본 주소.
      * 원본은 크고(예전 그림은 1MB 안팎) 서버가 방금 받지 못한 주소일 수 있어서 맨 나중에 쓴다
      */
-    public synchronized void connect(Peer peer, Profile profile, String inviteKey, String spareImage) {
+    public synchronized void connect(Peer peer, Profile profile, String inviteKey, String spareImage, Extras extras) {
         // 같은 사람이 다른 기기·탭으로 또 들어오면 먼저 있던 연결을 내보낸다
         Member old = byUser.get(profile.userId());
         if (old != null) { remove(old, true); old.peer.close(); }
@@ -175,6 +188,7 @@ public class PlazaService {
         m.image = profile.imageUrl();
         m.spareImage = spareImage;
         m.inviteKey = inviteKey;
+        m.extras = extras == null ? Extras.NONE : extras;
         m.room = pickRoom(inviteKey, "2d");   // 2D 방의 자리만 정해 둔다 (hello 뒤에 들어간다). 3D 앱은 hello 에서 방을 다시 고른다
         byPeer.put(peer.id(), m);
         byUser.put(profile.userId(), m);
@@ -216,14 +230,17 @@ public class PlazaService {
             m.room = null;
             if (seats(held) == 0) rooms.remove(held.key);
             m.room = pickRoom(m.inviteKey, "3d");
+            // 3D 는 그림 한 칸이 화면 도트 한 칸이라 64×64 그림이 먼저다. 없으면 아래에서 앱이 보낸 그림 → 서버가 줄인 그림 → 원본 주소 순
+            m.image = m.extras.image64();
         }
         String sent = msg.path("image").asText("");
         // 그림 고르는 순서: 서버가 줄인 그림 → 앱이 보낸 작은 그림(주인이 홈에서 보는 그 그림) → 원본 주소
-        String from = "서버";
+        String from = m.v3 ? "64칸" : "서버";
         boolean sentOk = sent.startsWith("data:image/") && sent.length() <= MAX_IMAGE_CHARS;
         // 아이폰 앱이 가끔 투명한 빈 그림을 만들어 보낸다. 그대로 쓰면 모두의 화면에 이름표만 떠다닌다
         boolean sentBlank = sentOk && com.tamagochi.tamagochi.service.storage.PetThumbs.blank(sent);
         if (m.image == null && sentOk && !sentBlank) { m.image = sent; from = "앱"; }
+        if (m.image == null && m.v3) { m.image = m.profile.imageUrl(); from = "서버"; }
         if (m.image == null && m.spareImage != null) { m.image = m.spareImage; from = "원본 주소"; }
         // 이름표만 떠다니는 끄적이가 생기면 이 기록으로 어떤 그림이 나갔는지 찾는다
         log.info("광장 입장 - user={}, pet={}, 그림={}({}자), 앱이 보낸 그림={}자", m.profile.userId(), m.profile.publicId(), m.image == null ? "없음" : from,
@@ -256,7 +273,7 @@ public class PlazaService {
         ArrayNode members = out.putArray("members");
         room.members.values().forEach(o -> members.add(json(o)));
         ArrayNode ghosts = out.putArray("ghosts");
-        ghostsFor(room).forEach(g -> ghosts.add(json(g)));
+        ghostsFor(room).forEach(g -> ghosts.add(json(g, room.is3d())));
         out.set("ev", eventJson(room, clock.getAsLong()));
         if (room.is3d()) out.put("v", 3).put("now", clock.getAsLong()).put("chat", true);   // chat 은 채팅 작업 전까지 true 고정
         m.peer.send(out.toString());
@@ -528,7 +545,7 @@ public class PlazaService {
 
     private void remember(Member m) {
         recent.removeIf(g -> g.userId().equals(m.profile.userId()));
-        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill()));
+        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.extras.image64()));
         while (recent.size() > RECENT_MAX) recent.removeLast();
     }
 
@@ -554,16 +571,21 @@ public class PlazaService {
                 .put("image", m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
         if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
         if (m.sleeping) n.put("sleep", true);
+        if (m.v3 && m.extras.userCode() != null) n.put("u", m.extras.userCode());
         return n;
     }
 
-    private ObjectNode json(Ghost g) {
+    private ObjectNode json(Ghost g, boolean in3d) {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         ObjectNode n = om.createObjectNode();
         n.put("id", g.id()).put("nickname", g.nickname()).put("petName", g.petName())
                 .put("level", g.level()).put("stage", g.stage())
                 .put("image", g.image()).put("facing", g.facing()).put("x", 80 + r.nextInt(840)).put("y", 420 + r.nextInt(520));
         if (g.skill() != null) n.set("skill", om.valueToTree(g.skill()));
+        if (in3d) {   // 3D 방에서만: 64칸 그림이 있으면 그것으로, 유저 코드와 함께
+            if (g.image64() != null) n.put("image", g.image64());
+            if (g.userCode() != null) n.put("u", g.userCode());
+        }
         return n;
     }
 

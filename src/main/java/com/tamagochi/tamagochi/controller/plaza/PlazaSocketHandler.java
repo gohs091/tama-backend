@@ -68,11 +68,14 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         String imageKey = pet.getCurrentImageKey();
         String image = petThumbs.of(imageKey).orElse(null);
 
+        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드. 사냥 · 차단 · 채팅 금지는 뒤 작업에서 채운다
+        PlazaService.Extras extras = new PlazaService.Extras(petThumbs.dot64(imageKey), user.getUserCode(), false, null, java.util.Set.of(), 0);
+
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
                 pet.getEvolutionStage().name(), image, pet.getPublicId(),
                 com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"),
-                image == null ? PetImageUrls.of(imageKey) : null);
+                image == null ? PetImageUrls.of(imageKey) : null, extras);
         starterQuestService.markDone(user.getId(), com.tamagochi.tamagochi.domain.quest.StarterQuest.MEET); // 첫걸음 퀘스트 "친구 배틀 또는 광장"
     }
 

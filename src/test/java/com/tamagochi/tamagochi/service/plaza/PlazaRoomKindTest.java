@@ -110,4 +110,66 @@ class PlazaRoomKindTest {
         plaza.onMessage(three, "{\"t\":\"leave\"}");
         assertThat(plaza.roomCount()).isEqualTo(0);
     }
+
+    private static final String DOT64 = "data:image/png;base64,AAA";
+
+    private FakePeer connectWith(PlazaService.Extras extras) {
+        long n = ++seq;
+        FakePeer p = new FakePeer("p" + n);
+        plaza.connect(p, new PlazaService.Profile(n, "닉" + n, "끄적" + n, 3, "CHILD", "https://cdn.example/pet" + n + ".png", "pub" + n, null),
+                null, null, extras);
+        return p;
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode me(FakePeer p) {
+        String me = p.last("room").path("me").asText();
+        for (var m : p.last("room").path("members")) if (m.path("id").asText().equals(me)) return m;
+        throw new AssertionError("내가 없다");
+    }
+
+    private static PlazaService.Extras extras(String image64, String userCode) {
+        return new PlazaService.Extras(image64, userCode, false, null, java.util.Set.of(), 0);
+    }
+
+    @Test
+    void 삼디_방에는_64칸_그림과_유저_코드가_간다() {
+        var e = extras(DOT64, "ABCD2345");
+        FakePeer three = connectWith(e);
+        hello(three, true);
+        assertThat(me(three).path("image").asText()).isEqualTo(DOT64);
+        assertThat(me(three).path("u").asText()).isEqualTo("ABCD2345");
+
+        FakePeer two = connectWith(e);
+        hello(two, false);
+        assertThat(me(two).path("image").asText()).startsWith("https://cdn.example/pet");
+        assertThat(me(two).has("u")).isFalse();
+    }
+
+    @Test
+    void 삼디인데_64칸_그림이_없으면_앱이_보낸_그림을_쓴다() {
+        FakePeer p = connectWith(extras(null, "ABCD2345"));
+        plaza.onMessage(p, "{\"t\":\"hello\",\"v\":3,\"image\":\"data:image/png;base64,APPIMG\"}");
+        assertThat(me(p).path("image").asText()).isEqualTo("data:image/png;base64,APPIMG");
+    }
+
+    @Test
+    void 유저_코드가_없으면_u를_생략한다() {
+        FakePeer p = connectWith(extras(DOT64, null));
+        hello(p, true);
+        assertThat(me(p).has("u")).isFalse();
+    }
+
+    @Test
+    void 다녀간_끄적이도_삼디_방에서는_64칸_그림과_유저_코드를_준다() {
+        FakePeer gone = connectWith(extras(DOT64, "ABCD2345"));
+        hello(gone, true);
+        plaza.onMessage(gone, "{\"t\":\"leave\"}");
+        FakePeer viewer = enter(null, true);
+        var ghosts = viewer.last("room").path("ghosts");
+        assertThat(ghosts).hasSize(1);
+        assertThat(ghosts.get(0).path("image").asText()).isEqualTo(DOT64);
+        assertThat(ghosts.get(0).path("u").asText()).isEqualTo("ABCD2345");
+        FakePeer old = enter(null, false);
+        assertThat(old.last("room").path("ghosts").get(0).has("u")).isFalse();
+    }
 }
