@@ -88,6 +88,8 @@ public class PlazaService {
         final Profile profile;
         final String id;
         Room room;
+        String inviteKey;   // 연결 때 받은 초대 열쇠 (3D 로 옮길 때 다시 쓴다)
+        boolean v3;         // hello 에 v:3 을 보낸 3D 앱
         String image;     // 서버가 줄인 그림(data URL), 앱이 보낸 작은 그림(data URL), 또는 원본 CDN 주소
         String spareImage;   // 원본 CDN 주소. 위 둘이 다 없을 때만 쓴다
         String facing = "right";
@@ -102,9 +104,11 @@ public class PlazaService {
     static final class Room {
         final int no;
         final String key;
+        final String kind;   // "2d" | "3d" — 두 종류는 서로 섞이지 않는다
         final Map<String, Member> members = new LinkedHashMap<>();
         Match match;   // 이번(또는 지난) 정각의 밀어내기. 없으면 null
-        Room(int no, String key) { this.no = no; this.key = key; }
+        Room(int no, String key, String kind) { this.no = no; this.key = key; this.kind = kind; }
+        boolean is3d() { return "3d".equals(kind); }
     }
 
     /**
@@ -170,7 +174,8 @@ public class PlazaService {
         Member m = new Member(peer, profile, newId());
         m.image = profile.imageUrl();
         m.spareImage = spareImage;
-        m.room = pickRoom(inviteKey);   // 자리만 정해 둔다 (hello 뒤에 들어간다)
+        m.inviteKey = inviteKey;
+        m.room = pickRoom(inviteKey, "2d");   // 2D 방의 자리만 정해 둔다 (hello 뒤에 들어간다). 3D 앱은 hello 에서 방을 다시 고른다
         byPeer.put(peer.id(), m);
         byUser.put(profile.userId(), m);
     }
@@ -204,6 +209,14 @@ public class PlazaService {
 
     private void hello(Member m, JsonNode msg) {
         if (m.room == null || m.room.members.containsKey(m.id)) return;
+        // 3D 앱: 잡아 둔 2D 자리를 놓고(그 방이 비면 사라진다) 같은 종류의 방을 다시 고른다
+        if (msg.path("v").asInt(0) == 3) {
+            Room held = m.room;
+            m.v3 = true;
+            m.room = null;
+            if (seats(held) == 0) rooms.remove(held.key);
+            m.room = pickRoom(m.inviteKey, "3d");
+        }
         String sent = msg.path("image").asText("");
         // 그림 고르는 순서: 서버가 줄인 그림 → 앱이 보낸 작은 그림(주인이 홈에서 보는 그 그림) → 원본 주소
         String from = "서버";
@@ -223,8 +236,13 @@ public class PlazaService {
         }
         if ("left".equals(msg.path("facing").asText())) m.facing = "left";
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        m.x = 150 + r.nextInt(700);
-        m.y = 450 + r.nextInt(450);
+        if (m.v3) {   // 3D 방은 앞마당에서 시작한다
+            m.x = 300 + r.nextInt(121);
+            m.y = 150 + r.nextInt(181);
+        } else {
+            m.x = 150 + r.nextInt(700);
+            m.y = 450 + r.nextInt(450);
+        }
         Room room = m.room;
         if (!rooms.containsKey(room.key)) rooms.put(room.key, room);   // 정해 둔 방이 그사이 비어 사라졌으면 다시 연다
         // gone: 이 사람이 다녀간 끄적이로 화면에 남아 있으면 지우라고 알린다 (같은 끄적이가 둘로 보이지 않게)
@@ -240,20 +258,21 @@ public class PlazaService {
         ArrayNode ghosts = out.putArray("ghosts");
         ghostsFor(room).forEach(g -> ghosts.add(json(g)));
         out.set("ev", eventJson(room, clock.getAsLong()));
+        if (room.is3d()) out.put("v", 3).put("now", clock.getAsLong()).put("chat", true);   // chat 은 채팅 작업 전까지 true 고정
         m.peer.send(out.toString());
     }
 
-    /** 초대 열쇠가 살아 있으면 그 방, 아니면 자리 남은 방 가운데 가장 북적이는 방, 없으면 새 방 */
-    private Room pickRoom(String inviteKey) {
+    /** 초대 열쇠가 살아 있고 같은 종류면 그 방, 아니면 자리 남은 방 가운데 가장 북적이는 방, 없으면 새 방 */
+    private Room pickRoom(String inviteKey, String kind) {
         if (inviteKey != null) {
             Room invited = rooms.get(inviteKey.toUpperCase());
-            if (invited != null && seats(invited) < CAP + FRIEND_EXTRA) return invited;
+            if (invited != null && invited.kind.equals(kind) && seats(invited) < CAP + FRIEND_EXTRA) return invited;
         }
         return rooms.values().stream()
-                .filter(r -> seats(r) < CAP)
+                .filter(r -> r.kind.equals(kind) && seats(r) < CAP)
                 .max(Comparator.comparingInt(this::seats))
                 .orElseGet(() -> {
-                    Room r = new Room(freeRoomNo(), newKey());
+                    Room r = new Room(freeRoomNo(), newKey(), kind);
                     rooms.put(r.key, r);
                     return r;
                 });

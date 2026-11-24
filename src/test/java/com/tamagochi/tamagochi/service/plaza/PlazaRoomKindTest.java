@@ -1,0 +1,113 @@
+package com.tamagochi.tamagochi.service.plaza;
+
+import com.tamagochi.tamagochi.service.plaza.PlazaServiceTest.FakePeer;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class PlazaRoomKindTest {
+
+    private final AtomicLong now = new AtomicLong(1_000_000);
+    private final PlazaService plaza = new PlazaService(now::get);
+    private long seq = 0;
+
+    /** connect 만 한다 (hello 는 따로 보낸다) */
+    private FakePeer connect(String inviteKey) {
+        long n = ++seq;
+        FakePeer p = new FakePeer("p" + n);
+        plaza.connect(p, new PlazaService.Profile(n, "닉" + n, "끄적" + n, 3, "CHILD", "https://cdn.example/pet" + n + ".png", "pub" + n, null), inviteKey);
+        return p;
+    }
+
+    private void hello(FakePeer p, boolean v3) {
+        plaza.onMessage(p, v3 ? "{\"t\":\"hello\",\"facing\":\"left\",\"v\":3}" : "{\"t\":\"hello\",\"facing\":\"left\"}");
+    }
+
+    private FakePeer enter(String inviteKey, boolean v3) {
+        FakePeer p = connect(inviteKey);
+        hello(p, v3);
+        return p;
+    }
+
+    @Test
+    void 삼디로_들어온_사람은_이디_방과_섞이지_않는다() {
+        FakePeer a = enter(null, false), b = enter(null, true);
+        assertThat(b.last("room").path("no").asInt()).isNotEqualTo(a.last("room").path("no").asInt());
+        assertThat(b.last("room").path("v").asInt()).isEqualTo(3);
+        assertThat(b.last("room").path("now").asLong()).isEqualTo(now.get());
+        assertThat(b.last("room").path("chat").asBoolean()).isTrue();
+        assertThat(a.last("room").has("v")).isFalse();
+        assertThat(a.last("room").has("now")).isFalse();
+        assertThat(a.last("room").has("chat")).isFalse();
+        assertThat(a.last("enter")).isNull();   // 서로의 입장이 건너가지 않는다
+        assertThat(plaza.roomCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 같은_종류끼리는_같은_방에_들어간다() {
+        FakePeer a = enter(null, true), b = enter(null, true);
+        assertThat(b.last("room").path("key").asText()).isEqualTo(a.last("room").path("key").asText());
+        assertThat(b.last("room").path("members")).hasSize(2);
+        assertThat(plaza.roomCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 초대_열쇠의_방이_다른_종류면_자기_종류의_방으로_간다() {
+        FakePeer a = enter(null, false);
+        String key = a.last("room").path("key").asText();
+        FakePeer b = enter(key, true);
+        assertThat(b.last("room").path("key").asText()).isNotEqualTo(key);
+        // 반대로 삼디 방의 열쇠로 이디 사람이 오면 이디 방으로 간다
+        FakePeer c = enter(b.last("room").path("key").asText(), false);
+        assertThat(c.last("room").path("key").asText()).isEqualTo(key);
+    }
+
+    @Test
+    void 초대_열쇠의_방이_같은_종류면_그_방으로_간다() {
+        FakePeer a = enter(null, true);
+        enter(null, false);
+        FakePeer c = enter(a.last("room").path("key").asText(), true);
+        assertThat(c.last("room").path("key").asText()).isEqualTo(a.last("room").path("key").asText());
+    }
+
+    @Test
+    void 삼디_방의_시작_자리는_앞마당이다() {
+        for (int i = 0; i < 30; i++) {
+            FakePeer p = enter(null, true);
+            String me = p.last("room").path("me").asText();
+            int x = 0, y = 0;
+            for (var m : p.last("room").path("members")) if (m.path("id").asText().equals(me)) { x = m.path("x").asInt(); y = m.path("y").asInt(); }
+            assertThat(x).isBetween(300, 420);
+            assertThat(y).isBetween(150, 330);
+        }
+    }
+
+    @Test
+    void 삼디는_이디_방에_잡아_둔_자리와_상관없이_삼디_방에_들어간다() {
+        List<FakePeer> held = new ArrayList<>();
+        for (int i = 0; i < PlazaService.CAP + 5; i++) held.add(connect(null));   // hello 안 보낸 2D 연결들이 자리를 잡아 둔다
+        FakePeer three = enter(null, true);
+        assertThat(three.last("room").path("v").asInt()).isEqualTo(3);
+        assertThat(three.last("room").path("members")).hasSize(1);
+        // 그 2D 연결들은 나중에 hello 를 보내면 원래대로 2D 방에 들어간다
+        for (FakePeer p : held) hello(p, false);
+        for (FakePeer p : held) {
+            assertThat(p.last("room").has("v")).isFalse();
+            assertThat(p.last("room").path("no").asInt()).isNotEqualTo(three.last("room").path("no").asInt());
+        }
+        assertThat(held.get(0).last("room").path("no").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void 삼디가_놓은_이디_자리의_방이_비면_사라진다() {
+        FakePeer three = connect(null);
+        hello(three, true);
+        assertThat(plaza.roomCount()).isEqualTo(1);   // 2D 방은 사라지고 3D 방만 남는다
+        plaza.onMessage(three, "{\"t\":\"leave\"}");
+        assertThat(plaza.roomCount()).isEqualTo(0);
+    }
+}
