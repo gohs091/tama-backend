@@ -350,9 +350,9 @@ public class PlazaService {
         }
         if ("left".equals(msg.path("facing").asText())) m.facing = "left";
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        if (m.v3) {   // 3D 방은 앞마당에서 시작한다
-            m.x = 300 + r.nextInt(121);
-            m.y = 150 + r.nextInt(181);
+        if (m.v3) {   // 3D 방은 서쪽 큰길 위에서 시작한다. 세상 단위 x −24..−17.5, z −2.4..0.2. 앱 src/plaza3d/rules.ts 의 START 와 같아야 한다
+            m.x = 167 + r.nextInt(91);
+            m.y = 132 + r.nextInt(86);
         } else {
             m.x = 150 + r.nextInt(700);
             m.y = 450 + r.nextInt(450);

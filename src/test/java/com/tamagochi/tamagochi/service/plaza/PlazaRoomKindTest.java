@@ -75,14 +75,14 @@ class PlazaRoomKindTest {
     }
 
     @Test
-    void 삼디_방의_시작_자리는_앞마당이다() {
+    void 삼디_방의_시작_자리는_서쪽_큰길_위다() {
         for (int i = 0; i < 30; i++) {
             FakePeer p = enter(null, true);
             String me = p.last("room").path("me").asText();
             int x = 0, y = 0;
             for (var m : p.last("room").path("members")) if (m.path("id").asText().equals(me)) { x = m.path("x").asInt(); y = m.path("y").asInt(); }
-            assertThat(x).isBetween(300, 420);
-            assertThat(y).isBetween(150, 330);
+            assertThat(x).isBetween(167, 257);
+            assertThat(y).isBetween(132, 217);
         }
     }
 

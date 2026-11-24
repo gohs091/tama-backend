@@ -18,9 +18,33 @@ class PlazaMobsTest {
             assertThat(s.x()).isBetween(0, 1000);
             assertThat(s.y()).isBetween(0, 1000);
         }
-        // 구역마다 여덟 곳, 상대 셋을 차례로 돌려 넣는다
-        assertThat(spawns.subList(0, 8)).extracting(PlazaMobs.Spawn::enemy)
-                .containsExactly("ns-rabbit", "ns-ladybug", "ns-snail", "ns-rabbit", "ns-ladybug", "ns-snail", "ns-rabbit", "ns-ladybug");
+    }
+
+    @Test
+    void 구역마다_여덟_곳이고_구역의_상대만_나온다() {
+        List<PlazaMobs.Spawn> spawns = PlazaMobs.load();
+        List<String> west = List.of("ns-rabbit", "ns-ladybug", "ns-snail");
+        List<String> middle = List.of("ns-hedgehog", "ns-raccoon", "ns-mushroom");
+        List<String> east = List.of("ns-wisp", "ns-boar", "ns-tree-spirit");
+        List<PlazaMobs.Spawn> w = spawns.stream().filter(s -> s.x() <= 333).toList();
+        List<PlazaMobs.Spawn> m = spawns.stream().filter(s -> s.x() >= 334 && s.x() <= 666).toList();
+        List<PlazaMobs.Spawn> e = spawns.stream().filter(s -> s.x() >= 667).toList();
+        assertThat(w).hasSize(8);
+        assertThat(m).hasSize(8);
+        assertThat(e).hasSize(8);
+        assertThat(w).extracting(PlazaMobs.Spawn::enemy).isSubsetOf(west);
+        assertThat(m).extracting(PlazaMobs.Spawn::enemy).isSubsetOf(middle);
+        assertThat(e).extracting(PlazaMobs.Spawn::enemy).isSubsetOf(east);
+    }
+
+    @Test
+    void 어떤_몬스터_자리도_시작_자리에서_세상_단위_둘_안이_아니다() {
+        // 시작 자리 천분율 x 167..257, y 132..217 사각형까지의 거리를 잰다
+        for (PlazaMobs.Spawn s : PlazaMobs.load()) {
+            double dx = Math.max(0, Math.max(167 - s.x(), s.x() - 257)) * 72 / 1000.0;
+            double dz = Math.max(0, Math.max(132 - s.y(), s.y() - 217)) * 30.4 / 1000.0;
+            assertThat(Math.hypot(dx, dz)).as("%d,%d %s", s.x(), s.y(), s.enemy()).isGreaterThanOrEqualTo(2.0);
+        }
     }
 
     @Test

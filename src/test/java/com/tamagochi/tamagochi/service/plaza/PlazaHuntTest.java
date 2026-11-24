@@ -189,7 +189,7 @@ class PlazaHuntTest {
             assertThat(p.count("loot")).isEqualTo(1);
         }
         assertThat(kills).extracting(Kill::userId).containsExactlyInAnyOrder(userId(a), userId(b));
-        assertThat(kills).extracting(Kill::enemy).containsOnly("ns-rabbit");
+        assertThat(kills).extracting(Kill::enemy).containsOnly(spawns.get(0).enemy());
         JsonNode loot = a.last("loot");
         assertThat(loot.path("i").asInt()).isEqualTo(0);
         assertThat(loot.path("exp").asInt()).isEqualTo(2);
@@ -222,7 +222,7 @@ class PlazaHuntTest {
         assertThat(back.path("i").asInt()).isEqualTo(0);
         assertThat(back.path("hp").asInt()).isEqualTo(3);
         assertThat(back.path("max").asInt()).isEqualTo(3);
-        assertThat(back.path("e").asText()).isEqualTo("ns-rabbit");
+        assertThat(back.path("e").asText()).isEqualTo(spawns.get(0).enemy());
         // 다시 나온 뒤엔 새로 때릴 수 있고, 한 번 더 tick 해도 또 알리지 않는다
         plaza.tick();
         assertThat(mobMsgs(a)).hasSize(2);
