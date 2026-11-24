@@ -9,6 +9,7 @@ import com.tamagochi.tamagochi.service.auth.AuthSettings;
 import com.tamagochi.tamagochi.service.auth.AuthTokenService;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
 import com.tamagochi.tamagochi.service.plaza.HuntService;
+import com.tamagochi.tamagochi.service.plaza.PlazaModerationService;
 import com.tamagochi.tamagochi.service.plaza.PlazaService;
 import com.tamagochi.tamagochi.service.storage.PetImageUrls;
 import com.tamagochi.tamagochi.service.storage.PetThumbs;
@@ -36,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlazaSocketHandler extends TextWebSocketHandler {
 
     private final PlazaService plazaService;
+    private final PlazaModerationService moderationService;
     private final AuthSettings authSettings;
     private final AuthTokenService tokenService;
     private final UserRepository userRepository;
@@ -70,9 +72,10 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         PetThumbs.Both pics = petThumbs.both(imageKey);   // 원본은 한 번만 받는다
         String image = pics.thumb();
 
-        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드, 사냥을 할 수 있는지(못 하면 이유). 차단 · 채팅 금지는 뒤 작업에서 채운다
+        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드, 사냥을 할 수 있는지(못 하면 이유). 차단한 사람들과 말 못 하게 된 때
         String huntWhy = HuntService.status(pet);
-        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy, java.util.Set.of(), 0);
+        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy,
+                moderationService.blockedCodes(user.getId()), moderationService.mutedUntil(user.getId()));
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),

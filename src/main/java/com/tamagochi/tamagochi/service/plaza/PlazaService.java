@@ -43,11 +43,14 @@ import java.util.function.LongSupplier;
  *   위치는 앱이 가장 잘 알기 때문에 참가(join)·탈락(out)은 앱이 알리는 대로 받는다 (보상이 걸리면 서버가 판정하도록 바꿔야 한다).
  *
  * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, sleep{on}, skill{x,y,tx,ty,d}, hit{by,id?}, join, out, ping, leave
- *              (3D 방만: atk{d,m[]}, jump)
+ *              (3D 방만: atk{d,m[]}, jump, chat{text}, block{u,on}, report{u,why})
  * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?}, sleep{id,on},
  *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, ev{phase,now,start,next,…,players[],alive[],solo,winners[]}, out{id,left}, error{message}
  *              (room에도 ev가 들어 있다)
- *              3D 방만: room{…,mobs[],hunt}, atk{id,d}, jump{id}, mob{i,hp,by,at?,e?,max?}, loot{i,exp,ink,level,stage,lvUp,drop?,hunger,power,ok,why?}
+ *              3D 방만: room{…,mobs[],hunt,chat,blocked[]}, atk{id,d}, jump{id}, mob{i,hp,by,at?,e?,max?}, loot{i,exp,ink,level,stage,lvUp,drop?,hunger,power,ok,why?},
+ *              chat{id,u,text}(보낸 사람 포함 방 모두, 차단한 사람 제외), chatNo{why: fast|word|muted|off}(보낸 사람에게만)
+ * 채팅(3D 방): 글은 ChatRules 로 다듬고 금칙어를 거른다. 간격 1.5초 · 10초에 5번. 차단 목록은 유저 코드(u)로 주고받고 저장은 Moderation 이 잠금 밖에서 한다.
+ *   차단한 사람의 chat 과 나에게 하는 emote 는 받지 않는다. 신고는 10초에 한 번, 신고당한 사람의 최근 열 줄이 함께 간다.
  * 몬스터(3D 방): 서버가 정한다. 방 사람 모두가 같은 몬스터를 보고, 죽이면 때린 사람 모두가 한 마리 몫을 받는다 (PlazaMobs, 지급은 Hunts).
  * 다녀간 끄적이(ghost): 방을 나간 사람의 기록. 시간 제한 없이 최근 RECENT_MAX명을 서버가 켜져 있는 동안 기억한다.
  *   지금 광장에 접속해 있는 사람의 기록은 보내지 않고, 그 사람이 방에 들어오면 enter의 gone으로 알려 화면에 남은 기록을 지우게 한다.
@@ -82,6 +85,13 @@ public class PlazaService {
     /** 기술 한 번에 튕겨 낼 수 있는 끄적이 수 */
     static final int MAX_HITS_PER_CAST = 8;
     static final long ATK_GAP_MS = 450, JUMP_GAP_MS = 500;
+    /** 채팅: 한 번 말하고 다음까지, 그리고 CHAT_WINDOW_MS 안에 CHAT_PER_WINDOW 번까지 */
+    static final long CHAT_GAP_MS = 1500, CHAT_WINDOW_MS = 10_000;
+    static final int CHAT_PER_WINDOW = 5;
+    static final long REPORT_GAP_MS = 10_000;
+    /** 신고에 붙이는 최근 말 줄 수, 한 사람이 차단해 둘 수 있는 수 */
+    static final int REPORT_LINES = 10, BLOCK_MAX = 200;
+    static final Set<String> REPORT_WHYS = Set.of("chat", "name", "etc");
     static final int MAX_MOBS_PER_ATK = 4;
     /** 죽은 몬스터가 다시 나오기까지 */
     static final long RESPAWN_MS = 6000;
@@ -139,6 +149,11 @@ public class PlazaService {
         String facing = "right";
         int x, y;
         long lastMove, lastEmote, lastSkill, lastAtk, lastJump;
+        final Set<String> blocked = new HashSet<>();   // 내가 차단한 사람의 유저 코드 (3D 방)
+        long mutedUntil;    // 이 때(epoch ms)까지 말할 수 없다
+        long lastChat, lastReport;
+        final Deque<Long> chatTimes = new ArrayDeque<>();   // 최근 말한 때 (도배 제한)
+        final Deque<String> lines = new ArrayDeque<>();     // 방에 나간 최근 말 열 줄 (신고에 붙인다)
         int level;          // 지금 레벨. 처음엔 profile.level, 사냥 결과로 달라질 수 있다
         boolean huntOk;     // 사냥할 수 있는 상태 (지급 결과가 못 한다고 하면 꺼진다)
         String huntWhy;
@@ -192,7 +207,12 @@ public class PlazaService {
     private final LongSupplier clock;
     private final EventTimes times;
     private final List<PlazaMobs.Spawn> spawns;
+    private final boolean chat;
     private Hunts hunts = (userId, enemyKey, questTick, done) -> { /* 지급은 setHunts 로 붙인다 */ };
+    private Moderation moderation = new Moderation() {   // 저장은 setModeration 으로 붙인다
+        @Override public void block(long userId, String targetCode, boolean on) { }
+        @Override public void report(long reporterId, String targetCode, String why, List<String> lines, String roomKey) { }
+    };
     private final Map<String, Member> byPeer = new LinkedHashMap<>();
     private final Map<Long, Member> byUser = new LinkedHashMap<>();
     private final Map<String, Room> rooms = new LinkedHashMap<>();   // 방 열쇠 → 방
@@ -201,18 +221,35 @@ public class PlazaService {
     /** 시간표는 설정으로 바꿀 수 있다 (로컬에서 짧게 돌려 보려고). 기본은 매 시각 정각부터 10분 */
     @Autowired
     public PlazaService(@Value("${plaza.event.period-ms:3600000}") long period, @Value("${plaza.event.gather-ms:60000}") long gather,
-                        @Value("${plaza.event.length-ms:600000}") long length, @Value("${plaza.event.shrink-ms:480000}") long shrink) {
-        this(System::currentTimeMillis, new EventTimes(period, gather, EventTimes.HOURLY.ready(), length, shrink, EventTimes.HOURLY.minScale()));
+                        @Value("${plaza.event.length-ms:600000}") long length, @Value("${plaza.event.shrink-ms:480000}") long shrink,
+                        @Value("${plaza.chat.enabled:true}") boolean chat) {
+        this(System::currentTimeMillis, new EventTimes(period, gather, EventTimes.HOURLY.ready(), length, shrink, EventTimes.HOURLY.minScale()), PlazaMobs.load(), chat);
     }
 
     PlazaService(LongSupplier clock) { this(clock, EventTimes.HOURLY); }
 
     PlazaService(LongSupplier clock, EventTimes times) { this(clock, times, PlazaMobs.load()); }
 
-    PlazaService(LongSupplier clock, EventTimes times, List<PlazaMobs.Spawn> spawns) { this.clock = clock; this.times = times; this.spawns = spawns; }
+    PlazaService(LongSupplier clock, EventTimes times, List<PlazaMobs.Spawn> spawns) { this(clock, times, spawns, true); }
+
+    PlazaService(LongSupplier clock, EventTimes times, List<PlazaMobs.Spawn> spawns, boolean chat) {
+        this.clock = clock; this.times = times; this.spawns = spawns; this.chat = chat;
+    }
+
+    /**
+     * 차단 · 신고를 저장하는 쪽. 광장의 잠금 안에서 불리므로 DB 일은 다른 실행기에 넘기고 바로 돌아온다.
+     * 신고의 lines 는 신고당한 사람의 최근 말(오래된 것부터)이다
+     */
+    public interface Moderation {
+        void block(long userId, String targetCode, boolean on);
+        void report(long reporterId, String targetCode, String why, List<String> lines, String roomKey);
+    }
 
     /** 몬스터를 잡았을 때 주는 쪽을 붙인다 (기본은 아무것도 안 한다) */
     public synchronized void setHunts(Hunts h) { this.hunts = h; }
+
+    /** 차단 · 신고를 저장하는 쪽을 붙인다 (기본은 아무것도 안 한다) */
+    public synchronized void setModeration(Moderation m) { this.moderation = m; }
 
     /** 연결되면 부른다. 아직 방에 넣지 않고, 앱이 hello로 그림을 보내면 그때 들여보낸다 */
     public synchronized void connect(Peer peer, Profile profile, String inviteKey) {
@@ -238,6 +275,8 @@ public class PlazaService {
         m.extras = extras == null ? Extras.NONE : extras;
         m.huntOk = m.extras.huntOk();
         m.huntWhy = m.extras.huntWhy();
+        if (m.extras.blocked() != null) m.blocked.addAll(m.extras.blocked());
+        m.mutedUntil = m.extras.mutedUntil();
         m.room = pickRoom(inviteKey, "2d");   // 2D 방의 자리만 정해 둔다 (hello 뒤에 들어간다). 3D 앱은 hello 에서 방을 다시 고른다
         byPeer.put(peer.id(), m);
         byUser.put(profile.userId(), m);
@@ -257,6 +296,9 @@ public class PlazaService {
             case "skill" -> skill(m, msg);
             case "atk" -> atk(m, msg);
             case "jump" -> jump(m);
+            case "chat" -> chat(m, msg);
+            case "block" -> block(m, msg);
+            case "report" -> report(m, msg);
             case "hit" -> hit(m, msg);
             case "join" -> join(m);
             case "out" -> out(m);
@@ -326,7 +368,9 @@ public class PlazaService {
         ghostsFor(room).forEach(g -> ghosts.add(json(g, room.is3d())));
         out.set("ev", eventJson(room, clock.getAsLong()));
         if (room.is3d()) {
-            out.put("v", 3).put("now", clock.getAsLong()).put("chat", true);   // chat 은 채팅 작업 전까지 true 고정
+            out.put("v", 3).put("now", clock.getAsLong()).put("chat", chat);
+            ArrayNode blocked = out.putArray("blocked");
+            m.blocked.forEach(blocked::add);
             ArrayNode mobs = out.putArray("mobs");
             for (int i = 0; i < room.mobs.length; i++) mobs.add(mobJson(i, room.mobs[i]));
             ObjectNode hunt = out.putObject("hunt").put("ok", m.huntOk);
@@ -404,7 +448,13 @@ public class PlazaService {
         String to = msg.path("to").asText("");
         if (!to.isEmpty() && to.length() <= 16) out.put("to", to);
         if (msg.path("re").asBoolean(false)) out.put("re", true);   // 받은 인사에 답하는 인사 (앱이 "나도 인사"를 다시 묻지 않는다)
-        broadcast(m.room, out, m);
+        String json = out.toString();
+        for (Member o : m.room.members.values()) {
+            if (o == m) continue;
+            // 3D 방: 내가 차단한 사람이 나에게 하는 인사는 받지 않는다
+            if (m.room.is3d() && o.id.equals(to) && blocks(o, m)) continue;
+            o.peer.send(json);
+        }
     }
 
     /** 잠자기·깨기. 인사와 같은 간격 제한을 쓴다. 상태가 그대로면 알리지 않는다 */
@@ -544,6 +594,81 @@ public class PlazaService {
         if (r.drop() != null) out.set("drop", om.valueToTree(r.drop()));
         if (r.why() != null) out.put("why", r.why());
         m.peer.send(out.toString());
+    }
+
+    // ── 채팅 · 차단 · 신고 (3D 방)
+
+    /** o 가 m 을 차단했는가 */
+    private static boolean blocks(Member o, Member m) {
+        return m.extras.userCode() != null && o.blocked.contains(m.extras.userCode());
+    }
+
+    /**
+     * 말하기. 막히면 보낸 사람에게만 chatNo{why}: off(꺼짐) · muted(말 못 하게 됨) · fast(너무 빠름) · word(금칙어).
+     * 알이거나 말이 비면 조용히 버린다. 보낼 때는 보낸 사람 포함 방 모두에게 가되, 보낸 사람을 차단한 사람은 건너뛴다.
+     */
+    private void chat(Member m, JsonNode msg) {
+        if (!inRoom(m) || !m.room.is3d() || spectator(m)) return;
+        if (!chat) { chatNo(m, "off"); return; }
+        long now = clock.getAsLong();
+        if (m.mutedUntil > now) { chatNo(m, "muted"); return; }
+        String text = ChatRules.clean(msg.path("text").asText(null));
+        if (text == null) return;
+        while (!m.chatTimes.isEmpty() && now - m.chatTimes.peekFirst() >= CHAT_WINDOW_MS) m.chatTimes.pollFirst();
+        if (now - m.lastChat < CHAT_GAP_MS || m.chatTimes.size() >= CHAT_PER_WINDOW) { chatNo(m, "fast"); return; }
+        m.lastChat = now;
+        m.chatTimes.addLast(now);   // 금칙어로 막힌 말도 센다 (걸러지는 말을 계속 시험해 보는 것을 막는다)
+        if (ChatRules.banned(text)) { chatNo(m, "word"); return; }
+        m.sleeping = false;   // 말하면 깬다
+        m.lines.addLast(text);
+        while (m.lines.size() > REPORT_LINES) m.lines.pollFirst();
+        ObjectNode out = event("chat").put("id", m.id);
+        if (m.extras.userCode() != null) out.put("u", m.extras.userCode());
+        out.put("text", text);
+        String json = out.toString();
+        for (Member o : m.room.members.values()) if (o == m || !blocks(o, m)) o.peer.send(json);
+    }
+
+    private void chatNo(Member m, String why) {
+        m.peer.send(event("chatNo").put("why", why).toString());
+    }
+
+    /** 차단 · 해제. 자기 자신은 무시. 저장은 Moderation 에 넘긴다 */
+    private void block(Member m, JsonNode msg) {
+        if (!inRoom(m) || !m.room.is3d()) return;
+        String code = msg.path("u").asText("");
+        if (code.isEmpty() || code.length() > 16 || code.equals(m.extras.userCode())) return;
+        boolean on = msg.path("on").asBoolean(false);
+        if (on) {
+            if (m.blocked.size() >= BLOCK_MAX && !m.blocked.contains(code)) return;
+            m.blocked.add(code);
+        } else {
+            m.blocked.remove(code);
+        }
+        try {
+            moderation.block(m.profile.userId(), code, on);
+        } catch (RuntimeException e) {
+            log.warn("광장 차단 저장을 넣지 못함 - user: {}", m.profile.userId(), e);
+        }
+    }
+
+    /** 신고. 10초에 한 번. 신고당한 사람이 방에 있으면 그 사람의 최근 말을 붙인다 */
+    private void report(Member m, JsonNode msg) {
+        if (!inRoom(m) || !m.room.is3d()) return;
+        String code = msg.path("u").asText("");
+        if (code.isEmpty() || code.length() > 16 || code.equals(m.extras.userCode())) return;
+        long now = clock.getAsLong();
+        if (now - m.lastReport < REPORT_GAP_MS) return;
+        m.lastReport = now;
+        String why = msg.path("why").asText("");
+        if (!REPORT_WHYS.contains(why)) why = "etc";
+        List<String> lines = m.room.members.values().stream().filter(o -> code.equals(o.extras.userCode())).findFirst()
+                .map(o -> List.copyOf(o.lines)).orElse(List.of());
+        try {
+            moderation.report(m.profile.userId(), code, why, lines, m.room.key);
+        } catch (RuntimeException e) {
+            log.warn("광장 신고 저장을 넣지 못함 - user: {}", m.profile.userId(), e);
+        }
     }
 
     private void jump(Member m) {
