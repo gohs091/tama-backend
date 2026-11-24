@@ -6,6 +6,7 @@ import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
 import com.tamagochi.tamagochi.domain.promotion.PromotionOutcome;
 import com.tamagochi.tamagochi.domain.spar.SparDrop;
+import com.tamagochi.tamagochi.domain.tamagotchi.TrainBlock;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingResult;
 import com.tamagochi.tamagochi.domain.tamagotchi.TrainingSession;
 import com.tamagochi.tamagochi.service.promotion.PromotionService;
@@ -252,23 +253,10 @@ public class TamagotchiService {
         }
     }
 
+    /** 트레이닝을 못 하는 조건은 TrainBlock 한 곳에 있다 (광장 사냥과 같이 쓴다) */
     private void requireTrainable(Tamagotchi tamagotchi) {
-        if (tamagotchi.isDead()) {
-            throw new IllegalStateException("다마고치가 죽었어요.");
-        }
-        requireHome(tamagotchi);
-        if (tamagotchi.isSleeping()) {
-            throw new IllegalStateException("다마고치가 자고 있어요.");
-        }
-        if (tamagotchi.getEvolutionStage() == EvolutionStage.EGG) {
-            throw new IllegalStateException("알 상태에서는 트레이닝할 수 없어요.");
-        }
-        if (DebuffRules.hungry(tamagotchi.getHunger())) {
-            throw new IllegalStateException("배가 너무 고파서 트레이닝할 수 없어요.");
-        }
-        if (DebuffRules.weak(tamagotchi.getStrength())) {
-            throw new IllegalStateException("스트렝스가 부족해서 트레이닝할 수 없어요.");
-        }
+        TrainBlock block = TrainBlock.of(tamagotchi);
+        if (block != null) throw new IllegalStateException(block.message());
     }
 
     @Transactional

@@ -38,10 +38,22 @@ public class SparDropService {
         return roll(user, enemyId, win, r.nextDouble(), r.nextDouble());
     }
 
+    /** 이긴 판과 상관없이 확률만으로 굴린다 (광장 사냥: 몬스터 한 마리마다 probability 확률) */
+    @Transactional
+    public SparDrop roll(User user, String enemyId, double probability) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        return drop(user, enemyId, r.nextDouble() < probability, r.nextDouble());
+    }
+
     /** chance: 조각이 떨어질지 굴린 값, pick: 어떤 잉크인지 굴린 값 (둘 다 0 이상 1 미만) */
     @Transactional
     public SparDrop roll(User user, String enemyId, boolean win, double chance, double pick) {
-        if (!win || chance >= SparDropRules.PER_WIN) return null;
+        return drop(user, enemyId, win && chance < SparDropRules.PER_WIN, pick);
+    }
+
+    /** 떨어뜨리기로 정해졌으면 어떤 잉크 조각인지 골라 모아 준다 */
+    private SparDrop drop(User user, String enemyId, boolean drops, double pick) {
+        if (!drops) return null;
         SparRoster.Enemy enemy = SparRoster.find(enemyId).orElse(null);
         if (enemy == null) return null; // 예전 임시 상대(crow 등)는 잉크가 없다
 

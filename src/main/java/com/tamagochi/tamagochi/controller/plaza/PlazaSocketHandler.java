@@ -8,6 +8,7 @@ import com.tamagochi.tamagochi.repository.user.UserRepository;
 import com.tamagochi.tamagochi.service.auth.AuthSettings;
 import com.tamagochi.tamagochi.service.auth.AuthTokenService;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
+import com.tamagochi.tamagochi.service.plaza.HuntService;
 import com.tamagochi.tamagochi.service.plaza.PlazaService;
 import com.tamagochi.tamagochi.service.storage.PetImageUrls;
 import com.tamagochi.tamagochi.service.storage.PetThumbs;
@@ -69,8 +70,9 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         PetThumbs.Both pics = petThumbs.both(imageKey);   // 원본은 한 번만 받는다
         String image = pics.thumb();
 
-        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드. 사냥 · 차단 · 채팅 금지는 뒤 작업에서 채운다
-        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), false, null, java.util.Set.of(), 0);
+        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드, 사냥을 할 수 있는지(못 하면 이유). 차단 · 채팅 금지는 뒤 작업에서 채운다
+        String huntWhy = HuntService.status(pet);
+        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy, java.util.Set.of(), 0);
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),

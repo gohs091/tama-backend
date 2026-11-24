@@ -833,6 +833,25 @@ public class Tamagotchi {
         return new TrainingGain(base + bonus, bonus);
     }
 
+    /** 광장 사냥 한 마리의 비용: 포만감 · 파워 · 피로 하나씩 */
+    public static final int HUNT_COST = 1;
+    public static final int HUNT_FATIGUE = 1;
+
+    /**
+     * 광장에서 몬스터 한 마리를 잡았다. 포만감 · 파워 1씩 쓰고 피로가 1 쌓이며, 경험치를 바로 받는다
+     * (진화 가능 구간은 1, 아니면 2, 지저분하면 절반). 위력 · 무게 · 승패 · 대기 경험치는 건드리지 않는다.
+     * 받은 경험치를 돌려준다. 못 하는 조건(TrainBlock)은 부르는 쪽이 먼저 확인한다
+     */
+    public int hunt() {
+        ensureLevel();
+        int exp = DebuffRules.trainingExp(isInEvolutionZone() ? 1 : 2, this.poopCount);
+        consumeForTraining(HUNT_COST, HUNT_COST);
+        addFatigue(HUNT_FATIGUE);
+        this.lastTrainedAt = LocalDateTime.now();
+        addExp(exp);
+        return exp;
+    }
+
     /** 대기 중인 경험치를 받는다. 오른 레벨 수를 돌려준다 */
     public int claimExp() {
         ensureLevel();

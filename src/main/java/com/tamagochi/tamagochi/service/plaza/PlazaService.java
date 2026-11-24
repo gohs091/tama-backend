@@ -515,22 +515,27 @@ public class PlazaService {
         broadcast(room, ev, null);
         if (!mob.dead()) return;
         // 때린 사람 모두가 한 마리 몫을 받는다 (때린 뒤 나간 사람은 뺀다)
-        for (String id : new ArrayList<>(mob.hitters)) {
+        // 목록은 복사해 비운 뒤 돈다: 한 사람의 지급이 던져도 다음 사람은 받고, 옛 목록이 다음 판에 남지 않는다
+        List<String> paid = new ArrayList<>(mob.hitters);
+        mob.hitters.clear();
+        for (String id : paid) {
             Member h = room.members.get(id);
             if (h == null) continue;
             h.kills++;
-            hunts.kill(h.profile.userId(), mob.enemy, h.kills % QUEST_EVERY == 0, r -> onLoot(id, i, r));
+            try {
+                hunts.kill(h.profile.userId(), mob.enemy, h.kills % QUEST_EVERY == 0, r -> onLoot(id, i, r));
+            } catch (RuntimeException e) {
+                log.warn("광장 사냥 지급을 넣지 못함 - user: {}, enemy: {}", h.profile.userId(), mob.enemy, e);
+            }
         }
-        mob.hitters.clear();
     }
 
     /** 지급 결과가 나왔다. 나간 사람 것은 버린다. 못 한다는 결과면 그 사람은 더 못 때린다 */
     public synchronized void onLoot(String memberId, int mobIndex, HuntResult r) {
         Member m = byPeer.values().stream().filter(o -> o.id.equals(memberId)).findFirst().orElse(null);
         if (m == null || !inRoom(m)) return;
-        if (r.ok()) {
-            if (r.level() > 0) m.level = r.level();
-        } else {
+        if (r.ok() && r.level() > 0) m.level = r.level();
+        if (!r.ok() || r.why() != null) {   // 이번 것은 받았어도 why 가 있으면 다음부터 못 한다
             m.huntOk = false;
             m.huntWhy = r.why();
         }

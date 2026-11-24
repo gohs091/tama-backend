@@ -269,6 +269,47 @@ class PlazaHuntTest {
     }
 
     @Test
+    void 마지막_한_마리_뒤에는_못_때린다() {
+        result = new HuntResult(true, "hungry", 2, 1, 30, "CHILD", false, null, 20, 9);   // 이번 것은 받았지만 다음부터 못 한다
+        FakePeer a = enter3(30);
+        goTo(a, 0);
+        atk(a, "r", 0);
+        assertThat(a.last("loot").path("ok").asBoolean()).isTrue();
+        assertThat(a.last("loot").path("why").asText()).isEqualTo("hungry");
+        int before = mobMsgs(a).size();
+        goTo(a, 1);
+        atk(a, "r", 1);
+        assertThat(mobMsgs(a)).hasSize(before);
+    }
+
+    @Test
+    void 한_사람의_지급이_터져도_다음_사람은_몫을_받고_때린_사람_목록은_비워진다() {
+        List<Long> paid = new ArrayList<>();
+        plaza.setHunts((userId, enemy, tick, done) -> {
+            if (userId == 1) throw new IllegalStateException("터짐");
+            paid.add(userId);
+            done.accept(result);
+        });
+        FakePeer a = enter3(0), b = enter3(0);   // a 가 먼저 때려서 목록 맨 앞이다
+        goTo(a, 0);
+        goTo(b, 0);
+        atk(a, "r", 0);
+        atk(a, "r", 0);
+        atk(b, "r", 0);   // 3 번째 피해로 죽는다
+        assertThat(paid).containsExactly(2L);
+        assertThat(b.count("loot")).isEqualTo(1);
+        assertThat(a.count("loot")).isZero();
+        // 목록이 비워졌으니 다시 나온 뒤 b 혼자 잡아도 a 의 옛 몫이 따라오지 않는다
+        now.addAndGet(6000);
+        plaza.tick();
+        plaza.setHunts((userId, enemy, tick, done) -> { paid.add(-userId); done.accept(result); });
+        atk(b, "r", 0);
+        atk(b, "r", 0);
+        atk(b, "r", 0);
+        assertThat(paid).containsExactly(2L, -2L);
+    }
+
+    @Test
     void 나간_사람의_지급_결과는_버린다() {
         plaza.onLoot("없는id", 0, result);
         FakePeer a = enter3(3);
