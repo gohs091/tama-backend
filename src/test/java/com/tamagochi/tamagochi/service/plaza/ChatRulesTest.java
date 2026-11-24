@@ -31,6 +31,21 @@ class ChatRulesTest {
     }
 
     @Test
+    void 자음_은어는_붙이거나_띄우거나_숫자를_끼워도_막힌다() {
+        assertThat(ChatRules.banned("ㅅㅂ")).isTrue();
+        assertThat(ChatRules.banned("ㅅ ㅂ")).isTrue();
+        assertThat(ChatRules.banned("ㅅ1ㅂ")).isTrue();
+        assertThat(ChatRules.banned("ㅋㅋㅅㅂ")).isTrue();
+        assertThat(ChatRules.banned("ㅂㅅ")).isTrue();
+        assertThat(ChatRules.banned("ㅈㄹ")).isTrue();
+    }
+
+    @Test
+    void 평범한_자음_말은_통과한다() {
+        for (String ok : new String[] {"ㅋㅋㅋ", "ㅎㅎ", "ㅇㅇ", "ㄱㅅ", "ㅊㅋ", "ㅋㅋ 재밌다 ㅎㅎ"}) assertThat(ChatRules.banned(ok)).as(ok).isFalse();
+    }
+
+    @Test
     void 금칙어를_찾는다() {
         assertThat(ChatRules.banned("너 미친놈이야")).isTrue();
     }

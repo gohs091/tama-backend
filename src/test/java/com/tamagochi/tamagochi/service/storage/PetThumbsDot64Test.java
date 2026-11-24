@@ -91,6 +91,28 @@ class PetThumbsDot64Test {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void 작은_그림은_있는데_64칸을_못_만든_키는_원본을_다시_받지_않는다() throws Exception {
+        BufferedImage ok = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 10; y < 50; y++) for (int x = 10; x < 50; x++) ok.setRGB(x, y, 0xFF2266AA);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(ok, "png", bos);
+        java.util.List<String> asked = new java.util.ArrayList<>();
+        byte[][] body = { bos.toByteArray() };
+        PetThumbs thumbs = new PetThumbs(url -> { asked.add(url); return body[0]; });
+        String thumb = thumbs.both("pets/x.png").thumb();   // 작은 그림이 기억된다
+        // 64칸만 기억에서 지우고(예: 밀려남) 원본은 읽히지 않는 바이트로 바꾼다
+        java.lang.reflect.Field f = PetThumbs.class.getDeclaredField("dotCache");
+        f.setAccessible(true);
+        ((java.util.Map<String, String>) f.get(thumbs)).remove("pets/x.png");
+        body[0] = new byte[] {1, 2, 3};
+        assertThat(thumbs.both("pets/x.png").dot64()).isNull();   // 한 번 다시 받아 보고 실패를 기억한다
+        assertThat(thumbs.both("pets/x.png").dot64()).isNull();
+        assertThat(thumbs.both("pets/x.png").thumb()).isEqualTo(thumb);
+        assertThat(asked).hasSize(2);   // 처음 한 번 + 실패 확인 한 번. 그 뒤로는 받지 않는다
+    }
+
+    @Test
     void both는_원본을_한_번만_받아_두_그림을_주고_다음엔_받지_않는다() throws Exception {
         BufferedImage big = new BufferedImage(512, 512, BufferedImage.TYPE_INT_ARGB);
         for (int y = 100; y < 400; y++) for (int x = 100; x < 400; x++) big.setRGB(x, y, 0xFF2266AA);

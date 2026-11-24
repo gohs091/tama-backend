@@ -46,6 +46,7 @@ import static org.mockito.Mockito.when;
 class PlazaSocketFlowIntegrationTest {
 
     @MockitoBean StringRedisTemplate redisTemplate;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean PlazaModerationService moderationSpy;
 
     @LocalServerPort int port;
     @Autowired AuthTokenService tokens;
@@ -191,6 +192,19 @@ class PlazaSocketFlowIntegrationTest {
             assertThat(toKeys(room2d)).containsExactlyInAnyOrder("t", "no", "key", "cap", "me", "members", "ghosts", "ev");
         } finally {
             for (Client c : new Client[]{a, b, two}) if (c != null) c.ws.sendClose(WebSocket.NORMAL_CLOSURE, "끝").join();
+        }
+    }
+
+    @Test
+    void 차단_읽기가_터져도_입장은_된다() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalStateException("DB 터짐")).when(moderationSpy).blockedCodes(anyLong());
+        Client c = connect(token(newPet("m")));
+        try {
+            c.send("{\"t\":\"hello\",\"image\":\"" + pngData() + "\",\"facing\":\"right\"}");
+            assertThat(c.await("room", 5000).path("members")).hasSize(1);
+        } finally {
+            org.mockito.Mockito.reset(moderationSpy);
+            c.ws.sendClose(WebSocket.NORMAL_CLOSURE, "끝").join();
         }
     }
 

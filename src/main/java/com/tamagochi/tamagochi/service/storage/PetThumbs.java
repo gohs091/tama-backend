@@ -59,6 +59,9 @@ public class PetThumbs {
         this.fetch = fetch;
     }
 
+    /** 64칸 만들기가 실패한 키의 기억 값 (작은 그림은 이미 있을 때만 쓴다) */
+    private static final String NO_DOT = "";
+
     /** 한 번 받은 원본에서 만든 두 그림. 못 만든 쪽은 null */
     public record Both(String thumb, String dot64) {}
 
@@ -74,14 +77,16 @@ public class PetThumbs {
 
     /**
      * 원본을 한 번만 받아 작은 그림(128)과 64×64 그림을 같이 만든다. 둘 다 이미 기억해 둔 것이면 받지 않는다.
-     * 만든 것은 기억하고, 못 만든 쪽은 기억하지 않아 다음에 다시 해 본다
+     * 만든 것은 기억하고, 못 만든 쪽은 기억하지 않아 다음에 다시 해 본다.
+     * 다만 작은 그림은 기억돼 있는데 받은 원본에서 64칸만 못 만든 키는 그 실패를 기억해 원본을 다시 받지 않는다 (같은 원본이라 또 실패한다)
      */
     public Both both(String imageKey) {
         String url = PetImageUrls.of(imageKey);
         if (url == null) return new Both(null, null);
         String thumb = cache.get(imageKey), dot = dotCache.get(imageKey);
-        if (thumb != null && dot != null) return new Both(thumb, dot);
+        if (thumb != null && dot != null) return new Both(thumb, NO_DOT.equals(dot) ? null : dot);
         byte[] original = fetch.apply(url);
+        boolean thumbKnown = thumb != null;
         if (thumb == null) {
             thumb = SpriteThumb.dataUrl(original);
             if (thumb == null || thumb.length() > MAX_CHARS) {
@@ -94,6 +99,7 @@ public class PetThumbs {
         if (dot == null) {
             dot = makeDot64(imageKey, original);
             if (dot != null) dotCache.put(imageKey, dot);
+            else if (thumbKnown && original != null && original.length > 0) dotCache.put(imageKey, NO_DOT);   // 받은 원본에서 못 만든 것만 기억한다 (못 받은 것은 다시 해 본다)
         }
         return new Both(thumb, dot);
     }

@@ -13,7 +13,7 @@ import java.util.Locale;
 
 /**
  * 광장 채팅 글 다듬기와 금칙어. 전 연령이 쓰는 앱이라 거르기부터 같이 만든다.
- * 금칙어 목록은 plaza/banned-words.txt (한 줄에 하나, # 로 시작하면 주석, 한글 두 글자 이하 · 영문 세 글자 이하는 짧은 낱말로 따로 찾는다).
+ * 금칙어 목록은 plaza/banned-words.txt (한 줄에 하나, # 로 시작하면 주석, 한글 두 글자 이하 · 영문 세 글자 이하 · 자음뿐인 낱말은 짧은 낱말로 따로 찾는다).
  */
 public final class ChatRules {
 
@@ -53,8 +53,8 @@ public final class ChatRules {
 
     /**
      * 금칙어가 들어 있는가. 두 갈래로 찾는다.
-     * 긴 낱말(한글 세 글자 이상 · 영문 네 글자 이상): 한글 · 영문만 남겨 다 붙인 글에서 찾는다 ("미1친 놈" 도 잡힌다).
-     * 짧은 낱말: 다 붙이면 "다시 발표" 가 "시발" 로 걸리므로 낱말 단위로 찾는다. 공백으로 나눈 조각마다 한글 · 영문만 남기고,
+     * 긴 낱말(한글 세 글자 이상 · 영문 네 글자 이상): 한글 · 영문 · 자음만 남겨 다 붙인 글에서 찾는다 ("미1친 놈" 도 잡힌다).
+     * 짧은 낱말: 다 붙이면 "다시 발표" 가 "시발" 로 걸리므로 낱말 단위로 찾는다. 공백으로 나눈 조각마다 한글 · 영문 · 자음만 남기고,
      * 한 글자짜리 조각이 이어지면 붙인 뒤("시 발", "시 1 발" → "시발") 그 낱말 안에 짧은 금칙어가 있는지 본다.
      */
     public static boolean banned(String text) {
@@ -73,7 +73,7 @@ public final class ChatRules {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if ((c >= '가' && c <= '힣') || (c >= 'a' && c <= 'z')) sb.append(c);
+            if ((c >= '가' && c <= '힣') || isJamo(c) || (c >= 'a' && c <= 'z')) sb.append(c);
         }
         return sb.toString();
     }
@@ -93,8 +93,14 @@ public final class ChatRules {
         return out;
     }
 
-    /** 짧은 낱말: 한글이 들어 있으면 두 글자 이하, 영문뿐이면 세 글자 이하 */
+    /** 호환 자모 중 자음 (ㄱ-ㅎ). ㅅㅂ · ㅂㅅ 같은 자음 은어를 담으려고 남긴다 */
+    private static boolean isJamo(char c) {
+        return c >= 'ㄱ' && c <= 'ㅎ';
+    }
+
+    /** 짧은 낱말: 자음뿐이면 길이와 상관없이, 한글이 들어 있으면 두 글자 이하, 영문뿐이면 세 글자 이하 */
     private static boolean isShort(String w) {
+        if (w.chars().allMatch(c -> isJamo((char) c))) return true;
         boolean hangul = w.chars().anyMatch(c -> c >= '가');
         return w.length() <= (hangul ? 2 : 3);
     }

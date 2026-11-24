@@ -25,6 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -74,8 +75,18 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
 
         // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드, 사냥을 할 수 있는지(못 하면 이유). 차단한 사람들과 말 못 하게 된 때
         String huntWhy = HuntService.status(pet);
-        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy,
-                moderationService.blockedCodes(user.getId()), moderationService.mutedUntil(user.getId()));
+        // 차단 · 말 못 함을 읽다 실패해도(2D 연결 포함) 입장은 막지 않는다: 빈 집합 · 0 으로 둔다
+        Set<String> blocked = Set.of();
+        long mutedUntil = 0;
+        try {
+            blocked = moderationService.blockedCodes(user.getId());
+            mutedUntil = moderationService.mutedUntil(user.getId());
+        } catch (Exception e) {
+            log.warn("광장 차단 · 말 못 함 읽기 실패 - user: {}", user.getId(), e);
+            blocked = Set.of();
+            mutedUntil = 0;
+        }
+        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy, blocked, mutedUntil);
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
