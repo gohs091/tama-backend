@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.tamagochi.tamagochi.domain.spar.SparDrop;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 /**
@@ -41,9 +43,12 @@ import java.util.function.LongSupplier;
  *   위치는 앱이 가장 잘 알기 때문에 참가(join)·탈락(out)은 앱이 알리는 대로 받는다 (보상이 걸리면 서버가 판정하도록 바꿔야 한다).
  *
  * 받는 메시지: hello{image,facing}, move{x,y}, emote{k,to?,re?}, sleep{on}, skill{x,y,tx,ty,d}, hit{by,id?}, join, out, ping, leave
+ *              (3D 방만: atk{d,m[]}, jump)
  * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?}, sleep{id,on},
  *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, ev{phase,now,start,next,…,players[],alive[],solo,winners[]}, out{id,left}, error{message}
  *              (room에도 ev가 들어 있다)
+ *              3D 방만: room{…,mobs[],hunt}, atk{id,d}, jump{id}, mob{i,hp,by,at?,e?,max?}, loot{i,exp,ink,level,stage,lvUp,drop?,hunger,power,ok,why?}
+ * 몬스터(3D 방): 서버가 정한다. 방 사람 모두가 같은 몬스터를 보고, 죽이면 때린 사람 모두가 한 마리 몫을 받는다 (PlazaMobs, 지급은 Hunts).
  * 다녀간 끄적이(ghost): 방을 나간 사람의 기록. 시간 제한 없이 최근 RECENT_MAX명을 서버가 켜져 있는 동안 기억한다.
  *   지금 광장에 접속해 있는 사람의 기록은 보내지 않고, 그 사람이 방에 들어오면 enter의 gone으로 알려 화면에 남은 기록을 지우게 한다.
  * 기술(skill): 자기 끄적이의 배틀 기술을 광장에서 보여 준다. 바라보는 쪽(d: 1 오른쪽, -1 왼쪽)으로 곧게 나가고, 그 길에서 벗어나면 피한다.
@@ -76,6 +81,13 @@ public class PlazaService {
     static final long HIT_WINDOW_MS = 3000;
     /** 기술 한 번에 튕겨 낼 수 있는 끄적이 수 */
     static final int MAX_HITS_PER_CAST = 8;
+    static final long ATK_GAP_MS = 450, JUMP_GAP_MS = 500;
+    static final int MAX_MOBS_PER_ATK = 4;
+    /** 죽은 몬스터가 다시 나오기까지 */
+    static final long RESPAWN_MS = 6000;
+    /** 사냥으로 퀘스트를 세는 마릿수 간격 */
+    static final int QUEST_EVERY = 10;
+    static final Set<String> ATK_DIRS = Set.of("u", "d", "l", "r");
     static final Set<String> EMOTES = Set.of("bow", "hi", "heart", "laugh");
     private static final String KEY_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -91,6 +103,28 @@ public class PlazaService {
         public static final Extras NONE = new Extras(null, null, false, null, Set.of(), 0);
     }
 
+    /** 사냥 한 마리의 지급 결과 (Hunts 가 DB 에서 정해 돌려준다). ok=false 면 더는 사냥할 수 없다 (why: 이유) */
+    public record HuntResult(boolean ok, String why, int exp, int ink, int level, String stage, boolean lvUp, SparDrop drop, int satiety, int power) {}
+
+    /**
+     * 몬스터를 잡은 사람에게 주는 쪽. 광장의 잠금 안에서 불리므로 DB 일은 다른 실행기에 넘기고 끝나면 done 을 부른다
+     * (done 은 어느 스레드에서나 불러도 된다: onLoot 이 잠금을 잡는다)
+     */
+    public interface Hunts {
+        void kill(long userId, String enemyKey, boolean questTick, Consumer<HuntResult> done);
+    }
+
+    /** 3D 방의 몬스터 한 마리 (번호는 방의 mobs 배열 자리) */
+    static final class Mob {
+        final String enemy;
+        final int max;
+        int hp;
+        long respawnAt;   // 죽었을 때만 뜻이 있다
+        final Set<String> hitters = new LinkedHashSet<>();   // 이 몬스터를 한 번이라도 때린 사람 (id)
+        Mob(String enemy, int max) { this.enemy = enemy; this.max = max; this.hp = max; }
+        boolean dead() { return hp <= 0; }
+    }
+
     static final class Member {
         final Peer peer;
         final Profile profile;
@@ -104,11 +138,15 @@ public class PlazaService {
         String spareImage;   // 원본 CDN 주소. 위 둘이 다 없을 때만 쓴다
         String facing = "right";
         int x, y;
-        long lastMove, lastEmote, lastSkill;
+        long lastMove, lastEmote, lastSkill, lastAtk, lastJump;
+        int level;          // 지금 레벨. 처음엔 profile.level, 사냥 결과로 달라질 수 있다
+        boolean huntOk;     // 사냥할 수 있는 상태 (지급 결과가 못 한다고 하면 꺼진다)
+        String huntWhy;
+        int kills;          // 이 연결에서 잡은 마릿수 (열 마리마다 퀘스트를 센다)
         boolean sleeping;   // 광장에서 자는 중 (걷거나 기술을 쓰거나 맞으면 깬다)
         Set<String> castHits;   // 마지막으로 쏜 기술에 이미 맞은 끄적이 (같은 기술에 두 번 맞지 않는다). 쏜 적이 없으면 null
         String castTo;          // 예전 앱이 겨눈 상대 (예전 앱은 다녀간 끄적이를 맞혔을 때 id 없이 알린다)
-        Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; }
+        Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; this.level = profile.level(); }
     }
 
     static final class Room {
@@ -117,6 +155,7 @@ public class PlazaService {
         final String kind;   // "2d" | "3d" — 두 종류는 서로 섞이지 않는다
         final Map<String, Member> members = new LinkedHashMap<>();
         Match match;   // 이번(또는 지난) 정각의 밀어내기. 없으면 null
+        Mob[] mobs;    // 3D 방의 몬스터. 2D 방은 null
         Room(int no, String key, String kind) { this.no = no; this.key = key; this.kind = kind; }
         boolean is3d() { return "3d".equals(kind); }
     }
@@ -152,6 +191,8 @@ public class PlazaService {
     private final long ghostSalt = random.nextLong();
     private final LongSupplier clock;
     private final EventTimes times;
+    private final List<PlazaMobs.Spawn> spawns;
+    private Hunts hunts = (userId, enemyKey, questTick, done) -> { /* 지급은 setHunts 로 붙인다 */ };
     private final Map<String, Member> byPeer = new LinkedHashMap<>();
     private final Map<Long, Member> byUser = new LinkedHashMap<>();
     private final Map<String, Room> rooms = new LinkedHashMap<>();   // 방 열쇠 → 방
@@ -166,7 +207,12 @@ public class PlazaService {
 
     PlazaService(LongSupplier clock) { this(clock, EventTimes.HOURLY); }
 
-    PlazaService(LongSupplier clock, EventTimes times) { this.clock = clock; this.times = times; }
+    PlazaService(LongSupplier clock, EventTimes times) { this(clock, times, PlazaMobs.load()); }
+
+    PlazaService(LongSupplier clock, EventTimes times, List<PlazaMobs.Spawn> spawns) { this.clock = clock; this.times = times; this.spawns = spawns; }
+
+    /** 몬스터를 잡았을 때 주는 쪽을 붙인다 (기본은 아무것도 안 한다) */
+    public synchronized void setHunts(Hunts h) { this.hunts = h; }
 
     /** 연결되면 부른다. 아직 방에 넣지 않고, 앱이 hello로 그림을 보내면 그때 들여보낸다 */
     public synchronized void connect(Peer peer, Profile profile, String inviteKey) {
@@ -190,6 +236,8 @@ public class PlazaService {
         m.spareImage = spareImage;
         m.inviteKey = inviteKey;
         m.extras = extras == null ? Extras.NONE : extras;
+        m.huntOk = m.extras.huntOk();
+        m.huntWhy = m.extras.huntWhy();
         m.room = pickRoom(inviteKey, "2d");   // 2D 방의 자리만 정해 둔다 (hello 뒤에 들어간다). 3D 앱은 hello 에서 방을 다시 고른다
         byPeer.put(peer.id(), m);
         byUser.put(profile.userId(), m);
@@ -207,6 +255,8 @@ public class PlazaService {
             case "emote" -> emote(m, msg);
             case "sleep" -> sleep(m, msg);
             case "skill" -> skill(m, msg);
+            case "atk" -> atk(m, msg);
+            case "jump" -> jump(m);
             case "hit" -> hit(m, msg);
             case "join" -> join(m);
             case "out" -> out(m);
@@ -275,7 +325,13 @@ public class PlazaService {
         ArrayNode ghosts = out.putArray("ghosts");
         ghostsFor(room).forEach(g -> ghosts.add(json(g, room.is3d())));
         out.set("ev", eventJson(room, clock.getAsLong()));
-        if (room.is3d()) out.put("v", 3).put("now", clock.getAsLong()).put("chat", true);   // chat 은 채팅 작업 전까지 true 고정
+        if (room.is3d()) {
+            out.put("v", 3).put("now", clock.getAsLong()).put("chat", true);   // chat 은 채팅 작업 전까지 true 고정
+            ArrayNode mobs = out.putArray("mobs");
+            for (int i = 0; i < room.mobs.length; i++) mobs.add(mobJson(i, room.mobs[i]));
+            ObjectNode hunt = out.putObject("hunt").put("ok", m.huntOk);
+            if (!m.huntOk && m.huntWhy != null) hunt.put("why", m.huntWhy);
+        }
         m.peer.send(out.toString());
     }
 
@@ -290,9 +346,16 @@ public class PlazaService {
                 .max(Comparator.comparingInt(this::seats))
                 .orElseGet(() -> {
                     Room r = new Room(freeRoomNo(), newKey(), kind);
+                    if (r.is3d()) r.mobs = newMobs();
                     rooms.put(r.key, r);
                     return r;
                 });
+    }
+
+    private Mob[] newMobs() {
+        Mob[] mobs = new Mob[spawns.size()];
+        for (int i = 0; i < mobs.length; i++) mobs[i] = new Mob(spawns.get(i).enemy(), PlazaMobs.kind(spawns.get(i).enemy()).hp());
+        return mobs;
     }
 
     /** 비어 있는 가장 작은 방 번호 (방이 사라지면 그 번호를 다시 쓴다) */
@@ -410,8 +473,96 @@ public class PlazaService {
         Member hitMember = m.room.members.get(victim);
         if (hitMember != null) hitMember.sleeping = false;   // 맞으면 깬다
         broadcast(m.room, event("knock").put("id", victim).put("by", caster.id)
-                .put("kb", knockback(caster.profile.level(), level))
+                .put("kb", knockback(caster.level, level))
                 .put("s", ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE)), null);
+    }
+
+    // ── 사냥 (3D 방)
+
+    /** 휘두르기. 모두에게 모습이 보이고, 사냥할 수 있는 사람이면 가까운 몬스터(한 번에 4마리까지)가 맞는다 */
+    private void atk(Member m, JsonNode msg) {
+        if (!inRoom(m) || !m.room.is3d() || spectator(m)) return;
+        String d = msg.path("d").asText("");
+        if (!ATK_DIRS.contains(d)) return;
+        long now = clock.getAsLong();
+        if (now - m.lastAtk < ATK_GAP_MS) return;
+        m.lastAtk = now;
+        m.sleeping = false;   // 휘두르면 깬다
+        broadcast(m.room, event("atk").put("id", m.id).put("d", d), m);
+        if (!m.huntOk) return;
+        Set<Integer> seen = new HashSet<>();
+        int looked = 0;
+        for (JsonNode e : msg.path("m")) {
+            if (looked++ >= MAX_MOBS_PER_ATK) break;
+            if (!e.isInt()) continue;
+            int i = e.asInt();
+            if (i < 0 || i >= m.room.mobs.length || !seen.add(i)) continue;
+            hitMob(m, i, now);
+        }
+    }
+
+    private void hitMob(Member m, int i, long now) {
+        Room room = m.room;
+        Mob mob = room.mobs[i];
+        if (mob.dead() || !PlazaMobs.near(m.x, m.y, spawns.get(i))) return;
+        mob.hp = Math.max(0, mob.hp - PlazaMobs.damage(m.level, PlazaMobs.kind(mob.enemy)));
+        mob.hitters.add(m.id);
+        ObjectNode ev = event("mob").put("i", i).put("hp", mob.hp).put("by", m.id);
+        if (mob.dead()) {
+            mob.respawnAt = now + RESPAWN_MS;
+            ev.put("at", mob.respawnAt);
+        }
+        broadcast(room, ev, null);
+        if (!mob.dead()) return;
+        // 때린 사람 모두가 한 마리 몫을 받는다 (때린 뒤 나간 사람은 뺀다)
+        for (String id : new ArrayList<>(mob.hitters)) {
+            Member h = room.members.get(id);
+            if (h == null) continue;
+            h.kills++;
+            hunts.kill(h.profile.userId(), mob.enemy, h.kills % QUEST_EVERY == 0, r -> onLoot(id, i, r));
+        }
+        mob.hitters.clear();
+    }
+
+    /** 지급 결과가 나왔다. 나간 사람 것은 버린다. 못 한다는 결과면 그 사람은 더 못 때린다 */
+    public synchronized void onLoot(String memberId, int mobIndex, HuntResult r) {
+        Member m = byPeer.values().stream().filter(o -> o.id.equals(memberId)).findFirst().orElse(null);
+        if (m == null || !inRoom(m)) return;
+        if (r.ok()) {
+            if (r.level() > 0) m.level = r.level();
+        } else {
+            m.huntOk = false;
+            m.huntWhy = r.why();
+        }
+        ObjectNode out = event("loot").put("i", mobIndex).put("exp", r.exp()).put("ink", r.ink()).put("level", r.level())
+                .put("stage", r.stage()).put("lvUp", r.lvUp()).put("hunger", r.satiety()).put("power", r.power()).put("ok", r.ok());
+        if (r.drop() != null) out.set("drop", om.valueToTree(r.drop()));
+        if (r.why() != null) out.put("why", r.why());
+        m.peer.send(out.toString());
+    }
+
+    private void jump(Member m) {
+        if (!inRoom(m) || !m.room.is3d()) return;
+        long now = clock.getAsLong();
+        if (now - m.lastJump < JUMP_GAP_MS) return;
+        m.lastJump = now;
+        broadcast(m.room, event("jump").put("id", m.id), m);
+    }
+
+    /** 죽은 몬스터 가운데 때가 된 것을 되살린다 */
+    private void respawn(Room room, long now) {
+        for (int i = 0; i < room.mobs.length; i++) {
+            Mob mob = room.mobs[i];
+            if (!mob.dead() || mob.respawnAt > now) continue;
+            mob.hp = mob.max;
+            broadcast(room, event("mob").put("i", i).put("hp", mob.hp).put("e", mob.enemy).put("max", mob.max), null);
+        }
+    }
+
+    private ObjectNode mobJson(int i, Mob mob) {
+        ObjectNode n = om.createObjectNode().put("i", i).put("e", mob.enemy).put("hp", mob.hp).put("max", mob.max);
+        if (mob.dead()) n.put("at", mob.respawnAt);
+        return n;
     }
 
     /** 레벨 차이에 따른 튕김 세기 (같은 레벨 1.0). 높은 레벨이 낮은 레벨을 치면 멀리, 반대면 조금만 밀린다 */
@@ -423,7 +574,7 @@ public class PlazaService {
     /** 방 사람이거나 다녀간 끄적이의 레벨 (모르는 상대면 null) */
     private Integer levelOf(Room room, String id) {
         Member member = room.members.get(id);
-        if (member != null) return member.profile.level();
+        if (member != null) return member.level;
         return recent.stream().filter(g -> g.id().equals(id)).findFirst().map(Ghost::level).orElse(null);
     }
 
@@ -478,6 +629,7 @@ public class PlazaService {
                 default -> { /* done: 다음 정각까지 그대로 */ }
             }
         }
+        for (Room room : rooms.values()) if (room.is3d()) respawn(room, now);
     }
 
     /** 참가: 준비 단계에 놀이터 안에 있는 끄적이의 앱이 보낸다 */
@@ -545,7 +697,7 @@ public class PlazaService {
 
     private void remember(Member m) {
         recent.removeIf(g -> g.userId().equals(m.profile.userId()));
-        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.profile.level(), m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.image64));
+        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.level, m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.image64));
         while (recent.size() > RECENT_MAX) recent.removeLast();
     }
 
@@ -567,7 +719,7 @@ public class PlazaService {
     private ObjectNode json(Member m) {
         ObjectNode n = om.createObjectNode();
         n.put("id", m.id).put("nickname", m.profile.nickname()).put("petName", m.profile.petName())
-                .put("level", m.profile.level()).put("stage", m.profile.stage())
+                .put("level", m.level).put("stage", m.profile.stage())
                 .put("image", m.v3 && m.image64 != null ? m.image64 : m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
         if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
         if (m.sleeping) n.put("sleep", true);
