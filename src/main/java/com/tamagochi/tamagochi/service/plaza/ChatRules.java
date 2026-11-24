@@ -7,12 +7,13 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * 광장 채팅 글 다듬기와 금칙어. 전 연령이 쓰는 앱이라 거르기부터 같이 만든다.
- * 금칙어 목록은 plaza/banned-words.txt (한 줄에 하나, # 로 시작하면 주석, 세 글자 이상만).
+ * 금칙어 목록은 plaza/banned-words.txt (한 줄에 하나, # 로 시작하면 주석, 한글 두 글자 이하 · 영문 세 글자 이하는 짧은 낱말로 따로 찾는다).
  */
 public final class ChatRules {
 
@@ -22,7 +23,7 @@ public final class ChatRules {
     /** 이만큼 이어진 숫자는 전화번호일 수 있어 가린다 */
     private static final int MASK_DIGITS = 7;
 
-    private static List<String> words;
+    private static Lists lists;
 
     /** 보내도 되는 모양으로 다듬는다. 말이 남지 않으면 null */
     public static String clean(String raw) {
@@ -50,16 +51,24 @@ public final class ChatRules {
         return out.toString();
     }
 
-    /** 한글 · 영문만 남기고 소문자로 맞춘 글에 금칙어가 들어 있는가 ("시1발" 같은 끊어 쓰기도 잡힌다) */
+    /**
+     * 금칙어가 들어 있는가. 두 갈래로 찾는다.
+     * 긴 낱말(한글 세 글자 이상 · 영문 네 글자 이상): 한글 · 영문만 남겨 다 붙인 글에서 찾는다 ("미1친 놈" 도 잡힌다).
+     * 짧은 낱말: 다 붙이면 "다시 발표" 가 "시발" 로 걸리므로 낱말 단위로 찾는다. 공백으로 나눈 조각마다 한글 · 영문만 남기고,
+     * 한 글자짜리 조각이 이어지면 붙인 뒤("시 발", "시 1 발" → "시발") 그 낱말 안에 짧은 금칙어가 있는지 본다.
+     */
     public static boolean banned(String text) {
+        if (text == null) return false;
+        Lists l = lists();
         String t = squash(text);
-        if (t.isEmpty()) return false;
-        for (String w : words()) if (t.contains(w)) return true;
+        for (String w : l.longWords()) if (t.contains(w)) return true;
+        for (String token : tokens(text)) for (String w : l.shortWords()) if (token.contains(w)) return true;
         return false;
     }
 
+    private record Lists(List<String> longWords, List<String> shortWords) {}
+
     private static String squash(String text) {
-        if (text == null) return "";
         String s = Normalizer.normalize(text, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
@@ -69,17 +78,39 @@ public final class ChatRules {
         return sb.toString();
     }
 
-    private static synchronized List<String> words() {
-        if (words == null) words = load();
-        return words;
+    /** 공백으로 나눠 조각마다 squash 하고(빈 조각은 버린다), 한 글자짜리 조각이 이어지면 붙인다 */
+    private static List<String> tokens(String text) {
+        List<String> out = new ArrayList<>();
+        StringBuilder run = new StringBuilder();   // 이어지는 한 글자 조각
+        for (String piece : text.split("\s+")) {
+            String p = squash(piece);
+            if (p.isEmpty()) continue;
+            if (p.length() == 1) { run.append(p); continue; }
+            if (run.length() > 0) { out.add(run.toString()); run.setLength(0); }
+            out.add(p);
+        }
+        if (run.length() > 0) out.add(run.toString());
+        return out;
     }
 
-    private static List<String> load() {
+    /** 짧은 낱말: 한글이 들어 있으면 두 글자 이하, 영문뿐이면 세 글자 이하 */
+    private static boolean isShort(String w) {
+        boolean hangul = w.chars().anyMatch(c -> c >= '가');
+        return w.length() <= (hangul ? 2 : 3);
+    }
+
+    private static synchronized Lists lists() {
+        if (lists == null) lists = load();
+        return lists;
+    }
+
+    private static Lists load() {
         try (InputStream in = ChatRules.class.getResourceAsStream("/plaza/banned-words.txt")) {
             if (in == null) throw new IllegalStateException("plaza/banned-words.txt 가 없어요");
             try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                return r.lines().map(String::strip).filter(l -> !l.isEmpty() && !l.startsWith("#"))
-                        .map(ChatRules::squash).filter(l -> l.length() >= 3).distinct().toList();
+                List<String> all = r.lines().map(String::strip).filter(l -> !l.isEmpty() && !l.startsWith("#"))
+                        .map(ChatRules::squash).filter(l -> !l.isEmpty()).distinct().toList();
+                return new Lists(all.stream().filter(w -> !isShort(w)).toList(), all.stream().filter(ChatRules::isShort).toList());
             }
         } catch (IOException e) {
             throw new UncheckedIOException("plaza/banned-words.txt 를 읽지 못했어요", e);

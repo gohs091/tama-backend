@@ -18,7 +18,7 @@ public class PlazaMute {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "until", nullable = false)
+    @Column(name = "muted_until", nullable = false)
     private Instant until;
 
     public PlazaMute(Long userId, Instant until) {

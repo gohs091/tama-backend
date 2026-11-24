@@ -25,10 +25,10 @@ public class PlazaReport {
     private Long targetId;
 
     /** chat | name | etc */
-    @Column(nullable = false, length = 16)
+    @Column(name = "reason", nullable = false, length = 16)
     private String why;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "chat_lines", columnDefinition = "TEXT")
     private String lines;
 
     @Column(name = "room_key", length = 16)
