@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 
+// 바뀐 열만 쓴다: 스케줄러가 읽어 둔 사이 사냥이 올린 경험치 · 레벨을 옛 값으로 덮어쓰지 않도록
+@org.hibernate.annotations.DynamicUpdate
 @Entity
 @Table(name = "tamagotchi", indexes = @Index(name = "idx_tamagotchi_user", columnList = "user_id"))
 @Getter

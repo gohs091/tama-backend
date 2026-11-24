@@ -193,9 +193,47 @@ class PlazaChatTest {
     void 차단하면_저장을_부른다() {
         FakePeer a = enter3(), b = enter3();
         plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":true}");
+        now.addAndGet(600);
         plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":false}");
+        now.addAndGet(600);
         plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(b) + "\",\"on\":true}");   // 자기 자신은 무시
         assertThat(blocks).containsExactly(new Block(2, code(a), true), new Block(2, code(a), false));
+    }
+
+    @Test
+    void 같은_상태를_다시_보내면_저장을_부르지_않는다() {
+        FakePeer a = enter3(), b = enter3();
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":false}");   // 차단한 적 없는데 해제
+        now.addAndGet(600);
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":true}");
+        now.addAndGet(600);
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":true}");   // 이미 차단
+        assertThat(blocks).containsExactly(new Block(2, code(a), true));
+    }
+
+    @Test
+    void 오백_밀리초_안의_두_번째_차단은_무시한다() {
+        FakePeer a = enter3(), b = enter3();
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":true}");
+        now.addAndGet(400);
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":false}");
+        assertThat(blocks).hasSize(1);
+        say(a, "아직 차단 중");
+        assertThat(chats(b)).isZero();   // 해제도 받아들여지지 않았다
+        now.addAndGet(600);
+        plaza.onMessage(b, "{\"t\":\"block\",\"u\":\"" + code(a) + "\",\"on\":false}");
+        assertThat(blocks).hasSize(2);
+    }
+
+    @Test
+    void 간격에_걸린_말은_다듬지_않고_아주_긴_글은_자른다() {
+        FakePeer a = enter3();
+        say(a, "하나");
+        now.addAndGet(100);
+        plaza.onMessage(a, "{\"t\":\"chat\",\"text\":\"둘\"}");
+        assertThat(a.last("chatNo").path("why").asText()).isEqualTo("fast");
+        say(a, "가".repeat(100_000));
+        assertThat(a.last("chat").path("text").asText()).isEqualTo("가".repeat(30));
     }
 
     @Test

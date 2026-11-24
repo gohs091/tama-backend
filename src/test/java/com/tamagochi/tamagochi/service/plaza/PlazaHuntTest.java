@@ -333,6 +333,23 @@ class PlazaHuntTest {
     }
 
     @Test
+    void 지급_결과의_단계가_보이고_다녀간_끄적이에도_남는다() {
+        result = new HuntResult(true, null, 2, 1, 7, "ADULT", false, null, 9, 9);
+        FakePeer a = enter3(20);
+        FakePeer b = enter3(3);
+        goTo(a, 0);
+        atk(a, "r", 0);
+        String aId = meId(a);
+        FakePeer c = enter3(3);
+        for (JsonNode m : c.last("room").path("members")) if (m.path("id").asText().equals(aId)) assertThat(m.path("stage").asText()).isEqualTo("ADULT");
+        plaza.onMessage(a, "{\"t\":\"leave\"}");
+        FakePeer d = enter3(3);
+        boolean found = false;
+        for (JsonNode m : d.last("room").path("ghosts")) if (m.path("nickname").asText().equals("닉1")) { found = true; assertThat(m.path("stage").asText()).isEqualTo("ADULT"); assertThat(m.path("level").asInt()).isEqualTo(7); }
+        assertThat(found).isTrue();
+    }
+
+    @Test
     void 휘두르면_남들에게_보인다() {
         FakePeer a = enter3(3), b = enter3(3);
         now.addAndGet(500);

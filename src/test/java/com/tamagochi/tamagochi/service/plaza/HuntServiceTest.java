@@ -49,6 +49,7 @@ class HuntServiceTest {
     @Autowired UserService userService;
     @Autowired TamagotchiRepository tamagotchiRepository;
     @Autowired PointWalletRepository walletRepository;
+    @Autowired org.springframework.transaction.PlatformTransactionManager txManager;
 
     private final String enemy = SparRoster.all().get(0).id();
     private User user;
@@ -98,6 +99,22 @@ class HuntServiceTest {
         assertThat(t.exp()).isEqualTo(2);
         assertThat(t.getLastTrainedAt()).isNotNull();
         assertThat(ink() - inkBefore).isEqualTo(1);
+    }
+
+    @Test
+    void 읽어_둔_사이_다른_트랜잭션이_올린_경험치는_다른_열만_저장해도_남는다() throws Exception {
+        pet();
+        var tx = new org.springframework.transaction.support.TransactionTemplate(txManager);
+        tx.executeWithoutResult(status -> {
+            Tamagotchi stale = tamagotchiRepository.findActiveByUserId(user.getId()).orElseThrow();   // 스케줄러처럼 읽어 둔다
+            Thread other = new Thread(() -> huntService.hunt(user.getId(), enemy, false));   // 그 사이 사냥이 커밋된다
+            other.start();
+            try { other.join(10_000); } catch (InterruptedException e) { throw new IllegalStateException(e); }
+            stale.rename("바뀐이름");   // 스케줄러가 포만감 같은 다른 열만 바꾸는 것과 같다
+        });
+        Tamagotchi t = reload();
+        assertThat(t.getName()).isEqualTo("바뀐이름");
+        assertThat(t.exp()).isEqualTo(2);   // 옛 값(0)으로 덮이지 않는다
     }
 
     @Test

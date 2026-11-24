@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -34,14 +34,20 @@ public class PlazaModerationService implements PlazaService.Moderation {
     private final PlazaBlockRepository blockRepository;
     private final PlazaReportRepository reportRepository;
     private final PlazaMuteRepository muteRepository;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "plaza-moderation");
-        t.setDaemon(true);
-        return t;
-    });
+    /** 쌓아 둘 수 있는 일의 수. 넘치면 그 일은 버리고 로그만 남긴다 */
+    static final int QUEUE_MAX = 10_000;
+    private final ExecutorService executor;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PlazaModerationService(PlazaService plazaService, UserRepository userRepository, PlazaBlockRepository blockRepository,
                                   PlazaReportRepository reportRepository, PlazaMuteRepository muteRepository) {
+        this(plazaService, userRepository, blockRepository, reportRepository, muteRepository,
+                PlazaHuntRunner.boundedExecutor("plaza-moderation", QUEUE_MAX));
+    }
+
+    PlazaModerationService(PlazaService plazaService, UserRepository userRepository, PlazaBlockRepository blockRepository,
+                           PlazaReportRepository reportRepository, PlazaMuteRepository muteRepository, ExecutorService executor) {
+        this.executor = executor;
         this.plazaService = plazaService;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
@@ -58,29 +64,42 @@ public class PlazaModerationService implements PlazaService.Moderation {
     @PreDestroy
     void stop() {
         executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) log.warn("광장 차단 · 신고 저장이 5초 안에 끝나지 않음");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** 광장 잠금 안에서 불리므로 일을 넣고 바로 돌아온다. 예외는 로그만 남긴다 */
     @Override
     public void block(long userId, String targetCode, boolean on) {
-        executor.execute(() -> {
-            try {
-                saveBlock(userId, targetCode, on);
-            } catch (Exception e) {
-                log.warn("광장 차단 저장 실패 - user: {}, on: {}", userId, on, e);
-            }
-        });
+        try {
+            executor.execute(() -> {
+                try {
+                    saveBlock(userId, targetCode, on);
+                } catch (Exception e) {
+                    log.warn("광장 차단 저장 실패 - user: {}, on: {}", userId, on, e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            log.warn("광장 차단 저장이 밀려 버림 - user: {}", userId);
+        }
     }
 
     @Override
     public void report(long reporterId, String targetCode, String why, List<String> lines, String roomKey) {
-        executor.execute(() -> {
-            try {
-                saveReport(reporterId, targetCode, why, lines, roomKey);
-            } catch (Exception e) {
-                log.warn("광장 신고 저장 실패 - reporter: {}", reporterId, e);
-            }
-        });
+        try {
+            executor.execute(() -> {
+                try {
+                    saveReport(reporterId, targetCode, why, lines, roomKey);
+                } catch (Exception e) {
+                    log.warn("광장 신고 저장 실패 - reporter: {}", reporterId, e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            log.warn("광장 신고 저장이 밀려 버림 - reporter: {}", reporterId);
+        }
     }
 
     /** 차단을 저장하거나 푼다. 같은 차단은 하나만 남고, 모르는 유저 코드나 자기 자신은 조용히 무시한다 */

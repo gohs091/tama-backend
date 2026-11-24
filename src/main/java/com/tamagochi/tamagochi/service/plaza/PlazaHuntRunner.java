@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -20,15 +22,28 @@ public class PlazaHuntRunner implements PlazaService.Hunts {
 
     private final HuntService huntService;
     private final PlazaService plazaService;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "plaza-hunt");
-        t.setDaemon(true);
-        return t;
-    });
+    /** 쌓아 둘 수 있는 일의 수. 넘치면 거절 예외가 나고, 광장 쪽(hitMob)이 그 예외를 받는다 */
+    static final int QUEUE_MAX = 10_000;
+    private final ExecutorService executor;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PlazaHuntRunner(HuntService huntService, PlazaService plazaService) {
+        this(huntService, plazaService, boundedExecutor("plaza-hunt", QUEUE_MAX));
+    }
+
+    PlazaHuntRunner(HuntService huntService, PlazaService plazaService, ExecutorService executor) {
         this.huntService = huntService;
         this.plazaService = plazaService;
+        this.executor = executor;
+    }
+
+    /** 스레드 하나에 큐 상한이 있는 실행기 (광장 차단 · 신고 쪽도 쓴다) */
+    static ExecutorService boundedExecutor(String name, int queueMax) {
+        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(queueMax), r -> {
+            Thread t = new Thread(r, name);
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     /** 앱이 시작할 때 광장에 지급 쪽을 건다 */
@@ -40,6 +55,12 @@ public class PlazaHuntRunner implements PlazaService.Hunts {
     @PreDestroy
     void stop() {
         executor.shutdown();
+        try {
+            // 쌓인 지급을 마저 하도록 잠깐 기다린다
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) log.warn("광장 사냥 지급이 5초 안에 끝나지 않음");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** 광장 잠금 안에서 불리므로 일을 넣고 바로 돌아온다. 예외는 로그만 남기고 done 은 부르지 않는다 */

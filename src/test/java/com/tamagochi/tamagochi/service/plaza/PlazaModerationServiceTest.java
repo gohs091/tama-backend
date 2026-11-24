@@ -79,6 +79,24 @@ class PlazaModerationServiceTest {
     }
 
     @Test
+    void 큐가_차도_차단과_신고는_예외를_내지_않고_버린다() throws Exception {
+        var gate = new java.util.concurrent.CountDownLatch(1);
+        UserRepository slowUsers = org.mockito.Mockito.mock(UserRepository.class);
+        org.mockito.Mockito.when(slowUsers.findByUserCode(org.mockito.ArgumentMatchers.anyString())).thenAnswer(inv -> {
+            gate.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            return java.util.Optional.empty();
+        });
+        var small = new PlazaModerationService(new PlazaService(() -> 0L), slowUsers, blockRepository, reportRepository, muteRepository,
+                PlazaHuntRunner.boundedExecutor("plaza-moderation-test", 1));
+        small.block(1, "AAAA0001", true);   // 실행 중
+        small.block(1, "AAAA0002", true);   // 큐 한 칸
+        small.block(1, "AAAA0003", true);   // 넘침: 버린다
+        small.report(1, "AAAA0004", "chat", List.of(), "ROOM12");   // 넘침: 버린다
+        gate.countDown();
+        small.stop();
+    }
+
+    @Test
     void 말_못_하게_된_때를_읽는다() {
         assertThat(moderation.mutedUntil(me.getId())).isZero();
         Instant until = Instant.now().plusSeconds(3600);

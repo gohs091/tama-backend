@@ -89,7 +89,9 @@ public class PlazaService {
     /** 채팅: 한 번 말하고 다음까지, 그리고 CHAT_WINDOW_MS 안에 CHAT_PER_WINDOW 번까지 */
     static final long CHAT_GAP_MS = 1500, CHAT_WINDOW_MS = 10_000;
     static final int CHAT_PER_WINDOW = 5;
-    static final long REPORT_GAP_MS = 10_000;
+    /** 다듬기 전에 원문을 이만큼(글자)만 본다 */
+    static final int CHAT_RAW_MAX = 200;
+    static final long REPORT_GAP_MS = 10_000, BLOCK_GAP_MS = 500;
     /** 신고에 붙이는 최근 말 줄 수, 한 사람이 차단해 둘 수 있는 수 */
     static final int REPORT_LINES = 10, BLOCK_MAX = 200;
     static final Set<String> REPORT_WHYS = Set.of("chat", "name", "etc");
@@ -153,8 +155,10 @@ public class PlazaService {
         final Set<String> blocked = new HashSet<>();   // 내가 차단한 사람의 유저 코드 (3D 방)
         long mutedUntil;    // 이 때(epoch ms)까지 말할 수 없다
         long lastChat, lastReport;
+        long lastBlock = Long.MIN_VALUE / 2;   // 차단 · 해제를 마지막으로 받아들인 때
         final Deque<Long> chatTimes = new ArrayDeque<>();   // 최근 말한 때 (도배 제한)
         final Deque<String> lines = new ArrayDeque<>();     // 방에 나간 최근 말 열 줄 (신고에 붙인다)
+        String stage;       // 지금 단계. 처음엔 profile.stage, 사냥 결과로 달라질 수 있다
         int level;          // 지금 레벨. 처음엔 profile.level, 사냥 결과로 달라질 수 있다
         boolean huntOk;     // 사냥할 수 있는 상태 (지급 결과가 못 한다고 하면 꺼진다)
         String huntWhy;
@@ -162,7 +166,7 @@ public class PlazaService {
         boolean sleeping;   // 광장에서 자는 중 (걷거나 기술을 쓰거나 맞으면 깬다)
         Set<String> castHits;   // 마지막으로 쏜 기술에 이미 맞은 끄적이 (같은 기술에 두 번 맞지 않는다). 쏜 적이 없으면 null
         String castTo;          // 예전 앱이 겨눈 상대 (예전 앱은 다녀간 끄적이를 맞혔을 때 id 없이 알린다)
-        Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; this.level = profile.level(); }
+        Member(Peer peer, Profile profile, String id) { this.peer = peer; this.profile = profile; this.id = id; this.level = profile.level(); this.stage = profile.stage(); }
     }
 
     static final class Room {
@@ -473,7 +477,7 @@ public class PlazaService {
     /** 기술 쓰기. 방 모두(쓴 사람 포함)에게 보낸다. 정각 밀어내기 동안, 아직 남아 있는 참가자만 쓸 수 있다 (혼자 연습이면 누구나) */
     /** 알은 구경만 한다 (밀어내기에 끼지 않고, 기술을 쓰지도 맞지도 않는다) */
     private static boolean spectator(Member m) {
-        return "EGG".equals(m.profile.stage());
+        return "EGG".equals(m.stage);
     }
 
     private void skill(Member m, JsonNode msg) {
@@ -586,6 +590,7 @@ public class PlazaService {
         Member m = byPeer.values().stream().filter(o -> o.id.equals(memberId)).findFirst().orElse(null);
         if (m == null || !inRoom(m)) return;
         if (r.ok() && r.level() > 0) m.level = r.level();
+        if (r.ok() && r.stage() != null) m.stage = r.stage();
         if (!r.ok() || r.why() != null) {   // 이번 것은 받았어도 why 가 있으면 다음부터 못 한다
             m.huntOk = false;
             m.huntWhy = r.why();
@@ -613,10 +618,12 @@ public class PlazaService {
         if (!chat) { chatNo(m, "off"); return; }
         long now = clock.getAsLong();
         if (m.mutedUntil > now) { chatNo(m, "muted"); return; }
-        String text = ChatRules.clean(msg.path("text").asText(null));
-        if (text == null) return;
         while (!m.chatTimes.isEmpty() && now - m.chatTimes.peekFirst() >= CHAT_WINDOW_MS) m.chatTimes.pollFirst();
-        if (now - m.lastChat < CHAT_GAP_MS || m.chatTimes.size() >= CHAT_PER_WINDOW) { chatNo(m, "fast"); return; }
+        if (now - m.lastChat < CHAT_GAP_MS || m.chatTimes.size() >= CHAT_PER_WINDOW) { chatNo(m, "fast"); return; }   // 다듬기 전에 먼저 거른다
+        String raw = msg.path("text").asText(null);
+        if (raw != null && raw.codePointCount(0, raw.length()) > CHAT_RAW_MAX) raw = raw.substring(0, raw.offsetByCodePoints(0, CHAT_RAW_MAX));   // 아주 긴 글은 다듬기 전에 자른다
+        String text = ChatRules.clean(raw);
+        if (text == null) return;
         m.lastChat = now;
         m.chatTimes.addLast(now);   // 금칙어로 막힌 말도 센다 (걸러지는 말을 계속 시험해 보는 것을 막는다)
         if (ChatRules.banned(text)) { chatNo(m, "word"); return; }
@@ -640,12 +647,16 @@ public class PlazaService {
         String code = msg.path("u").asText("");
         if (code.isEmpty() || code.length() > 16 || code.equals(m.extras.userCode())) return;
         boolean on = msg.path("on").asBoolean(false);
+        if (on == m.blocked.contains(code)) return;   // 이미 그 상태면 저장을 부르지 않는다
+        long now = clock.getAsLong();
+        if (now - m.lastBlock < BLOCK_GAP_MS) return;
         if (on) {
             if (m.blocked.size() >= BLOCK_MAX && !m.blocked.contains(code)) return;
             m.blocked.add(code);
         } else {
             m.blocked.remove(code);
         }
+        m.lastBlock = now;
         try {
             moderation.block(m.profile.userId(), code, on);
         } catch (RuntimeException e) {
@@ -828,7 +839,7 @@ public class PlazaService {
 
     private void remember(Member m) {
         recent.removeIf(g -> g.userId().equals(m.profile.userId()));
-        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.level, m.profile.stage(), m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.image64));
+        recent.addFirst(new Ghost(m.profile.userId(), ghostId(m.profile.userId()), m.profile.nickname(), m.profile.petName(), m.level, m.stage, m.image, m.facing, m.profile.skill(), m.extras.userCode(), m.image64));
         while (recent.size() > RECENT_MAX) recent.removeLast();
     }
 
@@ -850,7 +861,7 @@ public class PlazaService {
     private ObjectNode json(Member m) {
         ObjectNode n = om.createObjectNode();
         n.put("id", m.id).put("nickname", m.profile.nickname()).put("petName", m.profile.petName())
-                .put("level", m.level).put("stage", m.profile.stage())
+                .put("level", m.level).put("stage", m.stage)
                 .put("image", m.v3 && m.image64 != null ? m.image64 : m.image).put("facing", m.facing).put("x", m.x).put("y", m.y);
         if (m.profile.skill() != null) n.set("skill", om.valueToTree(m.profile.skill()));
         if (m.sleeping) n.put("sleep", true);

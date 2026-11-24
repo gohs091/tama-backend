@@ -18,6 +18,7 @@ public class PlazaMute {
     @Column(name = "user_id")
     private Long userId;
 
+    /** UTC 로 저장된다. 운영자가 DB 에 직접 넣을 때 UTC 로 넣는다. 넣은 뒤 그 사람이 다시 접속해야 적용된다 */
     @Column(name = "muted_until", nullable = false)
     private Instant until;
 

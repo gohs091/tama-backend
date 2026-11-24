@@ -38,6 +38,19 @@ class PlazaHuntRunnerTest {
     }
 
     @Test
+    void 큐가_차면_거절_예외가_나고_광장은_멈추지_않는다() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        when(service.hunt(anyLong(), anyString(), anyBoolean())).thenAnswer(inv -> { release.await(5, TimeUnit.SECONDS); return null; });
+        PlazaHuntRunner small = new PlazaHuntRunner(service, plaza, PlazaHuntRunner.boundedExecutor("plaza-hunt-test", 1));
+        small.kill(1, "a", false, r -> { });   // 실행 중
+        small.kill(1, "a", false, r -> { });   // 큐 한 칸
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> small.kill(1, "a", false, r -> { }))
+                .isInstanceOf(java.util.concurrent.RejectedExecutionException.class);
+        release.countDown();
+        small.stop();
+    }
+
+    @Test
     void 일을_넣고_바로_돌아온다() throws Exception {
         CountDownLatch release = new CountDownLatch(1);
         when(service.hunt(anyLong(), anyString(), anyBoolean())).thenAnswer(inv -> { release.await(5, TimeUnit.SECONDS); return null; });
