@@ -82,7 +82,7 @@ public final class ChatRules {
     private static List<String> tokens(String text) {
         List<String> out = new ArrayList<>();
         StringBuilder run = new StringBuilder();   // 이어지는 한 글자 조각
-        for (String piece : text.split("\s+")) {
+        for (String piece : text.split("\\s+")) {
             String p = squash(piece);
             if (p.isEmpty()) continue;
             if (p.length() == 1) { run.append(p); continue; }

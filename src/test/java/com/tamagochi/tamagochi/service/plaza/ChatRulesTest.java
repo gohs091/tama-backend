@@ -63,6 +63,23 @@ class ChatRulesTest {
     }
 
     @Test
+    void 거친_말이나_일상어와_겹치는_말은_막지_않는다() {
+        assertThat(ChatRules.banned("불이 꺼져서 깜깜해")).isFalse();
+        assertThat(ChatRules.banned("불 꺼져 있어")).isFalse();
+        assertThat(ChatRules.banned("위기가 닥쳐온다")).isFalse();
+        assertThat(ChatRules.banned("과일 따 먹자")).isFalse();
+        assertThat(ChatRules.banned("못 박아줘")).isFalse();
+        assertThat(ChatRules.banned("5개년 계획")).isFalse();
+    }
+
+    @Test
+    void 탭으로_띄운_두_글자_욕도_막힌다() {
+        assertThat(ChatRules.banned("병\t신")).isTrue();
+        assertThat(ChatRules.banned("병\n1\n신")).isTrue();
+        assertThat(ChatRules.banned("병원\t신기해")).isFalse();
+    }
+
+    @Test
     void 긴_낱말은_띄어_써도_막힌다() {
         assertThat(ChatRules.banned("미 친 놈")).isTrue();
         assertThat(ChatRules.banned("미 친 놈 아")).isTrue();
