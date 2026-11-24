@@ -47,7 +47,8 @@ import java.util.function.LongSupplier;
  * 보내는 메시지: room{no,key,cap,me,members[],ghosts[]}, enter{m,gone}, leave{id}, move{id,x,y}, emote{id,k,to?,re?}, sleep{id,on},
  *              skill{id,x,y,tx,ty,d}, knock{id,by,kb,s}, ev{phase,now,start,next,…,players[],alive[],solo,winners[]}, out{id,left}, error{message}
  *              (room에도 ev가 들어 있다)
- *              3D 방만: room{…,mobs[],hunt,chat,blocked[]}, atk{id,d}, jump{id}, mob{i,hp,by,at?,e?,max?}, loot{i,exp,ink,level,stage,lvUp,drop?,hunger,power,ok,why?},
+ *              3D 방만: room{…,v:3,now,mobs[{i,e,hp,max,at?}],hunt{ok,why?},chat,blocked[]}(members[]에 u: 유저 코드, image 는 64칸 그림), atk{id,d}, jump{id},
+ *              mob{i,hp,by,at?}(맞음·죽음: at 은 다시 나올 시각) 또는 mob{i,hp,e,max}(되살아남), loot{i,exp,ink,level,stage,lvUp,drop?,hunger,power,ok,why?},
  *              chat{id,u,text}(보낸 사람 포함 방 모두, 차단한 사람 제외), chatNo{why: fast|word|muted|off}(보낸 사람에게만)
  * 채팅(3D 방): 글은 ChatRules 로 다듬고 금칙어를 거른다. 간격 1.5초 · 10초에 5번. 차단 목록은 유저 코드(u)로 주고받고 저장은 Moderation 이 잠금 밖에서 한다.
  *   차단한 사람의 chat 과 나에게 하는 emote 는 받지 않는다. 신고는 10초에 한 번, 신고당한 사람의 최근 열 줄이 함께 간다.
