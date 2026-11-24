@@ -48,6 +48,11 @@ public class PointService {
 
     @Transactional
     public PointTransaction earnPoint(User user, int amount, String idempotencyKey) {
+        return earn(user, amount, idempotencyKey, false);
+    }
+
+    /** 잉크를 지급하고 내역을 남긴다. redInk 이면 붉은 잉크, 아니면 검은 잉크 */
+    private PointTransaction earn(User user, int amount, String idempotencyKey, boolean redInk) {
 
         // 1. Redis로 중복 요청 체크 (빠른 1차 필터)
         String redisKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
@@ -67,7 +72,8 @@ public class PointService {
         // 3. 포인트 지갑 잔액 증가 (낙관적 락으로 동시성 제어)
         PointWallet wallet = pointWalletRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("지갑이 존재하지 않습니다."));
-        wallet.charge(amount);
+        if (redInk) wallet.chargeRedInk(amount);
+        else wallet.charge(amount);
 
         // 4. 트랜잭션 기록 생성
         PointTransaction transaction = PointTransaction.builder()
@@ -76,6 +82,7 @@ public class PointService {
                 .type(TransactionType.EARN)
                 .amount(amount)
                 .status(TransactionStatus.SUCCESS)
+                .currency(redInk ? PointTransaction.RED_INK : null)
                 .build();
 
         return pointTransactionRepository.save(transaction);
@@ -136,7 +143,7 @@ public class PointService {
     }
 
     /**
-     * 인앱결제 포인트 지급. 지급량은 서버가 SKU로 정하고, 토스 서버에 주문을 확인한 뒤에만 지급한다.
+     * 인앱결제 지급(검은 잉크 · 붉은 잉크). 무엇을 얼마나 줄지는 서버가 SKU로 정하고, 토스 서버에 주문을 확인한 뒤에만 지급한다.
      * 같은 orderId를 다시 보내면(앱 재시작 후 미지급 주문 복구 등) 중복 지급 없이 기존 내역을 돌려준다.
      */
     @Transactional
@@ -159,7 +166,9 @@ public class PointService {
         if (!iapOrderVerifier.isPaid(orderId, sku)) {
             throw new IllegalStateException("결제가 확인되지 않은 주문입니다.");
         }
-        return earnPoint(user, product.getPoints(), idempotencyKey);
+        return product.isRedInk()
+                ? earn(user, product.getRedInk(), idempotencyKey, true)
+                : earn(user, product.getPoints(), idempotencyKey, false);
     }
 
     @Transactional

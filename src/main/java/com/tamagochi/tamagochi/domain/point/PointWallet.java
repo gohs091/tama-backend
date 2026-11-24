@@ -23,6 +23,25 @@ public class PointWallet {
     @Column(nullable = false)
     private int balance;
 
+    // 붉은 잉크: 결제로만 얻는 재화라 검은 잉크와 따로 센다. 기존 지갑에는 비어 있다(null = 0개).
+    @Column(name = "red_ink")
+    private Integer redInk;
+
+    public int redInkBalance() {
+        return redInk == null ? 0 : redInk;
+    }
+
+    public void chargeRedInk(int amount) {
+        this.redInk = redInkBalance() + amount;
+    }
+
+    public void useRedInk(int amount) {
+        if (redInkBalance() < amount) {
+            throw new IllegalStateException("붉은 잉크가 부족합니다.");
+        }
+        this.redInk = redInkBalance() - amount;
+    }
+
     @Version
     private Long version;
 

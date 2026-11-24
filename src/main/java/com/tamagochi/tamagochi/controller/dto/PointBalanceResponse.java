@@ -11,10 +11,12 @@ import java.time.LocalDateTime;
 @Builder
 public class PointBalanceResponse {
     private int balance;
+    private int redInk;   // 붉은 잉크
 
     public static PointBalanceResponse from(PointWallet wallet) {
         return PointBalanceResponse.builder()
                 .balance(wallet.getBalance())
+                .redInk(wallet.redInkBalance())
                 .build();
     }
 }

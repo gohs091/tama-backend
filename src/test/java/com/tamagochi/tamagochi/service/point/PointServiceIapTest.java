@@ -61,6 +61,40 @@ class PointServiceIapTest {
     }
 
     @Test
+    @DisplayName("붉은 잉크 상품은 붉은 잉크만 지급하고 검은 잉크는 그대로 둔다")
+    void grantsRedInkForRedInkProduct() {
+        when(verifier.isPaid("order-r", "red-ink.33")).thenReturn(true);
+
+        PointTransaction result = service.purchasePoint(user, "order-r", "red-ink.33");
+
+        assertThat(wallet.redInkBalance()).isEqualTo(33);
+        assertThat(wallet.getBalance()).isZero();
+        assertThat(result.getAmount()).isEqualTo(33);
+        assertThat(result.getCurrency()).isEqualTo(PointTransaction.RED_INK);
+    }
+
+    @Test
+    @DisplayName("검은 잉크 상품의 내역에는 재화 표시가 없고 붉은 잉크는 늘지 않는다")
+    void blackInkPurchaseLeavesRedInkAlone() {
+        when(verifier.isPaid("order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797")).thenReturn(true);
+
+        PointTransaction result = service.purchasePoint(user, "order-1", "ait.0000032667.c26f773b.ab0e80b6a6.3031873797");
+
+        assertThat(result.getCurrency()).isNull();
+        assertThat(wallet.redInkBalance()).isZero();
+    }
+
+    @Test
+    @DisplayName("결제가 확인되지 않은 붉은 잉크 주문은 지급하지 않는다")
+    void rejectsUnpaidRedInkOrder() {
+        when(verifier.isPaid(anyString(), anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.purchasePoint(user, "order-r", "red-ink.10"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(wallet.redInkBalance()).isZero();
+    }
+
+    @Test
     @DisplayName("결제가 확인되지 않으면 지급하지 않는다")
     void rejectsUnpaidOrder() {
         when(verifier.isPaid(anyString(), anyString())).thenReturn(false);
