@@ -12,6 +12,7 @@ public class PointTransactionResponse {
     private Long id;
     private String type;
     private int amount;
+    private boolean redInk;   // 붉은 잉크 내역인지 (아니면 검은 잉크)
     private String status;
     private LocalDateTime createdAt;
 
@@ -20,6 +21,7 @@ public class PointTransactionResponse {
                 .id(transaction.getId())
                 .type(transaction.getType().name())
                 .amount(transaction.getAmount())
+                .redInk(PointTransaction.RED_INK.equals(transaction.getCurrency()))
                 .status(transaction.getStatus().name())
                 .createdAt(transaction.getCreatedAt())
                 .build();

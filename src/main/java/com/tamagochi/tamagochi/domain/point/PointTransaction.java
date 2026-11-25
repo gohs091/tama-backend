@@ -37,6 +37,12 @@ public class PointTransaction {
     @Column(nullable = false)
     private TransactionStatus status;
 
+    /** 어떤 재화의 내역인지. 비어 있으면 검은 잉크, RED_INK 이면 붉은 잉크. 기존 내역은 모두 비어 있다 */
+    public static final String RED_INK = "RED";
+
+    @Column(length = 10)
+    private String currency;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

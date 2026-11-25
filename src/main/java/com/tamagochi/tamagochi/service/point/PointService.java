@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.service.point;
 
 import com.tamagochi.tamagochi.domain.point.IapProduct;
+import com.tamagochi.tamagochi.domain.point.InkExchange;
 import com.tamagochi.tamagochi.domain.point.PointTransaction;
 import com.tamagochi.tamagochi.domain.point.PointWallet;
 import com.tamagochi.tamagochi.domain.point.TransactionStatus;
@@ -31,6 +32,7 @@ public class PointService {
 
     private static final String IDEMPOTENCY_KEY_PREFIX = "point:idempotency:";
     private static final String IAP_KEY_PREFIX = "iap-";
+    private static final String EXCHANGE_KEY_PREFIX = "exchange-";
     private static final long IDEMPOTENCY_TTL = 24 * 60 * 60; // 24시간
 
     // 광고 보상은 잉크 결제를 대신할 만큼 쉽게 쌓이면 안 되므로 설정(point.ad-reward.*)으로 조절한다
@@ -48,6 +50,11 @@ public class PointService {
 
     @Transactional
     public PointTransaction earnPoint(User user, int amount, String idempotencyKey) {
+        return earn(user, amount, idempotencyKey, false);
+    }
+
+    /** 잉크를 지급하고 내역을 남긴다. redInk 이면 붉은 잉크, 아니면 검은 잉크 */
+    private PointTransaction earn(User user, int amount, String idempotencyKey, boolean redInk) {
 
         // 1. Redis로 중복 요청 체크 (빠른 1차 필터)
         String redisKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
@@ -67,7 +74,8 @@ public class PointService {
         // 3. 포인트 지갑 잔액 증가 (낙관적 락으로 동시성 제어)
         PointWallet wallet = pointWalletRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("지갑이 존재하지 않습니다."));
-        wallet.charge(amount);
+        if (redInk) wallet.chargeRedInk(amount);
+        else wallet.charge(amount);
 
         // 4. 트랜잭션 기록 생성
         PointTransaction transaction = PointTransaction.builder()
@@ -76,6 +84,7 @@ public class PointService {
                 .type(TransactionType.EARN)
                 .amount(amount)
                 .status(TransactionStatus.SUCCESS)
+                .currency(redInk ? PointTransaction.RED_INK : null)
                 .build();
 
         return pointTransactionRepository.save(transaction);
@@ -136,11 +145,12 @@ public class PointService {
     }
 
     /**
-     * 인앱결제 포인트 지급. 지급량은 서버가 SKU로 정하고, 토스 서버에 주문을 확인한 뒤에만 지급한다.
+     * 인앱결제 지급. 얼마나 줄지는 서버가 SKU로 정하고, 토스 서버에 주문을 확인한 뒤에만 지급한다.
      * 같은 orderId를 다시 보내면(앱 재시작 후 미지급 주문 복구 등) 중복 지급 없이 기존 내역을 돌려준다.
+     * knowsRedInk: 붉은 잉크를 아는 앱의 주문이면 붉은 잉크를, 예전 앱의 주문이면 그 앱 화면이 약속한 검은 잉크를 준다.
      */
     @Transactional
-    public PointTransaction purchasePoint(User user, String orderId, String sku) {
+    public PointTransaction purchasePoint(User user, String orderId, String sku, boolean knowsRedInk) {
         if (orderId == null || orderId.isBlank() || orderId.length() > 100) {
             throw new IllegalArgumentException("주문 번호가 올바르지 않습니다.");
         }
@@ -159,7 +169,55 @@ public class PointService {
         if (!iapOrderVerifier.isPaid(orderId, sku)) {
             throw new IllegalStateException("결제가 확인되지 않은 주문입니다.");
         }
-        return earnPoint(user, product.getPoints(), idempotencyKey);
+        return knowsRedInk
+                ? earn(user, product.getRedInk(), idempotencyKey, true)
+                : earn(user, product.getLegacyPoints(), idempotencyKey, false);
+    }
+
+    /**
+     * 붉은 잉크로 검은 잉크를 바꾼다. 드는 양과 받는 양은 서버가 묶음 표({@link InkExchange})로 정한다.
+     * 같은 requestId가 다시 오면(응답을 못 받고 다시 보낸 경우) 또 바꾸지 않고 지금 지갑을 돌려준다.
+     */
+    @Transactional
+    public PointWallet exchangeInk(User user, String packId, String requestId) {
+        if (requestId == null || requestId.isBlank() || requestId.length() > 80) {
+            throw new IllegalArgumentException("요청 번호가 올바르지 않습니다.");
+        }
+        InkExchange pack = InkExchange.findById(packId)
+                .orElseThrow(() -> new IllegalArgumentException("알 수 없는 묶음입니다."));
+
+        PointWallet wallet = pointWalletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("지갑이 존재하지 않습니다."));
+
+        String spendKey = EXCHANGE_KEY_PREFIX + requestId;
+        PointTransaction existing = pointTransactionRepository.findByIdempotencyKey(spendKey).orElse(null);
+        if (existing != null) {
+            if (!existing.getUser().getId().equals(user.getId())) {
+                throw new IllegalStateException("다른 유저의 요청입니다.");
+            }
+            return wallet;
+        }
+
+        // 지갑의 낙관적 락(@Version)과 내역의 고유 키가 같은 요청이 동시에 두 번 처리되는 것을 막는다
+        wallet.useRedInk(pack.getRedCost());
+        wallet.charge(pack.getPoints());
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .idempotencyKey(spendKey)
+                .type(TransactionType.USE)
+                .amount(pack.getRedCost())
+                .status(TransactionStatus.SUCCESS)
+                .currency(PointTransaction.RED_INK)
+                .build());
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .idempotencyKey(spendKey + "-ink")
+                .type(TransactionType.EARN)
+                .amount(pack.getPoints())
+                .status(TransactionStatus.SUCCESS)
+                .build());
+        return wallet;
     }
 
     @Transactional
