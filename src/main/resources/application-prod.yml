@@ -55,6 +55,9 @@ image:
   v5-quality: ${IMAGE_V5_QUALITY:low}
   provider: ${IMAGE_PROVIDER:openai}
 
+pixellab:
+  api-key: ${PIXELLAB_API_KEY:}
+
 openai:
   api-key: ${OPENAI_API_KEY:}
 

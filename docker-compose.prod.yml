@@ -12,6 +12,8 @@ services:
       REDIS_HOST: redis
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PIXELLAB_API_KEY: ${PIXELLAB_API_KEY:-}                       # 자는 모습(낙서·스케치). 비면 그림 모델로 그린다
+      IMAGE_SLEEP_PROVIDER: ${IMAGE_SLEEP_PROVIDER:-pixellab}       # 되돌리려면 GitHub 변수 IMAGE_SLEEP_PROVIDER=openai
       STABILITY_API_KEY: ${STABILITY_API_KEY:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
       IAP_KEYSTORE_PATH: /certs/iap-client.p12
