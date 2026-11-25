@@ -33,6 +33,7 @@ public class PointService {
     private static final String IDEMPOTENCY_KEY_PREFIX = "point:idempotency:";
     private static final String IAP_KEY_PREFIX = "iap-";
     private static final String EXCHANGE_KEY_PREFIX = "exchange-";
+    private static final String RED_USE_KEY_PREFIX = "reduse-";
     private static final long IDEMPOTENCY_TTL = 24 * 60 * 60; // 24시간
 
     // 광고 보상은 잉크 결제를 대신할 만큼 쉽게 쌓이면 안 되므로 설정(point.ad-reward.*)으로 조절한다
@@ -172,6 +173,32 @@ public class PointService {
         return knowsRedInk
                 ? earn(user, product.getRedInk(), idempotencyKey, true)
                 : earn(user, product.getLegacyPoints(), idempotencyKey, false);
+    }
+
+    /**
+     * 붉은 잉크를 쓴다(알 깨우기 등). 같은 key 가 이미 있으면 또 받지 않는다. 모자라면 IllegalStateException
+     */
+    @Transactional
+    public void useRedInk(User user, int amount, String key) {
+        if (amount <= 0) throw new IllegalArgumentException("쓸 양이 올바르지 않습니다.");
+        if (key == null || key.isBlank() || key.length() > 80) throw new IllegalArgumentException("요청 번호가 올바르지 않습니다.");
+        PointWallet wallet = pointWalletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("지갑이 존재하지 않습니다."));
+        String spendKey = RED_USE_KEY_PREFIX + key;
+        PointTransaction existing = pointTransactionRepository.findByIdempotencyKey(spendKey).orElse(null);
+        if (existing != null) {
+            if (!existing.getUser().getId().equals(user.getId())) throw new IllegalStateException("다른 유저의 요청입니다.");
+            return;
+        }
+        wallet.useRedInk(amount);
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .idempotencyKey(spendKey)
+                .type(TransactionType.USE)
+                .amount(amount)
+                .status(TransactionStatus.SUCCESS)
+                .currency(PointTransaction.RED_INK)
+                .build());
     }
 
     /**

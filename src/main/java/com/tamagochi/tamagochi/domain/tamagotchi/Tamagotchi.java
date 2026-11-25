@@ -98,6 +98,12 @@ public class Tamagotchi {
     private Integer stageStartLevel;   // 지금 단계를 시작한 레벨. 진화 가능 구간은 여기서 LevelRules.zoneSpan만큼 위다
     @Column(name = "pending_exp")
     private Integer pendingExp;        // 마지막 훈련으로 받을 수 있게 된 경험치. 광고를 봐야 받는다
+
+    /** 알 하나를 깨우는 데 드는 붉은 잉크 (첫 알은 받지 않는다) */
+    public static final int HATCH_RED_INK = 1;
+    // 이 사람이 지금까지 알을 깨운 횟수. 새 알로 다시 시작해도 이어 센다. 이 열이 생기기 전 행은 null 이다
+    @Column(name = "hatch_count")
+    private Integer hatchCount;
     @Column(name = "weight_dg")
     private Integer weightDg;          // 무게 (dg, 데이터그램)
     @Column(name = "might")
@@ -737,7 +743,22 @@ public class Tamagotchi {
         if (this.evolutionStage != EvolutionStage.EGG) {
             throw new IllegalStateException("알 상태가 아닙니다.");
         }
+        this.hatchCount = hatchCount() + 1;
         evolve(EvolutionStage.BABY);
+    }
+
+    /**
+     * 지금까지 알을 깨운 횟수. 열이 생기기 전 행(null)은 지금 단계로 어림한다: 알이면 0번(깨운 적이 있었는지 알 수 없어 없던 것으로 친다),
+     * 이미 깨어나 있으면 1번.
+     */
+    public int hatchCount() {
+        if (this.hatchCount != null) return this.hatchCount;
+        return this.evolutionStage == EvolutionStage.EGG ? 0 : 1;
+    }
+
+    /** 첫 알은 그냥 깨운다. 그다음 알부터 붉은 잉크({@link #HATCH_RED_INK})가 든다 */
+    public boolean hatchFree() {
+        return hatchCount() == 0;
     }
 
     // ── 레벨 ──
@@ -1085,6 +1106,7 @@ public class Tamagotchi {
         this.publicId = newPublicId();
         this.name = DEFAULT_NAME;
         this.status = PetStatus.ACTIVE;
+        this.hatchCount = hatchCount();   // 단계를 알로 돌리기 전에 적어 둔다 (옛 행은 지금 단계로 어림한다)
         this.evolutionStage = EvolutionStage.EGG;
         this.pendingImageKey = null;   // 지난 그림으로 만들어 둔 것은 새 끄적이에게 넘기지 않는다
         this.pendingImageStage = null;

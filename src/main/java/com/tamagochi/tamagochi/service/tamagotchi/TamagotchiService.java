@@ -86,8 +86,13 @@ public class TamagotchiService {
         starterQuestService.markDone(user, com.tamagochi.tamagochi.domain.quest.StarterQuest.CARE);
     }
 
+    /**
+     * 알을 깨운다. 첫 알은 그냥 깨우고, 그다음 알부터는 붉은 잉크 {@link Tamagotchi#HATCH_RED_INK}개를 받는다.
+     * paysRedInk: 붉은 잉크로 깨우는 것을 아는 앱의 요청. 예전 앱(광고를 보고 깨우던 때)의 요청에서는 받지 않는다 —
+     * 그 앱 화면은 붉은 잉크를 받는다고 알린 적이 없다.
+     */
     @Transactional
-    public void hatch(User user, String idempotencyKey) {
+    public void hatch(User user, String idempotencyKey, boolean paysRedInk) {
         Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
@@ -98,7 +103,11 @@ public class TamagotchiService {
             throw new IllegalStateException("다마고치가 죽었어요.");
         }
 
-        tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 낙서로 올린다 (포인트 차감 없음)
+        if (paysRedInk && !tamagotchi.hatchFree()) {
+            // 알마다 한 번: 끄적이 ID 는 새 알마다 새로 받는다. 모자라면 여기서 던져 깨우지 않는다
+            pointService.useRedInk(user, Tamagotchi.HATCH_RED_INK, "hatch-" + tamagotchi.getPublicId());
+        }
+        tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 낙서로 올린다
         log.info("부화 - tamagotchi: {}", tamagotchi.getName());
     }
 

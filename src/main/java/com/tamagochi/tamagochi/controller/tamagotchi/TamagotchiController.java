@@ -120,10 +120,10 @@ public class TamagotchiController {
     }
 
     @PostMapping("/hatch")
-    public ResponseEntity<?> hatch(@RequestBody FeedRequest request) {
+    public ResponseEntity<?> hatch(@RequestBody com.tamagochi.tamagochi.controller.dto.HatchRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
 
-        tamagotchiService.hatch(user, request.getIdempotencyKey());
+        tamagotchiService.hatch(user, request.getIdempotencyKey(), Boolean.TRUE.equals(request.getRedInk()));
         Tamagotchi tamagotchi = tamagotchiService.getByUserId(user.getId());
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));
     }
