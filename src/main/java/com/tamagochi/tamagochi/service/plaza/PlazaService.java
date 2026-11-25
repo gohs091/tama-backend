@@ -332,7 +332,7 @@ public class PlazaService {
         String sent = msg.path("image").asText("");
         // 그림 고르는 순서: 서버가 줄인 그림 → 앱이 보낸 작은 그림(주인이 홈에서 보는 그 그림) → 원본 주소
         String from = "서버";
-        boolean sentOk = sent.startsWith("data:image/") && sent.length() <= MAX_IMAGE_CHARS;
+        boolean sentOk = sent.length() <= MAX_IMAGE_CHARS && com.tamagochi.tamagochi.service.storage.PlazaImageCheck.accepts(sent);   // 길이 뒤에만 검사한다. PNG · JPEG · WebP 이고 한 변 1024 이하일 때만
         // 아이폰 앱이 가끔 투명한 빈 그림을 만들어 보낸다. 그대로 쓰면 모두의 화면에 이름표만 떠다닌다
         boolean sentBlank = sentOk && com.tamagochi.tamagochi.service.storage.PetThumbs.blank(sent);
         // 3D 방에 보이는 그림: 64×64 그림 → 앱이 보낸 그림. 둘 다 없으면 2D 와 같이 고른 m.image 를 쓴다 (m.image 는 2D 규칙 그대로라 다녀간 끄적이로 2D 방에 가도 달라지지 않는다)
@@ -341,7 +341,7 @@ public class PlazaService {
         if (m.image == null && m.spareImage != null) { m.image = m.spareImage; from = "원본 주소"; }
         // 이름표만 떠다니는 끄적이가 생기면 이 기록으로 어떤 그림이 나갔는지 찾는다
         log.info("광장 입장 - user={}, pet={}, 그림={}({}자), 앱이 보낸 그림={}자", m.profile.userId(), m.profile.publicId(), m.image == null ? "없음" : from,
-                m.image == null ? 0 : m.image.length(), sent.length() + (sentBlank ? "(빈 그림)" : ""));
+                m.image == null ? 0 : m.image.length(), sent.length() + (sentBlank ? "(빈 그림)" : "") + (!sentOk && !sent.isEmpty() ? "(받지 않음: 종류 · 크기 · 길이 규칙 밖)" : ""));
         if (m.image == null) {
             m.peer.send("{\"t\":\"error\",\"message\":\"끄적이 그림을 불러오지 못했어요\"}");
             remove(m, false);

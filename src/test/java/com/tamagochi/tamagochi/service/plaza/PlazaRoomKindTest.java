@@ -148,8 +148,8 @@ class PlazaRoomKindTest {
     @Test
     void 삼디인데_64칸_그림이_없으면_앱이_보낸_그림을_쓴다() {
         FakePeer p = connectWith(extras(null, "ABCD2345"));
-        plaza.onMessage(p, "{\"t\":\"hello\",\"v\":3,\"image\":\"data:image/png;base64,APPIMG\"}");
-        assertThat(me(p).path("image").asText()).isEqualTo("data:image/png;base64,APPIMG");
+        plaza.onMessage(p, "{\"t\":\"hello\",\"v\":3,\"image\":\"" + PlazaServiceTest.PNG4 + "\"}");
+        assertThat(me(p).path("image").asText()).isEqualTo(PlazaServiceTest.PNG4);
     }
 
     @Test
