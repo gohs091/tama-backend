@@ -6,6 +6,8 @@ package com.tamagochi.tamagochi.service.push;
  * particle: 템플릿 문구에서 {petName} 바로 뒤에 붙는 조사. 받침에 맞춰 서버가 붙여 넣는다 (예: "냥냥이가", "용이", "냥냥이의")
  */
 public enum PushKind {
+    /** 곧 떠나요: 이대로 두면 한 시간 반 안에 떠난다. 쉬는 시간·하루 횟수와 상관없이 보낸다 */
+    DYING("dying", Particle.SUBJECT, Episode.UNTIL_RESOLVED),
     POOP("poop", Particle.SUBJECT, Episode.UNTIL_RESOLVED),
     HUNGRY("hungry", Particle.SUBJECT, Episode.UNTIL_RESOLVED),
     SICK("sick", Particle.POSSESSIVE, Episode.UNTIL_RESOLVED),

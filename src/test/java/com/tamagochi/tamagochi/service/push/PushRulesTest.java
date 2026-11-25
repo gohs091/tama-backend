@@ -12,7 +12,7 @@ class PushRulesTest {
     private static final LocalDateTime NOON = LocalDateTime.of(2026, 11, 13, 12, 0);
 
     private static PushRules.Pet pet(int satiation, int strength, int poop, int level, int evoLevel, boolean zone, boolean sleepy, LocalDateTime trained) {
-        return new PushRules.Pet(true, false, false, false, satiation, strength, poop, level, evoLevel, zone, sleepy, trained);
+        return new PushRules.Pet(true, false, false, false, satiation, strength, poop, level, evoLevel, zone, sleepy, trained, null);
     }
 
     private static PushRules.Pet fine() {
@@ -51,10 +51,10 @@ class PushRulesTest {
     @Test
     @DisplayName("자는 중·모험 중·알·떠난 끄적이는 보내지 않는다")
     void skipStates() {
-        assertThat(PushRules.applicable(new PushRules.Pet(true, false, true, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3)), NOON)).isEmpty();
-        assertThat(PushRules.applicable(new PushRules.Pet(true, false, false, true, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3)), NOON)).isEmpty();
-        assertThat(PushRules.applicable(new PushRules.Pet(true, true, false, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3)), NOON)).isEmpty();
-        assertThat(PushRules.applicable(new PushRules.Pet(false, false, false, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3)), NOON)).isEmpty();
+        assertThat(PushRules.applicable(new PushRules.Pet(true, false, true, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3), null), NOON)).isEmpty();
+        assertThat(PushRules.applicable(new PushRules.Pet(true, false, false, true, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3), null), NOON)).isEmpty();
+        assertThat(PushRules.applicable(new PushRules.Pet(true, true, false, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3), null), NOON)).isEmpty();
+        assertThat(PushRules.applicable(new PushRules.Pet(false, false, false, false, 0, 0, 12, 3, 6, false, false, NOON.minusDays(3), null), NOON)).isEmpty();
     }
 
     @Test
@@ -87,5 +87,27 @@ class PushRulesTest {
         assertThat(PushService.anonKey("local_x")).isNull();
         assertThat(PushService.anonKey("toss_")).isNull();
         assertThat(PushService.anonKey(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("떠나기까지 1시간 30분 이하면 곧 떠나요를 맨 앞에 놓는다. 자는 동안은 보내지 않는다")
+    void dyingFirst() {
+        PushRules.Pet dying = new PushRules.Pet(true, false, false, false, 0, 80, 0, 3, 6, false, false, NOON, java.time.Duration.ofMinutes(90));
+        assertThat(PushRules.applicable(dying, NOON)).containsExactly(PushKind.DYING, PushKind.HUNGRY);
+        PushRules.Pet notYet = new PushRules.Pet(true, false, false, false, 0, 80, 0, 3, 6, false, false, NOON, java.time.Duration.ofMinutes(91));
+        assertThat(PushRules.applicable(notYet, NOON)).containsExactly(PushKind.HUNGRY);
+        PushRules.Pet asleep = new PushRules.Pet(true, false, true, false, 0, 80, 0, 3, 6, false, false, NOON, java.time.Duration.ZERO);
+        assertThat(PushRules.applicable(asleep, NOON)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("곧 떠나요는 7시~자정에 보내고, 쉬는 시간·하루 횟수를 넘는다")
+    void dyingHours() {
+        assertThat(PushRules.allowedAt(PushKind.DYING, NOON.withHour(23))).isTrue();
+        assertThat(PushRules.allowedAt(PushKind.DYING, NOON.withHour(7))).isTrue();
+        assertThat(PushRules.allowedAt(PushKind.DYING, NOON.withHour(3))).isFalse();
+        assertThat(PushRules.allowedAt(PushKind.HUNGRY, NOON.withHour(23))).isFalse();
+        assertThat(PushRules.urgent(PushKind.DYING)).isTrue();
+        assertThat(PushRules.urgent(PushKind.HUNGRY)).isFalse();
     }
 }
