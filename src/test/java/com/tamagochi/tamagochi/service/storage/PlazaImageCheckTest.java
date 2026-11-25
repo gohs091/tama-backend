@@ -52,6 +52,11 @@ class PlazaImageCheckTest {
         for (int off : new int[]{16, 20}) {
             png[off] = 0; png[off + 1] = 0; png[off + 2] = 0x1F; png[off + 3] = 0x40;
         }
+        // IHDR 의 CRC 도 다시 맞춘다: 크기 규칙 때문에 거절되는 것을 보이려는 것이지 CRC 오류 때문이 아니다
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(png, 12, 17);
+        long c = crc.getValue();
+        for (int i = 0; i < 4; i++) png[29 + i] = (byte) (c >>> (24 - 8 * i));
         assertThat(PlazaImageCheck.accepts(url("image/png", png))).isFalse();
     }
 
@@ -86,5 +91,22 @@ class PlazaImageCheckTest {
         assertThat(PlazaImageCheck.accepts("")).isFalse();
         assertThat(PlazaImageCheck.accepts(null)).isFalse();
         assertThat(PlazaImageCheck.accepts("https://cdn.example/a.png")).isFalse();
+    }
+
+    @Test
+    void 선언한_종류와_내용의_형식이_다르면_받지_않는다() throws Exception {
+        for (String f : new String[]{"gif", "bmp", "tiff", "jpg"}) {
+            assertThat(PlazaImageCheck.accepts(url("image/png", encode(8, 8, f)))).as("png 라 하고 " + f).isFalse();
+        }
+        assertThat(PlazaImageCheck.accepts(url("image/jpeg", encode(8, 8, "png")))).isFalse();
+        assertThat(PlazaImageCheck.accepts(url("image/webp", encode(8, 8, "png")))).isFalse();
+    }
+
+    @Test
+    void webp는_이_JVM이_읽을_수_없으면_받지_않는다() throws Exception {
+        boolean canRead = java.util.Arrays.stream(ImageIO.getReaderFormatNames()).anyMatch(n -> n.equalsIgnoreCase("webp"));
+        org.junit.jupiter.api.Assumptions.assumeFalse(canRead, "webp 읽개가 있으면 건너뛴다");
+        assertThat(PlazaImageCheck.accepts(url("image/webp", encode(8, 8, "png")))).isFalse();
+        assertThat(PlazaImageCheck.accepts("data:image/webp;base64,UklGRg==")).isFalse();
     }
 }
