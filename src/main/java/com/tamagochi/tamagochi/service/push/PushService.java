@@ -29,6 +29,7 @@ import java.util.Map;
  * - 앱을 30분 안에 본 사람 (보고 있는 사람에게 알림은 소음이다)
  * - 밤(22시~8시), 마지막 알림에서 3시간 안, 오늘 이미 2번 보냈을 때 (곧 떠나요는 7시~자정이면 이 셋과 상관없이 보낸다)
  * - 같은 일로 이미 보냈을 때 (배고픔이면 밥을 먹어 풀릴 때까지, 진화면 단계마다 한 번)
+ * 곧 떠나요는 제 캠페인이 없다 ("곧 떠나요" 문구가 검수에서 거절됨): 떠나는 까닭에 맞는 알림의 문구를 빌려 보낸다 (templateOf)
  * push.enabled가 꺼져 있으면(기본) 아무것도 보내지 않는다. 콘솔 템플릿 검수가 끝난 뒤에 켠다.
  */
 @Service
@@ -85,11 +86,35 @@ public class PushService {
 
     /** 이 알림을 보낼 콘솔 발송 코드 */
     String codeOf(PushKind kind) {
+        String override = overrideOf(kind);
+        return override != null ? override : codePrefix + kind.code;
+    }
+
+    /** push.codes에 따로 적어 둔 발송 코드 (없으면 null) */
+    private String overrideOf(PushKind kind) {
         for (String pair : (codeOverrides == null ? "" : codeOverrides).split(",")) {
             String[] kv = pair.trim().split("=", 2);
             if (kv.length == 2 && kv[0].trim().equals(kind.code) && !kv[1].isBlank()) return kv[1].trim();
         }
-        return codePrefix + kind.code;
+        return null;
+    }
+
+    /**
+     * 이 알림을 어떤 캠페인의 문구로 보낼지. 곧 떠나요만 다르다: "곧 떠나요" 문구는 검수에서 거절돼 제 캠페인이 없으므로,
+     * 떠나는 까닭에 맞는 알림(굶주림 → 배고픔, 파워 → 아픔, 응가 → 응가)의 캠페인으로 보낸다.
+     * 그 알림이 꺼져 있으면(승인된 캠페인이 없으면) 보내지 않는다(null).
+     * 나중에 곧 떠나요 전용 캠페인이 승인되면 push.codes에 dying=코드 를 적는다. 그러면 그 캠페인으로 보낸다
+     */
+    PushKind templateOf(PushKind kind, Tamagotchi pet, LocalDateTime now) {
+        if (kind != PushKind.DYING || overrideOf(kind) != null) return kind;
+        Tamagotchi.LifeEnd end = vitals == null ? null : pet.lifeEnd(now, vitals);
+        if (end == null) return null;
+        PushKind as = switch (end.cause()) {
+            case STARVE -> PushKind.HUNGRY;
+            case EXHAUST -> PushKind.SICK;
+            case POOP -> PushKind.POOP;
+        };
+        return kindEnabled(as) ? as : null;
     }
 
     public PushService(TamagotchiRepository tamagotchiRepository, StringRedisTemplate redis, TossPartnerApiClient toss, VitalsRule vitals) {
@@ -148,13 +173,18 @@ public class PushService {
             if (!PushRules.urgent(kind) && (cooling || dailyFull)) continue;   // 곧 떠나요만 쉬는 시간·하루 횟수를 넘는다
             if (redis.opsForValue().get(episodeKey(pet, kind)) != null) continue;
             if (redis.opsForValue().get(failKey(pet, kind)) != null) continue;
-            String petName = inlineParticle.contains(kind.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), kind.particle);
-            if (!send(anonKey, kind, petName, pet)) {
+            PushKind as = templateOf(kind, pet, now);   // 곧 떠나요는 까닭에 맞는 알림의 문구로 보낸다
+            if (as == null) continue;
+            String petName = inlineParticle.contains(as.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), as.particle);
+            if (!send(anonKey, as, petName, pet)) {
                 // 못 보냈으면 보낸 것으로 치지 않는다: 같은 일·쉬는 시간·하루 횟수를 남기지 않고, 이 알림만 잠시 쉬었다가 다시 해 본다
                 redis.opsForValue().set(failKey(pet, kind), "1", PushRules.RETRY_AFTER_FAIL);
                 return false;
             }
             redis.opsForValue().set(episodeKey(pet, kind), "1", kind.episode == PushKind.Episode.ONCE_PER_STAGE ? Duration.ofDays(60) : Duration.ofDays(3));
+            // 남의 문구를 빌려 보냈으면 그 알림도 보낸 것으로 친다 (같은 문구가 곧바로 또 가지 않게)
+            if (as != kind) redis.opsForValue().set(episodeKey(pet, as), "1", Duration.ofDays(3));
+            if (as != kind) log.info("알림: 곧 떠나요를 {} 문구로 보냄 - pet={}", as.code, pet.getId());
             redis.opsForValue().set(cooldownKey(pet), "1", PushRules.COOLDOWN);
             redis.opsForValue().set(dayKey, String.valueOf(count + 1), Duration.ofHours(30));
             return true;

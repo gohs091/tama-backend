@@ -102,12 +102,12 @@ class PushServiceTest {
     }
 
     @Test
-    @DisplayName("곧 떠나요: 밤사이 떠날 끄적이는 늦은 밤에도 자기 전에 알린다 (배고픔 알림은 밤이라 안 간다)")
+    @DisplayName("곧 떠나요: 밤사이 떠날 끄적이는 늦은 밤에도 자기 전에 알린다 (평소 배고픔 알림은 밤이라 안 가지만, 떠나기 전에는 그 문구로 간다)")
     void dyingOvernightIsSentInTheEvening() {
         // 포만감 15 → 2시간 뒤 0, 그 뒤 6시간 → 23시 기준 아침 7시에 떠난다. 자정~7시에는 알릴 수 없다
         Tamagotchi p = pet(user(true), 15);
         assertThat(push.consider(p, NOON.withHour(23))).isTrue();
-        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-dying", "context", Map.of("petName", "냥냥이가"))), anyMap());
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "냥냥이가"))), anyMap());
         assertThat(push.consider(p, NOON.withHour(23).plusMinutes(5))).isFalse();     // 한 번만
     }
 
@@ -140,9 +140,57 @@ class PushServiceTest {
         Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
                 .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
         assertThat(push.consider(starving, NOON)).isTrue();
-        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-dying", "context", Map.of("petName", "냥냥이가"))), anyMap());
+        // "곧 떠나요" 문구는 검수에서 거절됐다: 굶어서 떠나는 것이니 배고픔 캠페인의 문구로 보낸다
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "냥냥이가"))), anyMap());
         assertThat(push.consider(starving, NOON.plusMinutes(5))).isFalse();   // 한 번만
         assertThat(push.consider(pet(u, 15), NOON.plusMinutes(10))).isFalse(); // 배고픔은 쉬는 시간·하루 횟수에 걸린다
+    }
+
+    @Test
+    @DisplayName("곧 떠나요를 배고픔 문구로 보냈으면, 쉬는 시간이 지나도 같은 배고픔 알림을 또 보내지 않는다")
+    void dyingCountsAsItsTemplate() {
+        User u = user(true);
+        Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
+        assertThat(push.consider(starving, NOON)).isTrue();
+        redis.delete("push:cool:7");
+        assertThat(push.consider(starving, NOON.plusMinutes(30))).isFalse();
+        verify(toss, times(1)).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요는 떠나는 까닭의 문구로 간다: 파워가 바닥이면 아픔, 응가가 가득 차 가면 응가")
+    void dyingUsesTheCauseTemplate() {
+        User u = user(true);
+        Tamagotchi exhausted = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(0).strengthEmptySince(NOON.minusHours(5)).build();
+        assertThat(push.consider(exhausted, NOON.withHour(23))).isTrue();   // 23시: 평소 알림은 안 가는 시각이라 곧 떠나요로만 간다
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-sick", "context", Map.of("petName", "냥냥이의"))), anyMap());
+
+        Tamagotchi poopy = Tamagotchi.builder().id(8L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(80).poopCount(12).lastPoopAt(NOON.withHour(23).minusMinutes(30)).build();
+        assertThat(push.consider(poopy, NOON.withHour(23))).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-poop", "context", Map.of("petName", "냥냥이가"))), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요: 까닭에 맞는 알림이 꺼져 있으면(승인된 캠페인이 없으면) 다른 문구로 보내지 않는다")
+    void dyingSkipsWhenCauseTemplateIsOff() {
+        ReflectionTestUtils.setField(push, "enabledKinds", "hungry,sick,dying");
+        Tamagotchi poopy = Tamagotchi.builder().id(7L).name("냥냥이").user(user(true)).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(80).poopCount(12).lastPoopAt(NOON.minusMinutes(30)).build();
+        assertThat(push.consider(poopy, NOON)).isFalse();
+        verify(toss, never()).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요 전용 캠페인이 생기면(push.codes에 dying=코드) 그 캠페인으로 보낸다")
+    void dyingUsesItsOwnCampaignWhenGiven() {
+        ReflectionTestUtils.setField(push, "codeOverrides", "hungry=doodle-app-hungry2,dying=doodle-app-care");
+        Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(user(true)).evolutionStage(EvolutionStage.BABY)
+                .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
+        assertThat(push.consider(starving, NOON)).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-care", "context", Map.of("petName", "냥냥이가"))), anyMap());
     }
 
     @Test

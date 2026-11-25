@@ -682,4 +682,18 @@ class TamagotchiVitalsTest {
         Tamagotchi starving = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(100).strength(80).hungryStartedAt(T0.minusHours(5)).build();
         assertThat(starving.lifeLeft(T0, PROD)).isEqualTo(Duration.ofHours(1));
     }
+
+    @Test
+    @DisplayName("lifeEnd: 떠나는 까닭은 가장 먼저 닥치는 것이다 (굶주림·파워·응가)")
+    void lifeEnd_cause() {
+        Tamagotchi starving = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(100).strength(80).hungryStartedAt(T0.minusHours(5)).build();
+        assertThat(starving.lifeEnd(T0, PROD).cause()).isEqualTo(Tamagotchi.LeaveCause.STARVE);
+        Tamagotchi exhausted = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(0).strengthEmptySince(T0.minusHours(5)).build();
+        assertThat(exhausted.lifeEnd(T0, PROD).cause()).isEqualTo(Tamagotchi.LeaveCause.EXHAUST);
+        Tamagotchi poopy = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).poopCount(12).lastPoopAt(T0.minusMinutes(30)).build();
+        assertThat(poopy.lifeEnd(T0, PROD)).isEqualTo(new Tamagotchi.LifeEnd(Duration.ofMinutes(30), Tamagotchi.LeaveCause.POOP));
+        // 밥도 주고 치운 뒤 그대로 두면 응가가 먼저 찬다: 13시간 (굶주림은 13시간 20분 + 6시간)
+        Tamagotchi fresh = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(0).strength(100).lastPoopAt(T0).build();
+        assertThat(fresh.lifeEnd(T0, PROD)).isEqualTo(new Tamagotchi.LifeEnd(Duration.ofHours(13), Tamagotchi.LeaveCause.POOP));
+    }
 }

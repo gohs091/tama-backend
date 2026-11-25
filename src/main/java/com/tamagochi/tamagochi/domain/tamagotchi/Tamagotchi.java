@@ -1012,6 +1012,19 @@ public class Tamagotchi {
      * 떠날 일이 없는 상태면 null: 완성작·알·이미 떠남, 그리고 시간이 멈춰 있는 동안(자는 중·잉크통·모험)
      */
     public Duration lifeLeft(LocalDateTime now, VitalsRule rule) {
+        LifeEnd end = lifeEnd(now, rule);
+        return end == null ? null : end.left();
+    }
+
+    /** 이대로 두면 떠나게 되는 까닭 */
+    public enum LeaveCause { STARVE, EXHAUST, POOP }
+
+    /** 떠나기까지 남은 시간과 그 까닭 */
+    public record LifeEnd(Duration left, LeaveCause cause) {
+    }
+
+    /** lifeLeft와 같되 까닭(가장 빨리 닥치는 것)까지 알려 준다. 알림을 까닭에 맞는 문구로 보낼 때 쓴다 */
+    public LifeEnd lifeEnd(LocalDateTime now, VitalsRule rule) {
         if (isDead() || this.evolutionStage == EvolutionStage.EGG || this.evolutionStage == EvolutionStage.ADULT) return null;
         if (this.sleeping || isBathing() || isAdventuring()) return null;
         Duration starve = this.hungryStartedAt != null
@@ -1025,9 +1038,10 @@ public class Tamagotchi {
                 ? Duration.between(now, this.lastPoopAt.plusMinutes(poopsLeft * rule.poopIntervalMinutes()))
                 : Duration.ofMinutes(poopsLeft * rule.poopIntervalMinutes());
         Duration left = starve;
-        if (exhaust.compareTo(left) < 0) left = exhaust;
-        if (poop.compareTo(left) < 0) left = poop;
-        return left.isNegative() ? Duration.ZERO : left;
+        LeaveCause cause = LeaveCause.STARVE;
+        if (exhaust.compareTo(left) < 0) { left = exhaust; cause = LeaveCause.EXHAUST; }
+        if (poop.compareTo(left) < 0) { left = poop; cause = LeaveCause.POOP; }
+        return new LifeEnd(left.isNegative() ? Duration.ZERO : left, cause);
     }
 
     /**
