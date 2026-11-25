@@ -143,6 +143,25 @@ class PointServiceIapTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
     @Test
+    @DisplayName("붉은 잉크를 쓰면 그만큼 줄고 내역이 남는다")
+    void usesRedInk() {
+        wallet.chargeRedInk(3);
+
+        service.useRedInk(user, 1, "hatch-abc");
+
+        assertThat(wallet.redInkBalance()).isEqualTo(2);
+        verify(transactionRepository, times(1)).save(any(PointTransaction.class));
+    }
+
+    @Test
+    @DisplayName("붉은 잉크가 모자라면 쓰지 못하고 내역도 남지 않는다")
+    void rejectsUseWithoutRedInk() {
+        assertThatThrownBy(() -> service.useRedInk(user, 1, "hatch-abc")).isInstanceOf(IllegalStateException.class);
+        assertThat(wallet.redInkBalance()).isZero();
+        verify(transactionRepository, never()).save(any(PointTransaction.class));
+    }
+
+    @Test
     @DisplayName("붉은 잉크로 검은 잉크를 바꾸면 붉은 잉크가 줄고 검은 잉크가 는다")
     void exchangesRedInkForInk() {
         wallet.chargeRedInk(33);
