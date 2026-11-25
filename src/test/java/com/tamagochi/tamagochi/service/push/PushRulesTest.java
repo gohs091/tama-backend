@@ -101,6 +101,29 @@ class PushRulesTest {
     }
 
     @Test
+    @DisplayName("저녁(21시~자정)에는 내일 아침 8시 전에 떠날 끄적이를 미리 알린다")
+    void dyingOvernight() {
+        LocalDateTime evening = NOON.withHour(21);              // 21:00
+        // 새벽 3시에 떠난다(6시간 남음): 자정~7시에는 못 보내니 지금 알린다
+        assertThat(PushRules.dying(java.time.Duration.ofHours(6), evening)).isTrue();
+        // 아침 7시 59분에 떠난다: 7시에 알려도 한 시간이 안 남으니 지금 알린다
+        assertThat(PushRules.dying(java.time.Duration.ofHours(10).plusMinutes(59), evening)).isTrue();
+        // 아침 8시에 떠난다: 7시 알림으로 한 시간이 남는다
+        assertThat(PushRules.dying(java.time.Duration.ofHours(11), evening)).isFalse();
+        // 같은 6시간이라도 낮에는 아직 알리지 않는다 (저녁 6시에 떠나니 떠나기 전에 알릴 수 있다)
+        assertThat(PushRules.dying(java.time.Duration.ofHours(6), NOON)).isFalse();
+        // 20시 59분에는 아직, 21시부터
+        assertThat(PushRules.dying(java.time.Duration.ofHours(6), NOON.withHour(20).withMinute(59))).isFalse();
+        // 한밤중(새벽 2시)에는 1시간 30분 규칙만 본다 (보내는 것은 allowedAt이 막는다)
+        assertThat(PushRules.dying(java.time.Duration.ofHours(3), NOON.withHour(2))).isFalse();
+        assertThat(PushRules.dying(null, evening)).isFalse();
+
+        PushRules.Pet pet = new PushRules.Pet(true, false, false, false, 50, 80, 0, 3, 6, false, false, evening, java.time.Duration.ofHours(6));
+        assertThat(PushRules.applicable(pet, evening)).containsExactly(PushKind.DYING);
+        assertThat(PushRules.allowedAt(PushKind.DYING, evening)).isTrue();
+    }
+
+    @Test
     @DisplayName("곧 떠나요는 7시~자정에 보내고, 쉬는 시간·하루 횟수를 넘는다")
     void dyingHours() {
         assertThat(PushRules.allowedAt(PushKind.DYING, NOON.withHour(23))).isTrue();

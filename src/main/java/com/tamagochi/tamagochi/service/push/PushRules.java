@@ -26,6 +26,12 @@ public final class PushRules {
     public static final int DAILY_MAX = 2;
     /** 이대로 두면 이 안에 떠나면 "곧 떠나요"를 보낸다 (5분마다 보니 늦어도 1시간 25분 전에는 간다) */
     public static final Duration DYING_WITHIN = Duration.ofMinutes(90);
+    /** 곧 떠나요를 보내기 시작하는 시각. 자정부터 이 시각까지는 깨우지 않는다 */
+    public static final int DYING_FROM_HOUR = 7;
+    /** 이 시각부터 자정까지는, 밤사이(아침 알림이 닿기 전)에 떠날 끄적이를 미리 알린다 */
+    public static final int OVERNIGHT_WARN_FROM_HOUR = 21;
+    /** 아침 첫 알림을 받고도 이만큼은 남아야 한다. 그보다 일찍 떠날 끄적이는 전날 저녁에 알린다 */
+    public static final Duration MORNING_MARGIN = Duration.ofHours(1);
     /** 보내기에 실패한 알림은 이만큼 쉬었다가 다시 해 본다 (설정이 틀렸을 때 5분마다 두드리지 않게) */
     public static final Duration RETRY_AFTER_FAIL = Duration.ofHours(1);
 
@@ -48,7 +54,7 @@ public final class PushRules {
         List<PushKind> out = new ArrayList<>();
         if (!p.alive() || p.egg() || p.adventuring()) return out;
         if (p.sleeping()) return out;   // 자는 동안은 깨우지 않는다 (자는 동안은 배고픔·응가도 천천히 온다)
-        if (p.lifeLeft() != null && p.lifeLeft().compareTo(DYING_WITHIN) <= 0) out.add(PushKind.DYING);
+        if (dying(p.lifeLeft(), now)) out.add(PushKind.DYING);
         if (p.poop() >= POOP_WARN) out.add(PushKind.POOP);
         if (p.satiation() <= HUNGRY_SATIATION) out.add(PushKind.HUNGRY);
         if (p.strength() <= SICK_STRENGTH) out.add(PushKind.SICK);
@@ -60,12 +66,25 @@ public final class PushRules {
     }
 
     /**
+     * 곧 떠나요에 해당하는지: 떠나기까지 1시간 30분 이하이거나, 저녁(21시~자정)인데 내일 아침 8시 전에 떠날 때.
+     * 자정~7시에는 알림을 보내지 않으니, 그 사이에 떠날 끄적이는 자기 전에 미리 알려야 한다
+     * (아침에 밥을 주고 하루를 보낸 끄적이는 새벽에 떠나서, 이 규칙이 없으면 알림 없이 떠난다)
+     */
+    static boolean dying(Duration lifeLeft, LocalDateTime now) {
+        if (lifeLeft == null) return false;
+        if (lifeLeft.compareTo(DYING_WITHIN) <= 0) return true;
+        if (now.getHour() < OVERNIGHT_WARN_FROM_HOUR) return false;
+        LocalDateTime morning = now.toLocalDate().plusDays(1).atTime(DYING_FROM_HOUR, 0);
+        return now.plus(lifeLeft).isBefore(morning.plus(MORNING_MARGIN));
+    }
+
+    /**
      * 이 시각에 이 알림을 보내도 되는지. 밤(22시~8시)에는 보내지 않는다. 졸림은 저녁(20~23시)에만 보낸다.
      * 곧 떠나요는 7시~자정에 보낸다 (늦은 밤에도 떠나기 전에 한 번은 알린다. 한밤중에 깨우지는 않는다)
      */
     public static boolean allowedAt(PushKind kind, LocalDateTime now) {
         int h = now.getHour();
-        if (kind == PushKind.DYING) return h >= 7;
+        if (kind == PushKind.DYING) return h >= DYING_FROM_HOUR;
         if (kind == PushKind.SLEEPY) return h >= 20 && h < 23;
         return h >= 8 && h < 22;
     }

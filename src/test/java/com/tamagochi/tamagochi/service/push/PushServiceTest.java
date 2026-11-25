@@ -96,8 +96,19 @@ class PushServiceTest {
         redis.delete("push:seen:1");
 
         assertThat(push.consider(pet(user(false), 15), NOON)).isFalse();
-        assertThat(push.consider(pet(user(true), 15), NOON.withHour(23))).isFalse();
+        assertThat(push.consider(pet(user(true), 15), NOON.withHour(3))).isFalse();   // 한밤중: 배고픔도 곧 떠나요도 보내지 않는다
+        assertThat(push.consider(pet(user(true), 60), NOON.withHour(23))).isFalse();  // 늦은 밤: 밤사이 떠날 일이 없으면 조용하다
         verify(toss, never()).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요: 밤사이 떠날 끄적이는 늦은 밤에도 자기 전에 알린다 (배고픔 알림은 밤이라 안 간다)")
+    void dyingOvernightIsSentInTheEvening() {
+        // 포만감 15 → 2시간 뒤 0, 그 뒤 6시간 → 23시 기준 아침 7시에 떠난다. 자정~7시에는 알릴 수 없다
+        Tamagotchi p = pet(user(true), 15);
+        assertThat(push.consider(p, NOON.withHour(23))).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-dying", "context", Map.of("petName", "냥냥이가"))), anyMap());
+        assertThat(push.consider(p, NOON.withHour(23).plusMinutes(5))).isFalse();     // 한 번만
     }
 
     @Test
