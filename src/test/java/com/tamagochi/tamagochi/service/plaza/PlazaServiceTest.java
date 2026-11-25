@@ -14,6 +14,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlazaServiceTest {
 
     private static final ObjectMapper OM = new ObjectMapper();
+    /** 진짜 4×4 PNG. 광장은 앱이 보낸 그림을 읽어 보고 받으므로 가짜 base64 를 쓰지 않는다 */
+    static final String PNG4 = pngDataUrl();
+
+    private static String pngDataUrl() {
+        try {
+            java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(4, 4, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) img.setRGB(x, y, 0xFF336699);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(img, "png", out);
+            return "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(out.toByteArray());
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
     private final AtomicLong now = new AtomicLong(1_000_000);
     private final PlazaService plaza = new PlazaService(now::get);
     private long seq = 0;
@@ -158,7 +172,7 @@ class PlazaServiceTest {
     void 그림이_없으면_앱이_보낸_작은_그림을_쓰고_그것도_없으면_들이지_않는다() {
         FakePeer p = new FakePeer("x1");
         plaza.connect(p, new PlazaService.Profile(900L, "닉", "끄적", 1, "BABY", null, "pub", null), null);
-        plaza.onMessage(p, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        plaza.onMessage(p, "{\"t\":\"hello\",\"image\":\"" + PNG4 + "\"}");
         assertThat(p.last("room").path("members").get(0).path("image").asText()).startsWith("data:image/png");
 
         FakePeer q = new FakePeer("x2");
@@ -362,8 +376,8 @@ class PlazaServiceTest {
     void 서버가_그림을_못_줄였으면_앱이_보낸_그림을_먼저_쓰고_없을_때만_원본_주소를_쓴다() {
         FakePeer a = new FakePeer("spare-a");
         plaza.connect(a, new PlazaService.Profile(901L, "닉901", "끄적", 3, "BABY", null, "pub901", null), null, "https://cdn.example/original.png");
-        plaza.onMessage(a, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
-        assertThat(a.last("room").path("members").get(0).path("image").asText()).isEqualTo("data:image/png;base64,AAAA");
+        plaza.onMessage(a, "{\"t\":\"hello\",\"image\":\"" + PNG4 + "\"}");
+        assertThat(a.last("room").path("members").get(0).path("image").asText()).isEqualTo(PNG4);
 
         FakePeer b = new FakePeer("spare-b");
         plaza.connect(b, new PlazaService.Profile(902L, "닉902", "끄적", 3, "BABY", null, "pub902", null), null, "https://cdn.example/original.png");
@@ -373,7 +387,7 @@ class PlazaServiceTest {
         // 서버가 줄인 그림이 있으면 앱이 무엇을 보내든 그것을 쓴다
         FakePeer c = new FakePeer("spare-c");
         plaza.connect(c, new PlazaService.Profile(903L, "닉903", "끄적", 3, "BABY", "data:image/png;base64,SERVER", "pub903", null), null, null);
-        plaza.onMessage(c, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        plaza.onMessage(c, "{\"t\":\"hello\",\"image\":\"" + PNG4 + "\"}");
         assertThat(c.last("room").path("members").get(2).path("image").asText()).isEqualTo("data:image/png;base64,SERVER");
     }
 
@@ -402,7 +416,7 @@ class PlazaServiceTest {
         FakePeer a = enter(null);
         FakePeer egg = new FakePeer("egg1");
         plaza.connect(egg, new PlazaService.Profile(950L, "새친구", "끄적이", 1, "EGG", null, "pubegg", null), null);
-        plaza.onMessage(egg, "{\"t\":\"hello\",\"image\":\"data:image/png;base64,AAAA\"}");
+        plaza.onMessage(egg, "{\"t\":\"hello\",\"image\":\"" + PNG4 + "\"}");
         assertThat(egg.last("room")).isNotNull();
         assertThat(a.last("enter").path("m").path("stage").asText()).isEqualTo("EGG");
 

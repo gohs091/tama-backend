@@ -8,6 +8,8 @@ import com.tamagochi.tamagochi.repository.user.UserRepository;
 import com.tamagochi.tamagochi.service.auth.AuthSettings;
 import com.tamagochi.tamagochi.service.auth.AuthTokenService;
 import com.tamagochi.tamagochi.service.battle.MeetBattleService.Peer;
+import com.tamagochi.tamagochi.service.plaza.HuntService;
+import com.tamagochi.tamagochi.service.plaza.PlazaModerationService;
 import com.tamagochi.tamagochi.service.plaza.PlazaService;
 import com.tamagochi.tamagochi.service.storage.PetImageUrls;
 import com.tamagochi.tamagochi.service.storage.PetThumbs;
@@ -23,6 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -35,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlazaSocketHandler extends TextWebSocketHandler {
 
     private final PlazaService plazaService;
+    private final PlazaModerationService moderationService;
     private final AuthSettings authSettings;
     private final AuthTokenService tokenService;
     private final UserRepository userRepository;
@@ -66,13 +70,29 @@ public class PlazaSocketHandler extends TextWebSocketHandler {
         // 이름표만 먼저 뜨고 그림은 한참 뒤에 뜨거나 안 뜬다.
         // 줄이지 못했으면(원본을 못 받았거나 빈 그림이면) 앱이 보내는 작은 그림을 쓰고, 그것도 없을 때만 원본 주소를 쓴다
         String imageKey = pet.getCurrentImageKey();
-        String image = petThumbs.of(imageKey).orElse(null);
+        PetThumbs.Both pics = petThumbs.both(imageKey);   // 원본은 한 번만 받는다
+        String image = pics.thumb();
+
+        // 3D 앱에 줄 64×64 그림과 신고 · 차단에 쓰는 유저 코드, 사냥을 할 수 있는지(못 하면 이유). 차단한 사람들과 말 못 하게 된 때
+        String huntWhy = HuntService.status(pet);
+        // 차단 · 말 못 함을 읽다 실패해도(2D 연결 포함) 입장은 막지 않는다: 빈 집합 · 0 으로 둔다
+        Set<String> blocked = Set.of();
+        long mutedUntil = 0;
+        try {
+            blocked = moderationService.blockedCodes(user.getId());
+            mutedUntil = moderationService.mutedUntil(user.getId());
+        } catch (Exception e) {
+            log.warn("광장 차단 · 말 못 함 읽기 실패 - user: {}", user.getId(), e);
+            blocked = Set.of();
+            mutedUntil = 0;
+        }
+        PlazaService.Extras extras = new PlazaService.Extras(pics.dot64(), user.getUserCode(), huntWhy == null, huntWhy, blocked, mutedUntil);
 
         peers.put(raw.getId(), peer);
         plazaService.connect(peer, new PlazaService.Profile(user.getId(), user.getNickname(), pet.getName(), pet.level(),
                 pet.getEvolutionStage().name(), image, pet.getPublicId(),
                 com.tamagochi.tamagochi.service.battle.BattleSkillService.current(pet).orElse(null)), params.getFirst("room"),
-                image == null ? PetImageUrls.of(imageKey) : null);
+                image == null ? PetImageUrls.of(imageKey) : null, extras);
         starterQuestService.markDone(user.getId(), com.tamagochi.tamagochi.domain.quest.StarterQuest.MEET); // 첫걸음 퀘스트 "친구 배틀 또는 광장"
     }
 
