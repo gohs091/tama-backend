@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tamagochi.tamagochi.config.LocalDevRedisConfig;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
+import com.tamagochi.tamagochi.domain.tamagotchi.VitalsRule;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.toss.TossPartnerApiClient;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -30,6 +32,8 @@ import static org.mockito.Mockito.when;
 class PushServiceTest {
 
     private static final LocalDateTime NOON = LocalDateTime.of(2026, 11, 13, 12, 0);
+    /** 운영 값 (application.yml tamagotchi.vitals) */
+    private static final VitalsRule RULE = new VitalsRule(8, 16, Duration.ofHours(6), 60, 13, Duration.ofMinutes(5));
 
     private StringRedisTemplate redis;
     private TossPartnerApiClient toss;
@@ -40,7 +44,7 @@ class PushServiceTest {
         redis = new LocalDevRedisConfig().stringRedisTemplate();
         toss = mock(TossPartnerApiClient.class);
         when(toss.post(any(), any(), anyMap())).thenReturn(new ObjectMapper().readTree("{\"resultType\":\"SUCCESS\"}"));
-        push = new PushService(mock(TamagotchiRepository.class), redis, toss);
+        push = new PushService(mock(TamagotchiRepository.class), redis, toss, RULE);
         ReflectionTestUtils.setField(push, "codePrefix", "doodle-app-");
         ReflectionTestUtils.setField(push, "inlineParticle", java.util.Set.of());
     }
@@ -92,8 +96,19 @@ class PushServiceTest {
         redis.delete("push:seen:1");
 
         assertThat(push.consider(pet(user(false), 15), NOON)).isFalse();
-        assertThat(push.consider(pet(user(true), 15), NOON.withHour(23))).isFalse();
+        assertThat(push.consider(pet(user(true), 15), NOON.withHour(3))).isFalse();   // 한밤중: 배고픔도 곧 떠나요도 보내지 않는다
+        assertThat(push.consider(pet(user(true), 60), NOON.withHour(23))).isFalse();  // 늦은 밤: 밤사이 떠날 일이 없으면 조용하다
         verify(toss, never()).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요: 밤사이 떠날 끄적이는 늦은 밤에도 자기 전에 알린다 (평소 배고픔 알림은 밤이라 안 가지만, 떠나기 전에는 그 문구로 간다)")
+    void dyingOvernightIsSentInTheEvening() {
+        // 포만감 15 → 2시간 뒤 0, 그 뒤 6시간 → 23시 기준 아침 7시에 떠난다. 자정~7시에는 알릴 수 없다
+        Tamagotchi p = pet(user(true), 15);
+        assertThat(push.consider(p, NOON.withHour(23))).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "냥냥이가"))), anyMap());
+        assertThat(push.consider(p, NOON.withHour(23).plusMinutes(5))).isFalse();     // 한 번만
     }
 
     @Test
@@ -114,6 +129,106 @@ class PushServiceTest {
         verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "용이"))), anyMap());
         assertThat(PushRules.calling("냥냥이")).isEqualTo("냥냥이");
         assertThat(PushRules.calling("Rex")).isEqualTo("Rex");
+    }
+
+    @Test
+    @DisplayName("곧 떠나요: 굶은 지 5시간(떠나기 1시간 전)이면 쉬는 시간·하루 횟수와 상관없이 보낸다")
+    void dyingIgnoresCooldownAndDailyMax() {
+        User u = user(true);
+        redis.opsForValue().set("push:cool:7", "1");
+        redis.opsForValue().set("push:day:7:" + NOON.toLocalDate(), "2");
+        Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
+        assertThat(push.consider(starving, NOON)).isTrue();
+        // "곧 떠나요" 문구는 검수에서 거절됐다: 굶어서 떠나는 것이니 배고픔 캠페인의 문구로 보낸다
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-hungry", "context", Map.of("petName", "냥냥이가"))), anyMap());
+        assertThat(push.consider(starving, NOON.plusMinutes(5))).isFalse();   // 한 번만
+        assertThat(push.consider(pet(u, 15), NOON.plusMinutes(10))).isFalse(); // 배고픔은 쉬는 시간·하루 횟수에 걸린다
+    }
+
+    @Test
+    @DisplayName("곧 떠나요를 배고픔 문구로 보냈으면, 쉬는 시간이 지나도 같은 배고픔 알림을 또 보내지 않는다")
+    void dyingCountsAsItsTemplate() {
+        User u = user(true);
+        Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
+        assertThat(push.consider(starving, NOON)).isTrue();
+        redis.delete("push:cool:7");
+        assertThat(push.consider(starving, NOON.plusMinutes(30))).isFalse();
+        verify(toss, times(1)).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요는 떠나는 까닭의 문구로 간다: 파워가 바닥이면 아픔, 응가가 가득 차 가면 응가")
+    void dyingUsesTheCauseTemplate() {
+        User u = user(true);
+        Tamagotchi exhausted = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(0).strengthEmptySince(NOON.minusHours(5)).build();
+        assertThat(push.consider(exhausted, NOON.withHour(23))).isTrue();   // 23시: 평소 알림은 안 가는 시각이라 곧 떠나요로만 간다
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-sick", "context", Map.of("petName", "냥냥이의"))), anyMap());
+
+        Tamagotchi poopy = Tamagotchi.builder().id(8L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(80).poopCount(12).lastPoopAt(NOON.withHour(23).minusMinutes(30)).build();
+        assertThat(push.consider(poopy, NOON.withHour(23))).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-poop", "context", Map.of("petName", "냥냥이가"))), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요: 까닭에 맞는 알림이 꺼져 있으면(승인된 캠페인이 없으면) 다른 문구로 보내지 않는다")
+    void dyingSkipsWhenCauseTemplateIsOff() {
+        ReflectionTestUtils.setField(push, "enabledKinds", "hungry,sick,dying");
+        Tamagotchi poopy = Tamagotchi.builder().id(7L).name("냥냥이").user(user(true)).evolutionStage(EvolutionStage.BABY)
+                .hunger(20).strength(80).poopCount(12).lastPoopAt(NOON.minusMinutes(30)).build();
+        assertThat(push.consider(poopy, NOON)).isFalse();
+        verify(toss, never()).post(any(), any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("곧 떠나요 전용 캠페인이 생기면(push.codes에 dying=코드) 그 캠페인으로 보낸다")
+    void dyingUsesItsOwnCampaignWhenGiven() {
+        ReflectionTestUtils.setField(push, "codeOverrides", "hungry=doodle-app-hungry2,dying=doodle-app-care");
+        Tamagotchi starving = Tamagotchi.builder().id(7L).name("냥냥이").user(user(true)).evolutionStage(EvolutionStage.BABY)
+                .hunger(100).strength(80).hungryStartedAt(NOON.minusHours(5)).build();
+        assertThat(push.consider(starving, NOON)).isTrue();
+        verify(toss).post(eq(PushService.SEND_PATH), eq(Map.of("templateSetCode", "doodle-app-care", "context", Map.of("petName", "냥냥이가"))), anyMap());
+    }
+
+    @Test
+    @DisplayName("하루에 두 번까지만 보낸다")
+    void dailyMaxTwo() {
+        User u = user(true);
+        assertThat(push.consider(pet(u, 15), NOON)).isTrue();
+        redis.delete("push:cool:7");
+        Tamagotchi sick = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY).hunger(85).strength(10).build();
+        assertThat(push.consider(sick, NOON.plusHours(1))).isTrue();
+        redis.delete("push:cool:7");
+        Tamagotchi poopy = Tamagotchi.builder().id(7L).name("냥냥이").user(u).evolutionStage(EvolutionStage.BABY).hunger(85).strength(10).poopCount(6).build();
+        assertThat(push.consider(poopy, NOON.plusHours(2))).isFalse();
+    }
+
+    @Test
+    @DisplayName("못 보낸 알림은 보낸 것으로 치지 않는다: 쉬는 시간·하루 횟수를 남기지 않고 한 시간 뒤 다시 해 본다")
+    void failureIsNotSent() throws Exception {
+        when(toss.post(any(), any(), anyMap())).thenReturn(new ObjectMapper().readTree("{\"resultType\":\"FAIL\"}"));
+        User u = user(true);
+        assertThat(push.consider(pet(u, 15), NOON)).isFalse();
+        assertThat(redis.opsForValue().get("push:cool:7")).isNull();
+        assertThat(redis.opsForValue().get("push:day:7:" + NOON.toLocalDate())).isNull();
+        assertThat(push.consider(pet(u, 15), NOON.plusMinutes(5))).isFalse();
+        verify(toss, times(1)).post(any(), any(), anyMap());              // 쉬는 동안은 두드리지 않는다
+
+        when(toss.post(any(), any(), anyMap())).thenReturn(new ObjectMapper().readTree("{\"resultType\":\"SUCCESS\"}"));
+        redis.delete("push:fail:7:hungry");                                // 한 시간이 지났다
+        assertThat(push.consider(pet(u, 15), NOON.plusHours(1))).isTrue();
+    }
+
+    @Test
+    @DisplayName("새 알로 다시 시작한 끄적이는 같은 단계에서도 진화 알림을 다시 받는다")
+    void evolutionAgainAfterRestart() {
+        Tamagotchi first = Tamagotchi.builder().id(7L).publicId("aaa").evolutionStage(EvolutionStage.BABY).build();
+        Tamagotchi reborn = Tamagotchi.builder().id(7L).publicId("bbb").evolutionStage(EvolutionStage.BABY).build();
+        assertThat(PushService.episodeKey(first, PushKind.EVO_READY)).isNotEqualTo(PushService.episodeKey(reborn, PushKind.EVO_READY));
+        assertThat(PushService.episodeKey(first, PushKind.HUNGRY)).isEqualTo(PushService.episodeKey(reborn, PushKind.HUNGRY)); // 상태 알림은 풀리면 지워진다
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage;
 import com.tamagochi.tamagochi.domain.tamagotchi.PetStatus;
 import com.tamagochi.tamagochi.domain.tamagotchi.Tamagotchi;
+import com.tamagochi.tamagochi.domain.tamagotchi.VitalsRule;
 import com.tamagochi.tamagochi.domain.user.User;
 import com.tamagochi.tamagochi.repository.tamagotchi.TamagotchiRepository;
 import com.tamagochi.tamagochi.service.toss.TossPartnerApiClient;
@@ -26,8 +27,9 @@ import java.util.Map;
  * 5분마다 끄적이 상태를 보고, 해당하는 알림이 있으면 하나만 보낸다. 보내지 않는 때:
  * - 알림에 동의하지 않은 사람
  * - 앱을 30분 안에 본 사람 (보고 있는 사람에게 알림은 소음이다)
- * - 밤(22시~8시), 마지막 알림에서 3시간 안, 오늘 이미 4번 보냈을 때
+ * - 밤(22시~8시), 마지막 알림에서 3시간 안, 오늘 이미 2번 보냈을 때 (곧 떠나요는 7시~자정이면 이 셋과 상관없이 보낸다)
  * - 같은 일로 이미 보냈을 때 (배고픔이면 밥을 먹어 풀릴 때까지, 진화면 단계마다 한 번)
+ * 곧 떠나요는 제 캠페인이 없다 ("곧 떠나요" 문구가 검수에서 거절됨): 떠나는 까닭에 맞는 알림의 문구를 빌려 보낸다 (templateOf)
  * push.enabled가 꺼져 있으면(기본) 아무것도 보내지 않는다. 콘솔 템플릿 검수가 끝난 뒤에 켠다.
  */
 @Service
@@ -40,6 +42,8 @@ public class PushService {
     private final TamagotchiRepository tamagotchiRepository;
     private final StringRedisTemplate redis;
     private final TossPartnerApiClient toss;
+    /** 생존 규칙: 떠나기까지 남은 시간을 셀 때 쓴다 */
+    private final VitalsRule vitals;
 
     @Value("${push.enabled:false}")
     private boolean enabled;
@@ -82,17 +86,42 @@ public class PushService {
 
     /** 이 알림을 보낼 콘솔 발송 코드 */
     String codeOf(PushKind kind) {
+        String override = overrideOf(kind);
+        return override != null ? override : codePrefix + kind.code;
+    }
+
+    /** push.codes에 따로 적어 둔 발송 코드 (없으면 null) */
+    private String overrideOf(PushKind kind) {
         for (String pair : (codeOverrides == null ? "" : codeOverrides).split(",")) {
             String[] kv = pair.trim().split("=", 2);
             if (kv.length == 2 && kv[0].trim().equals(kind.code) && !kv[1].isBlank()) return kv[1].trim();
         }
-        return codePrefix + kind.code;
+        return null;
     }
 
-    public PushService(TamagotchiRepository tamagotchiRepository, StringRedisTemplate redis, TossPartnerApiClient toss) {
+    /**
+     * 이 알림을 어떤 캠페인의 문구로 보낼지. 곧 떠나요만 다르다: "곧 떠나요" 문구는 검수에서 거절돼 제 캠페인이 없으므로,
+     * 떠나는 까닭에 맞는 알림(굶주림 → 배고픔, 파워 → 아픔, 응가 → 응가)의 캠페인으로 보낸다.
+     * 그 알림이 꺼져 있으면(승인된 캠페인이 없으면) 보내지 않는다(null).
+     * 나중에 곧 떠나요 전용 캠페인이 승인되면 push.codes에 dying=코드 를 적는다. 그러면 그 캠페인으로 보낸다
+     */
+    PushKind templateOf(PushKind kind, Tamagotchi pet, LocalDateTime now) {
+        if (kind != PushKind.DYING || overrideOf(kind) != null) return kind;
+        Tamagotchi.LifeEnd end = vitals == null ? null : pet.lifeEnd(now, vitals);
+        if (end == null) return null;
+        PushKind as = switch (end.cause()) {
+            case STARVE -> PushKind.HUNGRY;
+            case EXHAUST -> PushKind.SICK;
+            case POOP -> PushKind.POOP;
+        };
+        return kindEnabled(as) ? as : null;
+    }
+
+    public PushService(TamagotchiRepository tamagotchiRepository, StringRedisTemplate redis, TossPartnerApiClient toss, VitalsRule vitals) {
         this.tamagotchiRepository = tamagotchiRepository;
         this.redis = redis;
         this.toss = toss;
+        this.vitals = vitals;
     }
 
     /** 앱이 끄적이 상태를 읽어 갔다 = 지금 보고 있다 */
@@ -124,7 +153,7 @@ public class PushService {
     boolean consider(Tamagotchi pet, LocalDateTime now) {
         if (pet.isDead() || pet.getEvolutionStage() == EvolutionStage.EGG) return false;
         pet.markTrainingBaseline(now);
-        List<PushKind> due = PushRules.applicable(snapshot(pet, now), now);
+        List<PushKind> due = PushRules.applicable(snapshot(pet, now, vitals), now);
         // 풀린 일은 표시를 지운다 (다시 배고파지면 다시 알린다)
         for (PushKind k : PushKind.values()) {
             if (k.episode == PushKind.Episode.UNTIL_RESOLVED && !due.contains(k)) redis.delete(episodeKey(pet, k));
@@ -133,21 +162,32 @@ public class PushService {
         if (due.isEmpty() || user == null || !user.isPushAgreed()) return false;
         String anonKey = anonKey(user.getTossUserId());
         if (anonKey == null || seenRecently(user.getId(), now)) return false;
-        if (redis.opsForValue().get(cooldownKey(pet)) != null) return false;
+        boolean cooling = redis.opsForValue().get(cooldownKey(pet)) != null;
         String dayKey = dayKey(pet, now.toLocalDate());
         String countText = redis.opsForValue().get(dayKey);
-        if (countText != null && Integer.parseInt(countText) >= PushRules.DAILY_MAX) return false;
+        int count = countText == null ? 0 : Integer.parseInt(countText);
+        boolean dailyFull = count >= PushRules.DAILY_MAX;
 
         for (PushKind kind : due) {
             if (!kindEnabled(kind) || !PushRules.allowedAt(kind, now)) continue;
+            if (!PushRules.urgent(kind) && (cooling || dailyFull)) continue;   // 곧 떠나요만 쉬는 시간·하루 횟수를 넘는다
             if (redis.opsForValue().get(episodeKey(pet, kind)) != null) continue;
-            String petName = inlineParticle.contains(kind.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), kind.particle);
-            boolean ok = send(anonKey, kind, petName, pet);
-            // 실패해도 잠시 쉰다 (설정이 틀렸을 때 5분마다 두드리지 않게). 같은 일은 다시 보내지 않는다
+            if (redis.opsForValue().get(failKey(pet, kind)) != null) continue;
+            PushKind as = templateOf(kind, pet, now);   // 곧 떠나요는 까닭에 맞는 알림의 문구로 보낸다
+            if (as == null) continue;
+            String petName = inlineParticle.contains(as.code) ? PushRules.calling(pet.getName()) : PushRules.withParticle(pet.getName(), as.particle);
+            if (!send(anonKey, as, petName, pet)) {
+                // 못 보냈으면 보낸 것으로 치지 않는다: 같은 일·쉬는 시간·하루 횟수를 남기지 않고, 이 알림만 잠시 쉬었다가 다시 해 본다
+                redis.opsForValue().set(failKey(pet, kind), "1", PushRules.RETRY_AFTER_FAIL);
+                return false;
+            }
             redis.opsForValue().set(episodeKey(pet, kind), "1", kind.episode == PushKind.Episode.ONCE_PER_STAGE ? Duration.ofDays(60) : Duration.ofDays(3));
+            // 남의 문구를 빌려 보냈으면 그 알림도 보낸 것으로 친다 (같은 문구가 곧바로 또 가지 않게)
+            if (as != kind) redis.opsForValue().set(episodeKey(pet, as), "1", Duration.ofDays(3));
+            if (as != kind) log.info("알림: 곧 떠나요를 {} 문구로 보냄 - pet={}", as.code, pet.getId());
             redis.opsForValue().set(cooldownKey(pet), "1", PushRules.COOLDOWN);
-            redis.opsForValue().set(dayKey, String.valueOf(countText == null ? 1 : Integer.parseInt(countText) + 1), Duration.ofHours(30));
-            return ok;
+            redis.opsForValue().set(dayKey, String.valueOf(count + 1), Duration.ofHours(30));
+            return true;
         }
         return false;
     }
@@ -166,10 +206,10 @@ public class PushService {
         }
     }
 
-    static PushRules.Pet snapshot(Tamagotchi p, LocalDateTime now) {
+    static PushRules.Pet snapshot(Tamagotchi p, LocalDateTime now, VitalsRule vitals) {
         return new PushRules.Pet(!p.isDead(), p.getEvolutionStage() == EvolutionStage.EGG, p.isSleeping(), p.isAdventuring(),
                 100 - p.getHunger(), p.getStrength(), p.getPoopCount(), p.level(), p.evolutionLevel(), p.isInEvolutionZone(),
-                p.isSleepy(now), p.getLastTrainedAt());
+                p.isSleepy(now), p.getLastTrainedAt(), vitals == null ? null : p.lifeLeft(now, vitals));
     }
 
     /** 토스 로그인 사용자 ID("toss_" + 익명 키)에서 익명 키를 꺼낸다. 로컬 개발 ID 등은 null */
@@ -187,7 +227,13 @@ public class PushService {
     private static String seenKey(Long userId) { return "push:seen:" + userId; }
     private static String cooldownKey(Tamagotchi p) { return "push:cool:" + p.getId(); }
     private static String dayKey(Tamagotchi p, LocalDate d) { return "push:day:" + p.getId() + ":" + d; }
-    private static String episodeKey(Tamagotchi p, PushKind k) {
-        return "push:ep:" + p.getId() + ":" + k.code + (k.episode == PushKind.Episode.ONCE_PER_STAGE ? ":" + p.getEvolutionStage() : "");
+    private static String failKey(Tamagotchi p, PushKind k) { return "push:fail:" + p.getId() + ":" + k.code; }
+    /**
+     * 단계마다 한 번인 알림(진화)은 끄적이(publicId)까지 넣는다: 새 알로 다시 시작하면 행 ID는 그대로지만 새 끄적이라
+     * 같은 단계에서 다시 알려야 한다
+     */
+    static String episodeKey(Tamagotchi p, PushKind k) {
+        return "push:ep:" + p.getId() + ":" + k.code
+                + (k.episode == PushKind.Episode.ONCE_PER_STAGE ? ":" + p.getPublicId() + ":" + p.getEvolutionStage() : "");
     }
 }

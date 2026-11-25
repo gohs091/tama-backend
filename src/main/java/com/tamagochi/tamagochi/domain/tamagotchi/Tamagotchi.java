@@ -1029,6 +1029,43 @@ public class Tamagotchi {
     }
 
     /**
+     * 이대로 두면 떠나기까지 남은 시간 (굶주림·파워 0·응가 중 가장 빠른 것). checkDeath와 같은 규칙으로 센다.
+     * 떠날 일이 없는 상태면 null: 완성작·알·이미 떠남, 그리고 시간이 멈춰 있는 동안(자는 중·잉크통·모험)
+     */
+    public Duration lifeLeft(LocalDateTime now, VitalsRule rule) {
+        LifeEnd end = lifeEnd(now, rule);
+        return end == null ? null : end.left();
+    }
+
+    /** 이대로 두면 떠나게 되는 까닭 */
+    public enum LeaveCause { STARVE, EXHAUST, POOP }
+
+    /** 떠나기까지 남은 시간과 그 까닭 */
+    public record LifeEnd(Duration left, LeaveCause cause) {
+    }
+
+    /** lifeLeft와 같되 까닭(가장 빨리 닥치는 것)까지 알려 준다. 알림을 까닭에 맞는 문구로 보낼 때 쓴다 */
+    public LifeEnd lifeEnd(LocalDateTime now, VitalsRule rule) {
+        if (isDead() || this.evolutionStage == EvolutionStage.EGG || this.evolutionStage == EvolutionStage.ADULT) return null;
+        if (this.sleeping || isBathing() || isAdventuring()) return null;
+        Duration starve = this.hungryStartedAt != null
+                ? Duration.between(now, this.hungryStartedAt.plus(rule.deathAfterEmpty()))
+                : Duration.ofMinutes((long) Math.max(0, 100 - this.hunger) * rule.satietyMinutesPerPoint()).plus(rule.deathAfterEmpty());
+        Duration exhaust = this.strengthEmptySince != null
+                ? Duration.between(now, this.strengthEmptySince.plus(rule.deathAfterEmpty()))
+                : Duration.ofMinutes((long) Math.max(0, this.strength) * rule.strengthMinutesPerPoint()).plus(rule.deathAfterEmpty());
+        long poopsLeft = Math.max(0, rule.maxPoop() - this.poopCount);
+        Duration poop = this.lastPoopAt != null
+                ? Duration.between(now, this.lastPoopAt.plusMinutes(poopsLeft * rule.poopIntervalMinutes()))
+                : Duration.ofMinutes(poopsLeft * rule.poopIntervalMinutes());
+        Duration left = starve;
+        LeaveCause cause = LeaveCause.STARVE;
+        if (exhaust.compareTo(left) < 0) { left = exhaust; cause = LeaveCause.EXHAUST; }
+        if (poop.compareTo(left) < 0) { left = poop; cause = LeaveCause.POOP; }
+        return new LifeEnd(left.isNegative() ? Duration.ZERO : left, cause);
+    }
+
+    /**
      * 완성작 전(낙서·스케치)에만 떠난다. 완성작(ADULT)은 판정하지 않는다:
      * 진화하기 전부터 굶주림·파워 0 타이머가 돌고 있었어도 완성작이 된 뒤에는 무시한다.
      */

@@ -658,4 +658,42 @@ class TamagotchiVitalsTest {
         assertThat(p.getHunger()).isEqualTo(60);
         assertThat(p.getPoopCount()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("lifeLeft: 1분씩 시간을 흘려 보면 남은 시간이 다 되는 순간 떠난다 (굶주림·파워·응가 중 가장 빠른 것)")
+    void lifeLeft_matchesActualDeath() {
+        for (int[] hs : new int[][]{{50, 80}, {95, 3}, {20, 90}}) {
+            Tamagotchi p = baby(hs[0], hs[1]);
+            p.applyTime(T0, PROD);
+            long left = p.lifeLeft(T0, PROD).toMinutes();
+            long m = 0;
+            while (!p.isDead() && m < 3000) { m++; p.applyTime(after(m), PROD); }
+            assertThat(p.isDead()).isTrue();
+            assertThat(m).as("hunger=%d strength=%d", hs[0], hs[1]).isBetween(left - 1, left + 1);
+        }
+    }
+
+    @Test
+    @DisplayName("lifeLeft: 완성작·알·자는 중은 떠날 일이 없다(null)")
+    void lifeLeft_nullWhenCannotDie() {
+        assertThat(adult(100, 0).lifeLeft(T0, PROD)).isNull();
+        assertThat(Tamagotchi.builder().evolutionStage(EvolutionStage.EGG).hunger(100).build().lifeLeft(T0, PROD)).isNull();
+        assertThat(Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(100).sleeping(true).build().lifeLeft(T0, PROD)).isNull();
+        Tamagotchi starving = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(100).strength(80).hungryStartedAt(T0.minusHours(5)).build();
+        assertThat(starving.lifeLeft(T0, PROD)).isEqualTo(Duration.ofHours(1));
+    }
+
+    @Test
+    @DisplayName("lifeEnd: 떠나는 까닭은 가장 먼저 닥치는 것이다 (굶주림·파워·응가)")
+    void lifeEnd_cause() {
+        Tamagotchi starving = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(100).strength(80).hungryStartedAt(T0.minusHours(5)).build();
+        assertThat(starving.lifeEnd(T0, PROD).cause()).isEqualTo(Tamagotchi.LeaveCause.STARVE);
+        Tamagotchi exhausted = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(0).strengthEmptySince(T0.minusHours(5)).build();
+        assertThat(exhausted.lifeEnd(T0, PROD).cause()).isEqualTo(Tamagotchi.LeaveCause.EXHAUST);
+        Tamagotchi poopy = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(20).strength(80).poopCount(12).lastPoopAt(T0.minusMinutes(30)).build();
+        assertThat(poopy.lifeEnd(T0, PROD)).isEqualTo(new Tamagotchi.LifeEnd(Duration.ofMinutes(30), Tamagotchi.LeaveCause.POOP));
+        // 밥도 주고 치운 뒤 그대로 두면 응가가 먼저 찬다: 13시간 (굶주림은 13시간 20분 + 6시간)
+        Tamagotchi fresh = Tamagotchi.builder().evolutionStage(EvolutionStage.BABY).hunger(0).strength(100).lastPoopAt(T0).build();
+        assertThat(fresh.lifeEnd(T0, PROD)).isEqualTo(new Tamagotchi.LifeEnd(Duration.ofHours(13), Tamagotchi.LeaveCause.POOP));
+    }
 }
