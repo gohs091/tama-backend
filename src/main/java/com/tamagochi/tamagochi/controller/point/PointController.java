@@ -1,6 +1,7 @@
 package com.tamagochi.tamagochi.controller.point;
 
 import com.tamagochi.tamagochi.controller.dto.EarnPointRequest;
+import com.tamagochi.tamagochi.controller.dto.ExchangeInkRequest;
 import com.tamagochi.tamagochi.controller.dto.InkBathRequest;
 import com.tamagochi.tamagochi.controller.dto.PointBalanceResponse;
 import com.tamagochi.tamagochi.controller.dto.PointTransactionResponse;
@@ -55,8 +56,18 @@ public class PointController {
     public ResponseEntity<?> purchase(@RequestBody PurchasePointRequest request) {
         User user = userIdentity.resolve(request.getTossUserId());
 
-        PointTransaction transaction = pointService.purchasePoint(user, request.getOrderId(), request.getSku());
+        PointTransaction transaction = pointService.purchasePoint(
+                user, request.getOrderId(), request.getSku(), Boolean.TRUE.equals(request.getRedInk()));
         return ResponseEntity.ok(PointTransactionResponse.from(transaction));
+    }
+
+    /** 붉은 잉크로 검은 잉크를 바꾼다. 바꾼 뒤의 두 잔액을 돌려준다 */
+    @PostMapping("/exchange")
+    public ResponseEntity<?> exchange(@RequestBody ExchangeInkRequest request) {
+        User user = userIdentity.resolve(request.getTossUserId());
+
+        PointWallet wallet = pointService.exchangeInk(user, request.getPackId(), request.getRequestId());
+        return ResponseEntity.ok(PointBalanceResponse.from(wallet));
     }
 
     @GetMapping("/balance/{tossUserId}")
