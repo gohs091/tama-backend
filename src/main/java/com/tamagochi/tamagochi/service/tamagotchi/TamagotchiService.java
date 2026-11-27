@@ -38,6 +38,7 @@ public class TamagotchiService {
     private final com.tamagochi.tamagochi.service.farm.FarmService farmService; // 농장 오늘의 퀘스트에 먹이기·트레이닝을 센다
     private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard; // 탑 원정 중에는 집에서 포만감을 채울 수 없다
     private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService; // 첫걸음 퀘스트: 처음 해 본 것을 적는다
+    private final com.tamagochi.tamagochi.service.usage.UsageRecorder usageRecorder; // 사용자 수치용 기록: 부화 · 진화 · 다시 시작
 
     /**
      * 한 판만큼 회복: 고기·알약을 각각 최대 4개(+12)까지 한꺼번에 먹이고, 실제로 먹인 만큼만 잉크를 받는다(최대 40).
@@ -108,6 +109,7 @@ public class TamagotchiService {
             pointService.useRedInk(user, Tamagotchi.HATCH_RED_INK, "hatch-" + tamagotchi.getPublicId());
         }
         tamagotchi.hatch(); // 알 두드리기는 클라이언트 연출. 서버는 낙서로 올린다
+        usageRecorder.petEvent(user.getId(), tamagotchi.getPublicId(), com.tamagochi.tamagochi.domain.usage.PetEventType.HATCH, tamagotchi.getEvolutionStage(), null);
         log.info("부화 - tamagotchi: {}", tamagotchi.getName());
     }
 
@@ -118,6 +120,7 @@ public class TamagotchiService {
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
         EvolutionStage from = tamagotchi.getEvolutionStage();
         tamagotchi.evolveIfReady();
+        usageRecorder.stageChanged(user.getId(), tamagotchi, from);
         log.info("진화! {} -> {}", from, tamagotchi.getEvolutionStage());
         return tamagotchi;
     }
@@ -134,7 +137,10 @@ public class TamagotchiService {
         if (existing == null) {
             return create(user, "끄적이", null);
         }
+        String oldPublicId = existing.getPublicId();   // 다시 시작하면 새 ID 를 받는다. 기록에는 그만둔 끄적이를 남긴다
+        EvolutionStage oldStage = existing.getEvolutionStage();
         existing.reset();
+        usageRecorder.petEvent(user.getId(), oldPublicId, com.tamagochi.tamagochi.domain.usage.PetEventType.RESTART, oldStage, null);
         return existing;
     }
 
@@ -178,7 +184,9 @@ public class TamagotchiService {
             case ADULT -> throw new IllegalStateException("이미 완성작입니다.");
         };
 
+        EvolutionStage from = tamagotchi.getEvolutionStage();
         tamagotchi.evolve(next);
+        usageRecorder.stageChanged(user.getId(), tamagotchi, from);
         log.info("[TEST] 강제 진화: {} -> {}", tamagotchi.getEvolutionStage(), next);
         return tamagotchi;
     }
@@ -274,6 +282,7 @@ public class TamagotchiService {
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
 
         requireTrainable(tamagotchi);
+        EvolutionStage stageBefore = tamagotchi.getEvolutionStage();
         // 서버가 발급한 세션으로, 시작 후 10초가 지난 뒤에만 한 번 제출할 수 있다
         TrainingSession session = trainingSessionService.consume(user, sessionId);
 
@@ -312,6 +321,7 @@ public class TamagotchiService {
         int mightBefore = tamagotchi.might();
         Tamagotchi.TrainingGain gain = tamagotchi.train(taps, win);
         if (painter) tamagotchi.claimExp(); // 화가 회원: 광고 없이 경험치 2배 (광고로 받던 몫을 바로 받는다)
+        usageRecorder.stageChanged(user.getId(), tamagotchi, stageBefore); // 구간 끝을 넘겨 저절로 진화했으면 사건 기록에 남긴다
 
         // 완성작의 트레이닝 결과는 프로모션 대상 여부를 판정한다 (꺼져 있으면 null)
         PromotionOutcome promotion = tamagotchi.getEvolutionStage() == EvolutionStage.ADULT
@@ -351,7 +361,9 @@ public class TamagotchiService {
     public Tamagotchi devLevelUp(User user) {
         Tamagotchi tamagotchi = tamagotchiRepository.findActiveByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("다마고치가 존재하지 않습니다."));
+        EvolutionStage stageBefore = tamagotchi.getEvolutionStage();
         tamagotchi.addExp(tamagotchi.expToNext() - tamagotchi.exp());
+        usageRecorder.stageChanged(user.getId(), tamagotchi, stageBefore);
         log.info("[TEST] 레벨 업: Lv.{}", tamagotchi.level());
         return tamagotchi;
     }

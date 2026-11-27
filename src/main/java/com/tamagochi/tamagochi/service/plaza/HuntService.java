@@ -39,6 +39,7 @@ public class HuntService {
     private final SparDropService sparDropService;
     private final FarmService farmService;
     private final PainterMembershipService membershipService;
+    private final com.tamagochi.tamagochi.service.usage.UsageRecorder usageRecorder;
 
     /** 사냥할 수 있으면 null, 아니면 이유(dead/away/asleep/egg/hungry/weak). 조건은 스파링과 같다(TrainBlock) */
     public static String status(Tamagotchi t) {
@@ -62,11 +63,13 @@ public class HuntService {
 
         boolean painter = membershipService.isPainter(userId);
         int levelBefore = t.level();
+        com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage stageBefore = t.getEvolutionStage();
         int exp = t.hunt();
         if (painter) {   // 화가 회원: 경험치 2배
             t.addExp(exp);
             exp *= 2;
         }
+        usageRecorder.stageChanged(userId, t, stageBefore);   // 사냥 경험치로 구간 끝을 넘겨 저절로 진화했으면 사건 기록에 남긴다
         int ink = painter ? INK_PER_KILL * 2 : INK_PER_KILL;
         pointService.earnPoint(user, ink, "hunt-" + userId + "-" + UUID.randomUUID());   // 마리마다 다른 키
         if (questTick) farmService.progress(user, FarmCatalog.Quest.TRAIN, 1);

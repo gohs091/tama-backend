@@ -30,7 +30,7 @@ class TamagotchiServiceResetTest {
     void setUp() {
         repository = mock(TamagotchiRepository.class);
         pointService = mock(PointService.class);
-        service = new TamagotchiService(repository, pointService, mock(TrainingSessionService.class), mock(com.tamagochi.tamagochi.service.spar.SparDropService.class), mock(PromotionService.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class), mock(com.tamagochi.tamagochi.service.farm.FarmService.class), mock(com.tamagochi.tamagochi.service.tower.ExpeditionGuard.class), mock(com.tamagochi.tamagochi.service.quest.StarterQuestService.class));
+        service = new TamagotchiService(repository, pointService, mock(TrainingSessionService.class), mock(com.tamagochi.tamagochi.service.spar.SparDropService.class), mock(PromotionService.class), mock(com.tamagochi.tamagochi.service.membership.PainterMembershipService.class), mock(com.tamagochi.tamagochi.service.farm.FarmService.class), mock(com.tamagochi.tamagochi.service.tower.ExpeditionGuard.class), mock(com.tamagochi.tamagochi.service.quest.StarterQuestService.class), mock(com.tamagochi.tamagochi.service.usage.UsageRecorder.class));
         user = mock(User.class);
         when(user.getId()).thenReturn(1L);
     }
