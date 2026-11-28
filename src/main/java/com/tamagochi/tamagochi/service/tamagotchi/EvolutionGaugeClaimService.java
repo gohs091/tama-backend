@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class EvolutionGaugeClaimService {
 
     private final TamagotchiRepository tamagotchiRepository;
+    private final com.tamagochi.tamagochi.service.usage.UsageRecorder usageRecorder;
 
     @Transactional
     public Tamagotchi claim(User user) {
@@ -32,7 +33,9 @@ public class EvolutionGaugeClaimService {
         if (pending <= 0) {
             throw new IllegalStateException("받을 경험치가 없어요.");
         }
+        com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage stageBefore = tamagotchi.getEvolutionStage();
         int levelsUp = tamagotchi.claimExp();
+        usageRecorder.stageChanged(user.getId(), tamagotchi, stageBefore); // 구간 끝을 넘겨 저절로 진화했으면 사건 기록에 남긴다
         log.info("경험치 받기 - userId: {}, exp: +{}, levelUp: {}, level: {}", user.getId(), pending, levelsUp, tamagotchi.level());
         return tamagotchi;
     }

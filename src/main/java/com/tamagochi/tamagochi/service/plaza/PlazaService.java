@@ -53,6 +53,7 @@ import java.util.function.LongSupplier;
  * 채팅(3D 방): 글은 ChatRules 로 다듬고 금칙어를 거른다. 간격 1.5초 · 10초에 5번. 차단 목록은 유저 코드(u)로 주고받고 저장은 Moderation 이 잠금 밖에서 한다.
  *   차단한 사람의 chat 과 나에게 하는 emote 는 받지 않는다. 신고는 10초에 한 번, 신고당한 사람의 최근 열 줄이 함께 간다.
  * 몬스터(3D 방): 서버가 정한다. 방 사람 모두가 같은 몬스터를 보고, 죽이면 때린 사람 모두가 한 마리 몫을 받는다 (PlazaMobs, 지급은 Hunts).
+ * 방문 기록: 방에 들어왔다 나간 사람마다 한 줄 (머문 시간 · 잡은 마릿수 · 말한 횟수). 저장은 Visits 가 잠금 밖에서 한다.
  * 다녀간 끄적이(ghost): 방을 나간 사람의 기록. 시간 제한 없이 최근 RECENT_MAX명을 서버가 켜져 있는 동안 기억한다.
  *   지금 광장에 접속해 있는 사람의 기록은 보내지 않고, 그 사람이 방에 들어오면 enter의 gone으로 알려 화면에 남은 기록을 지우게 한다.
  * 기술(skill): 자기 끄적이의 배틀 기술을 광장에서 보여 준다. 바라보는 쪽(d: 1 오른쪽, -1 왼쪽)으로 곧게 나가고, 그 길에서 벗어나면 피한다.
@@ -163,6 +164,8 @@ public class PlazaService {
         boolean huntOk;     // 사냥할 수 있는 상태 (지급 결과가 못 한다고 하면 꺼진다)
         String huntWhy;
         int kills;          // 이 연결에서 잡은 마릿수 (열 마리마다 퀘스트를 센다)
+        int chats;          // 이 연결에서 방에 나간 말의 수 (방문 기록용. 내용은 남기지 않는다)
+        long enteredAt;     // 방에 들어온 때 (epoch ms). 방문 기록용
         boolean sleeping;   // 광장에서 자는 중 (걷거나 기술을 쓰거나 맞으면 깬다)
         Set<String> castHits;   // 마지막으로 쏜 기술에 이미 맞은 끄적이 (같은 기술에 두 번 맞지 않는다). 쏜 적이 없으면 null
         String castTo;          // 예전 앱이 겨눈 상대 (예전 앱은 다녀간 끄적이를 맞혔을 때 id 없이 알린다)
@@ -249,6 +252,19 @@ public class PlazaService {
         void block(long userId, String targetCode, boolean on);
         void report(long reporterId, String targetCode, String why, List<String> lines, String roomKey);
     }
+
+    /**
+     * 방문 한 번을 남기는 쪽 (사용자 수치용). 방에 들어왔던 사람이 나갈 때 불린다. 한 마리도 안 잡았어도 불린다.
+     * 광장의 잠금 안에서 불리므로 DB 일은 다른 실행기에 넘기고 바로 돌아온다. kind: 2d | 3d, 시각은 epoch ms
+     */
+    public interface Visits {
+        void left(long userId, String kind, long enteredAt, long leftAt, int kills, int chats);
+    }
+
+    private Visits visits = (userId, kind, enteredAt, leftAt, kills, chats) -> { /* 저장은 setVisits 로 붙인다 */ };
+
+    /** 방문 기록을 남기는 쪽을 붙인다 (기본은 아무것도 안 한다) */
+    public synchronized void setVisits(Visits v) { this.visits = v; }
 
     /** 몬스터를 잡았을 때 주는 쪽을 붙인다 (기본은 아무것도 안 한다) */
     public synchronized void setHunts(Hunts h) { this.hunts = h; }
@@ -364,6 +380,7 @@ public class PlazaService {
         enter.set("m", json(m));
         broadcast(room, enter, null);
         room.members.put(m.id, m);
+        m.enteredAt = clock.getAsLong();
 
         ObjectNode out = event("room");
         out.put("no", room.no).put("key", room.key).put("cap", CAP).put("me", m.id);
@@ -628,6 +645,7 @@ public class PlazaService {
         m.chatTimes.addLast(now);   // 금칙어로 막힌 말도 센다 (걸러지는 말을 계속 시험해 보는 것을 막는다)
         if (ChatRules.banned(text)) { chatNo(m, "word"); return; }
         m.sleeping = false;   // 말하면 깬다
+        m.chats++;
         m.lines.addLast(text);
         while (m.lines.size() > REPORT_LINES) m.lines.pollFirst();
         ObjectNode out = event("chat").put("id", m.id);
@@ -732,6 +750,11 @@ public class PlazaService {
             // 밀어내는 중에 나가면 탈락한 것으로 친다
             Match match = fighting(room);
             if (match != null && match.alive.remove(m.id)) { match.lastOut = m.id; settle(room, match); }
+            try {
+                visits.left(m.profile.userId(), room.kind, m.enteredAt, clock.getAsLong(), m.kills, m.chats);
+            } catch (RuntimeException e) {
+                log.warn("광장 방문 기록을 넣지 못함 - user: {}", m.profile.userId(), e);
+            }
         }
         if (seats(room) == 0) rooms.remove(room.key);
     }

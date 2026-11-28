@@ -17,7 +17,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class RedrawServiceCandidateTest {
 
     private final TamagotchiRepository repository = mock(TamagotchiRepository.class);
-    private final RedrawService service = new RedrawService(repository, Clock.systemUTC(), mock(ExpeditionGuard.class));
+    private final RedrawService service = new RedrawService(repository, Clock.systemUTC(), mock(ExpeditionGuard.class), mock(com.tamagochi.tamagochi.service.usage.UsageRecorder.class));
     private final User user = mock(User.class);
 
     @Test

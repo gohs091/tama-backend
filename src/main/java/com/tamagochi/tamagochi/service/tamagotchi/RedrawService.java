@@ -18,6 +18,7 @@ public class RedrawService {
     private final TamagotchiRepository tamagotchiRepository;
     private final Clock clock;
     private final com.tamagochi.tamagochi.service.tower.ExpeditionGuard expeditionGuard;
+    private final com.tamagochi.tamagochi.service.usage.UsageRecorder usageRecorder;
 
     public record Status(int left, int max) {}
 
@@ -31,7 +32,10 @@ public class RedrawService {
         Tamagotchi pet = pet(user);
         expeditionGuard.requireHomeToRestart(user, pet.isDead()); // 탑 원정 중에는 다시 그릴 수 없다 (횟수를 쓰기 전에 확인)
         LocalDate today = LocalDate.now(clock);
+        String oldPublicId = pet.getPublicId();   // 다시 그리면 새 ID 를 받는다. 기록에는 다시 그린 그 낙서를 남긴다
+        com.tamagochi.tamagochi.domain.tamagotchi.EvolutionStage oldStage = pet.getEvolutionStage();
         pet.redraw(today);
+        usageRecorder.petEvent(user.getId(), oldPublicId, com.tamagochi.tamagochi.domain.usage.PetEventType.REDRAW, oldStage, null);
         return new Status(pet.redrawsLeft(today), Tamagotchi.REDRAWS_PER_DAY);
     }
 

@@ -30,6 +30,7 @@ public class TamagotchiController {
     private final com.tamagochi.tamagochi.service.storage.PetImageService petImageService;
     private final com.tamagochi.tamagochi.service.battle.BattleSkillService battleSkillService;
     private final com.tamagochi.tamagochi.service.quest.StarterQuestService starterQuestService;
+    private final com.tamagochi.tamagochi.service.usage.UsageRecorder usageRecorder;
 
     /** 진화 달성 보상(스케치 10원·완성작 50원). 보상 기록이 실패해도 진화 응답은 그대로 돌려준다 */
     private void rewardEvolution(User user, Tamagotchi tamagotchi) {
@@ -247,6 +248,7 @@ public class TamagotchiController {
     public ResponseEntity<?> get(@PathVariable String tossUserId) {
         User user = userIdentity.resolve(tossUserId);
         pushService.seen(user.getId());   // 지금 앱을 보고 있다: 알림을 보내지 않는다
+        usageRecorder.visited(user.getId());   // 일별 접속 기록 (하루에 한 줄). 실패해도 조회는 그대로다
 
         Tamagotchi tamagotchi = tamagotchiService.getByUserId(user.getId());
         return ResponseEntity.ok(TamagotchiResponse.from(tamagotchi));

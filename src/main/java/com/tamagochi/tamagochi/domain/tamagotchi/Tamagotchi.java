@@ -1098,7 +1098,23 @@ public class Tamagotchi {
         boolean poopFull = this.poopCount >= rule.maxPoop();
         if (starved || exhausted || poopFull) {
             this.deadAt = now;
+            java.util.EnumSet<LeaveCause> why = java.util.EnumSet.noneOf(LeaveCause.class);
+            if (starved) why.add(LeaveCause.STARVE);
+            if (exhausted) why.add(LeaveCause.EXHAUST);
+            if (poopFull) why.add(LeaveCause.POOP);
+            this.leftBecause = why;
         }
+    }
+
+    // 방금 떠난 까닭: 위 checkDeath 가 떠남을 판정한 그 조건들 (한 번에 둘 이상일 수 있다). DB 에 두지 않는다 —
+    // 떠난 그 틱에 스케줄러가 읽어 사건 기록(pet_event)에 남긴다. 떠난 뒤 다시 읽은 끄적이에게는 비어 있다
+    @Transient
+    @Getter(AccessLevel.NONE)
+    private java.util.Set<LeaveCause> leftBecause;
+
+    /** 이번에 applyTime 으로 떠났다면 그 까닭 (떠나지 않았거나 예전에 떠난 끄적이는 빈 집합) */
+    public java.util.Set<LeaveCause> leftBecause() {
+        return this.leftBecause == null ? java.util.Set.of() : java.util.Collections.unmodifiableSet(this.leftBecause);
     }
 
     public void reset() {
@@ -1134,6 +1150,7 @@ public class Tamagotchi {
         this.lastStrengthTickAt = null;
         this.lastVitalsTickAt = null;
         this.deadAt = null;
+        this.leftBecause = null;
         this.sleeping = false;
         this.sleepImageMask = 0;
         this.sleepImageRedoMask = 0;
